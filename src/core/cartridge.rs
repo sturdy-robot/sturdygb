@@ -1,6 +1,7 @@
 use std::fs;
 use std::io::Error;
 use std::io::prelude::*;
+use std::iter::FromIterator;
 
 pub enum RomTypes {
     ROMONLY = 0x00,
@@ -122,13 +123,21 @@ pub struct Cartridge {
 }
 
 // impl CartridgeHeader {
-//     pub fn new(rom_data: &Vec<u8>) -> Self {
+//     pub fn new(rom_data: &mut Vec<u8>) -> Self {
+//         let entry = [rom_data[0x100], rom_data[0x101], rom_data[0x102], rom_data[0x103]];
+//         let logo = Vec::from_iter(rom_data[0x104..0x133].iter().cloned()).try_into().unwrap_or_else(|v: Vec<u8>| panic!("Expected Vec of length {} but got {}", 48, v.len()));
+//         let t = match String::from_utf8(
+//             Vec::from_iter(rom_data[0x134..0x143].iter().cloned())) {
+//             Ok(title) => title,
+//             Err(e) => panic!("Invalid UTF-8 sequence {}", e),
+//         };
+//         let manufacturer_code = Vec::from_iter(rom_data[0x13F..0x142].iter().cloned()).try_into().unwrap_or_else(|v: Vec<u8>| panic!("Expected Vec of length {} but got {}", 48, v.len()));
 //
 //
 //         Self {
 //             entry,
 //             logo,
-//             title,
+//             title: String::to_string(&t),
 //             licensee_code,
 //             sgb_flag,
 //             rom_type,
@@ -144,7 +153,7 @@ pub struct Cartridge {
 
 impl Cartridge {
     pub fn load_cartridge(filename: String) -> Vec<u8>{
-        let rom_data = fs::read(filename)
+        let mut rom_data = fs::read(filename)
             .expect("Unable to read file contents!");
 
         rom_data
@@ -153,10 +162,31 @@ impl Cartridge {
 
 #[cfg(test)]
 mod test {
-    use super::{CartridgeHeader, Cartridge};
+    use super::{Cartridge, CartridgeHeader};
+
+    fn get_load_cartridge() -> Vec<u8> {
+        let mut cartridge_data = Cartridge::load_cartridge("roms/cgb-acid2.gbc".to_string());
+        cartridge_data
+    }
 
     #[test]
     fn test_load_cartridge() {
+        let mut cartridge_data = get_load_cartridge();
+        assert_ne!(cartridge_data, Vec::new());
+        assert_eq!(cartridge_data.len(), 32768);
+    }
 
+    #[test]
+    fn test_entry() {
+        let mut rom_data = get_load_cartridge();
+        let entry = [rom_data[0x100], rom_data[0x101], rom_data[0x102], rom_data[0x103]];
+        assert_eq!(entry, [0, 195, 80, 1]);
+    }
+
+    #[test]
+    fn test_entry2() {
+        let mut rom_data = Cartridge::load_cartridge("roms/dmg-acid2.gb".to_string());
+        let entry = [rom_data[0x100], rom_data[0x101], rom_data[0x102], rom_data[0x103]];
+        assert_eq!(entry, [0, 195, 80, 1]);
     }
 }
