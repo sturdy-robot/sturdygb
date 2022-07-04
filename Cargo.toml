@@ -5,4 +5,9 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[dependencies.glfw]
+version = "0.45.0"
+features = ["all"]
+
 [dependencies]
+vulkano = "0.29.0"

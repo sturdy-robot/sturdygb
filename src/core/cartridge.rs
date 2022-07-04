@@ -1,4 +1,6 @@
-use std::fs::File;
+use std::fs;
+use std::io::Error;
+use std::io::prelude::*;
 
 pub enum RomTypes {
     ROMONLY = 0x00,
@@ -95,6 +97,7 @@ pub enum NewLicenseeCodes {
     KonamiYuGiOh = 0xA4,
 }
 
+#[derive(Clone)]
 pub struct CartridgeHeader {
     pub entry: [u8; 4],
     pub logo: [u8; 0x30],
@@ -110,15 +113,50 @@ pub struct CartridgeHeader {
     pub global_checksum: u16,
 }
 
+#[derive(Clone)]
 pub struct Cartridge {
     pub header: CartridgeHeader,
     pub filename: String,
-    pub rom_size: u32,
-    pub rom_data: u8,
+    pub rom_size: usize,
+    pub rom_data: Vec<u8>,
 }
 
+// impl CartridgeHeader {
+//     pub fn new(rom_data: &Vec<u8>) -> Self {
+//
+//
+//         Self {
+//             entry,
+//             logo,
+//             title,
+//             licensee_code,
+//             sgb_flag,
+//             rom_type,
+//             rom_size,
+//             ram_size,
+//             dest_code,
+//             license_code,
+//             checksum,
+//             global_checksum,
+//         }
+//     }
+// }
+
 impl Cartridge {
-    fn load_cartridge() -> Cartridge {
+    pub fn load_cartridge(filename: String) -> Vec<u8>{
+        let rom_data = fs::read(filename)
+            .expect("Unable to read file contents!");
+
+        rom_data
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::{CartridgeHeader, Cartridge};
+
+    #[test]
+    fn test_load_cartridge() {
 
     }
 }
