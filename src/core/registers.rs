@@ -1,3 +1,5 @@
+#[allow(dead_code)]
+#[allow(unused_variables)]
 #[derive(Copy, Clone)]
 pub struct Registers {
     pub a: u8,
@@ -65,6 +67,9 @@ impl Registers {
     }
 }
 
+#[allow(dead_code)]
+#[allow(unused_variables)]
+#[allow(unused_imports)]
 #[derive(Copy, Clone)]
 pub enum CPUFlags {
     C = 0b00010000,
