@@ -1,3 +1,6 @@
+#[allow(dead_code)]
+#[allow(unused_variables)]
+#[allow(unused_assignments)]
 extern crate glfw;
 
 use glfw::{Action, Context, Key};

@@ -34,6 +34,7 @@ pub enum RomTypes {
     HUC1RAMBATTERY = 0xFF,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum NewLicenseeCodes {
     None = 0x00,
     NintendoRD1 = 0x01,
@@ -98,6 +99,7 @@ pub enum NewLicenseeCodes {
     KonamiYuGiOh = 0xA4,
 }
 
+
 #[derive(Clone)]
 pub struct CartridgeHeader {
     pub entry: [u8; 4],
@@ -125,8 +127,7 @@ pub struct Cartridge {
 // impl CartridgeHeader {
 //     pub fn new(rom_data: &mut Vec<u8>) -> Self {
 //         let entry = [rom_data[0x100], rom_data[0x101], rom_data[0x102], rom_data[0x103]];
-//         let logo = Vec::from_iter(rom_data[0x104..0x133].iter().cloned()).try_into().unwrap_or_else(|v: Vec<u8>| panic!("Expected Vec of length {} but got {}", 48, v.len()));
-//         let t = match String::from_utf8(
+//         //         let t = match String::from_utf8(
 //             Vec::from_iter(rom_data[0x134..0x143].iter().cloned())) {
 //             Ok(title) => title,
 //             Err(e) => panic!("Invalid UTF-8 sequence {}", e),
@@ -160,9 +161,17 @@ impl Cartridge {
     }
 }
 
+pub fn get_logo() -> [u8; 48] {
+    [
+        0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D,
+        0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E, 0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD, 0xD9, 0x99,
+        0xBB, 0xBB, 0x67, 0x63, 0x6E, 0x0E, 0xEC, 0xCC, 0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E,
+    ]
+}
+
 #[cfg(test)]
 mod test {
-    use super::{Cartridge, CartridgeHeader};
+    use super::{Cartridge, CartridgeHeader, get_logo, NewLicenseeCodes};
 
     fn get_load_cartridge() -> Vec<u8> {
         let mut cartridge_data = Cartridge::load_cartridge("roms/cgb-acid2.gbc".to_string());
@@ -179,14 +188,52 @@ mod test {
     #[test]
     fn test_entry() {
         let mut rom_data = get_load_cartridge();
-        let entry = [rom_data[0x100], rom_data[0x101], rom_data[0x102], rom_data[0x103]];
+        let entry = [rom_data[0x0100], rom_data[0x0101], rom_data[0x0102], rom_data[0x0103]];
         assert_eq!(entry, [0, 195, 80, 1]);
     }
 
     #[test]
     fn test_entry2() {
         let mut rom_data = Cartridge::load_cartridge("roms/dmg-acid2.gb".to_string());
-        let entry = [rom_data[0x100], rom_data[0x101], rom_data[0x102], rom_data[0x103]];
+        let entry = [rom_data[0x0100], rom_data[0x0101], rom_data[0x0102], rom_data[0x0103]];
         assert_eq!(entry, [0, 195, 80, 1]);
     }
+
+    #[test]
+    fn test_logo1() {
+        let mut logo = get_logo().to_vec();
+        let mut rom_data = get_load_cartridge();
+        let mut logo_data = &rom_data[0x0104..0x0134];
+        assert_eq!(logo, logo_data);
+    }
+
+    #[test]
+    fn test_logo2() {
+        let mut logo = get_logo().to_vec();
+        let mut rom_data = Cartridge::load_cartridge("roms/dmg-acid2.gb".to_string());
+        let mut logo_data = &rom_data[0x0104..0x0134]; 
+        assert_eq!(logo, logo_data);
+    }
+
+    #[test]
+    fn test_cgb_flag1() {
+        let mut rom_data = get_load_cartridge();
+        let mut cgb_flag = rom_data[0x0143];
+        assert_eq!(cgb_flag, 0xC0);
+    }
+
+    #[test]
+    fn test_cgb_flag2() {
+        let mut rom_data = Cartridge::load_cartridge("roms/dmg-acid2.gb".to_string());
+        let mut cgb_flag = rom_data[0x0143];
+        assert_eq!(cgb_flag, 0x00);
+    }
+
+    #[test]
+    fn test_new_licensee_code() {
+        let mut rom_data = get_load_cartridge();
+        let new_licensee_code = &rom_data[0x0144..0x0145];
+        assert_eq!(new_licensee_code, [0x00]); 
+    }
+
 }
