@@ -12,11 +12,15 @@ Checklist of (not yet) implemented features:
 - [ ] GPU
 - [ ] Timer
 - [ ] Cartridge
+- [ ] MMU/Memory
 - [ ] Audio
 - [ ] Joystick and input
+- [ ] Load/Save
 - [ ] Windowing and display
 - [ ] Debugging
 - [ ] Cheats and GameShark
+- [ ] SaveStates
+- [ ] Rewind
 - [ ] Libretro core
 
 ## License
