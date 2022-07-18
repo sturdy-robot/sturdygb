@@ -10,7 +10,7 @@ pub struct Cartridge {
     pub rom_data: Vec<u8>,
 }
 
-pub fn load_cartridge(filename: String) -> Vec<u8>{
+pub fn load_file(filename: String) -> Vec<u8>{
     let mut rom_data = fs::read(filename)
         .expect("Unable to read file contents!");
 
@@ -19,17 +19,17 @@ pub fn load_cartridge(filename: String) -> Vec<u8>{
 
 impl Cartridge {
     pub fn new(filename: &str) -> Self {
-        let mut rom_data = load_cartridge(filename.to_string());
+        let mut rom_data = load_file(filename.to_string());
         let rom_size = match rom_data[0x0148] {
             0x00 => 32,
             0x01 => 64,
             0x02 => 128,
             0x03 => 256,
             0x04 => 512,
-            0x05 => 1024,
-            0x06 => 2048,
-            0x07 => 4096,
-            0x08 => 8192,
+            0x05 => 1000,
+            0x06 => 2000,
+            0x07 => 4000,
+            0x08 => 8000,
             0x52 => 1100,
             0x53 => 1200,
             0x54 => 1500,
@@ -63,15 +63,15 @@ pub fn get_logo() -> [u8; 48] {
 
 #[cfg(test)]
 mod test {
-    use super::{Cartridge, get_logo, load_cartridge};
+    use super::{Cartridge, get_logo, load_file};
 
     fn get_load_cartridge() -> Vec<u8> {
-        let mut cartridge_data = load_cartridge("roms/cgb-acid2.gbc".to_string());
+        let mut cartridge_data = load_file("roms/cgb-acid2.gbc".to_string());
         cartridge_data
     }
 
     fn get_load_cartridge2() -> Vec<u8> {
-        let mut cartridge_data = load_cartridge("roms/dmg-acid2.gb".to_string());
+        let mut cartridge_data = load_file("roms/dmg-acid2.gb".to_string());
         cartridge_data
     }
 
