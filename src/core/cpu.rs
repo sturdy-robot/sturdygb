@@ -7,3 +7,13 @@ pub struct CPU {
     halted: bool,
     
 }
+
+impl CPU {
+    pub fn new() -> Self {
+        Self {
+            reg: Registers::new(),
+            mmu: MMU::new(),
+            halted: true,
+        }
+    }
+}

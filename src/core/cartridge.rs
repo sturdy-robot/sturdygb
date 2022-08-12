@@ -1,7 +1,4 @@
 use std::fs;
-use std::io::Error;
-use std::io::prelude::*;
-use std::iter::FromIterator;
 
 
 #[derive(Clone, PartialEq)]
@@ -11,7 +8,7 @@ pub struct Cartridge {
 }
 
 pub fn load_file(filename: String) -> Vec<u8>{
-    let mut rom_data = fs::read(filename)
+    let rom_data = fs::read(filename)
         .expect("Unable to read file contents!");
 
     rom_data
@@ -19,22 +16,8 @@ pub fn load_file(filename: String) -> Vec<u8>{
 
 impl Cartridge {
     pub fn new(filename: &str) -> Self {
-        let mut rom_data = load_file(filename.to_string());
-        let rom_size = match rom_data[0x0148] {
-            0x00 => 32,
-            0x01 => 64,
-            0x02 => 128,
-            0x03 => 256,
-            0x04 => 512,
-            0x05 => 1000,
-            0x06 => 2000,
-            0x07 => 4000,
-            0x08 => 8000,
-            0x52 => 1100,
-            0x53 => 1200,
-            0x54 => 1500,
-            _ => 0,
-        };
+        let rom_data = load_file(filename.to_string());
+        let rom_size = 32 * (1 << rom_data[0x0148]);
 
         Self {
             rom_data,
@@ -51,6 +34,14 @@ impl Cartridge {
         }
         x == self.rom_data[0x014D]
     }
+
+    pub fn is_cgb_only(&self) -> bool {
+        match self.rom_data[0x0143] {
+            0x80 => false,
+            0xC0 => true,
+            _ => false,
+        }
+    }
 }
 
 pub fn get_logo() -> [u8; 48] {
@@ -66,12 +57,12 @@ mod test {
     use super::{Cartridge, get_logo, load_file};
 
     fn get_load_cartridge() -> Vec<u8> {
-        let mut cartridge_data = load_file("roms/cgb-acid2.gbc".to_string());
+        let cartridge_data = load_file("roms/cgb-acid2.gbc".to_string());
         cartridge_data
     }
 
     fn get_load_cartridge2() -> Vec<u8> {
-        let mut cartridge_data = load_file("roms/dmg-acid2.gb".to_string());
+        let cartridge_data = load_file("roms/dmg-acid2.gb".to_string());
         cartridge_data
     }
 
@@ -87,92 +78,92 @@ mod test {
 
     #[test]
     fn test_create_new_cartridge() {
-        let mut cartridge = Cartridge::new("roms/cgb-acid2.gbc");
+        let cartridge = Cartridge::new("roms/cgb-acid2.gbc");
         assert_eq!(cartridge.rom_size, 32);
     }
 
     #[test]
     fn test_load_cartridge() {
-        let mut rom_data = get_load_cartridge();
+        let rom_data = get_load_cartridge();
         assert_ne!(rom_data, Vec::new());
         assert_eq!(rom_data.len(), 32768);
     }
 
     #[test]
     fn test_entry() {
-        let mut rom_data = get_load_cartridge();
+        let rom_data = get_load_cartridge();
         let entry = [rom_data[0x0100], rom_data[0x0101], rom_data[0x0102], rom_data[0x0103]];
         assert_eq!(entry, [0, 195, 80, 1]);
     }
 
     #[test]
     fn test_entry2() {
-        let mut rom_data = get_load_cartridge2();
+        let rom_data = get_load_cartridge2();
         let entry = [rom_data[0x0100], rom_data[0x0101], rom_data[0x0102], rom_data[0x0103]];
         assert_eq!(entry, [0, 195, 80, 1]);
     }
 
     #[test]
     fn test_logo1() {
-        let mut logo = get_logo().to_vec();
-        let mut rom_data = get_load_cartridge();
-        let mut logo_data = &rom_data[0x0104..0x0134];
+        let logo = get_logo().to_vec();
+        let rom_data = get_load_cartridge();
+        let logo_data = &rom_data[0x0104..0x0134];
         assert_eq!(logo, logo_data);
     }
 
     #[test]
     fn test_logo2() {
-        let mut logo = get_logo().to_vec();
-        let mut rom_data = get_load_cartridge2();
-        let mut logo_data = &rom_data[0x0104..0x0134]; 
+        let logo = get_logo().to_vec();
+        let rom_data = get_load_cartridge2();
+        let logo_data = &rom_data[0x0104..0x0134]; 
         assert_eq!(logo, logo_data);
     }
 
     #[test]
     fn test_cgb_flag1() {
-        let mut rom_data = get_load_cartridge();
-        let mut cgb_flag = rom_data[0x0143];
+        let rom_data = get_load_cartridge();
+        let cgb_flag = rom_data[0x0143];
         assert_eq!(cgb_flag, 0xC0);
     }
 
     #[test]
     fn test_cgb_flag2() {
-        let mut rom_data = get_load_cartridge2();
-        let mut cgb_flag = rom_data[0x0143];
+        let rom_data = get_load_cartridge2();
+        let cgb_flag = rom_data[0x0143];
         assert_eq!(cgb_flag, 0x00);
     }
 
     #[test]
     fn test_new_licensee_code1() {
-        let mut rom_data = get_load_cartridge();
+        let rom_data = get_load_cartridge();
         let new_licensee_code = &rom_data[0x0144..0x0145];
         assert_eq!(new_licensee_code, [0x00]); 
     }
 
     #[test]
     fn test_new_licensee_code2() {
-        let mut rom_data = get_load_cartridge2();
+        let rom_data = get_load_cartridge2();
         let new_licensee_code = &rom_data[0x0144..0x0145];
         assert_eq!(new_licensee_code, [0x00]);
     }
 
     #[test]
     fn test_sgb_flag1() {
-        let mut rom_data = get_load_cartridge();
+        let rom_data = get_load_cartridge();
         let sgb_flag = rom_data[0x0146];
         assert_eq!(sgb_flag, 0x00);
     }
 
     #[test]
     fn test_sgb_flag2() {
-        let mut rom_data = get_load_cartridge2();
+        let rom_data = get_load_cartridge2();
         let sgb_flag = rom_data[0x0146];
         assert_eq!(sgb_flag, 0x00);
     }
 
     #[test]
     fn test_cartridge_type1() {
-        let mut rom_data = get_load_cartridge();
+        let rom_data = get_load_cartridge();
         let cartridge_type = rom_data[0x0147];
         assert_eq!(cartridge_type, 0x00);
     }
@@ -180,35 +171,35 @@ mod test {
 
     #[test]
     fn test_cartridge_type2() {
-        let mut rom_data = get_load_cartridge2();
+        let rom_data = get_load_cartridge2();
         let cartridge_type = rom_data[0x0147];
         assert_eq!(cartridge_type, 0x00);
     }
 
     #[test]
     fn test_rom_size1() {
-        let mut rom_data = get_load_cartridge();
+        let rom_data = get_load_cartridge();
         let rom_size = rom_data[0x0148];
         assert_eq!(rom_size, 0x00);
     }
 
     #[test]
     fn test_rom_size2() {
-        let mut rom_data = get_load_cartridge2();
+        let rom_data = get_load_cartridge2();
         let rom_size = rom_data[0x0148];
         assert_eq!(rom_size, 0x00);
     }
 
     #[test]
     fn test_ram_size1() {
-        let mut rom_data = get_load_cartridge();
+        let rom_data = get_load_cartridge();
         let ram_size = rom_data[0x0149];
         assert_eq!(ram_size, 0x00);
     }
 
     #[test]
     fn test_ram_size2() {
-        let mut rom_data = get_load_cartridge2();
+        let rom_data = get_load_cartridge2();
         let ram_size = rom_data[0x0149];
         assert_eq!(ram_size, 0x00);
     }

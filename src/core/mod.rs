@@ -1,5 +1,6 @@
 mod registers;
 mod cpu;
 mod mmu;
-mod cartridge;
+pub mod cartridge;
 mod mbc;
+pub mod gb;

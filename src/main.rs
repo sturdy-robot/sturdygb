@@ -1,8 +1,19 @@
 extern crate glfw;
 
 use glfw::{Action, Context, Key};
+use crate::core::gb::GB;
+use crate::core::cartridge::Cartridge;
 
 mod core;
+
+fn init_gb(cartridge: Cartridge) -> GB {
+    let is_cgb = cartridge.is_cgb_only();
+    GB::new(cartridge, is_cgb)
+}
+
+fn load_cartridge(filename: String) -> Cartridge {
+    Cartridge::new(&filename)
+}
 
 fn main() {
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
