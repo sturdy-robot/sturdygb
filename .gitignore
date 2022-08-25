@@ -18,3 +18,4 @@ Cargo.lock
 
 # VSCode directory
 .vscode/
+.vs/

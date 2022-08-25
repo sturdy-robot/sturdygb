@@ -15,7 +15,7 @@ fn load_cartridge(filename: String) -> Cartridge {
     Cartridge::new(&filename)
 }
 
-fn main() {
+fn init_glfw() {
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
     let (mut window, events) = glfw.create_window(300, 300, "SturdyGB", glfw::WindowMode::Windowed).expect("Unable to create GLFW window!");
@@ -39,3 +39,10 @@ fn handle_window_event(window: &mut glfw::Window, event: glfw::WindowEvent) {
         _ => ()
     }
 }
+
+fn main() {
+    let cartridge: Cartridge = load_cartridge("roms/dmg-acid2.gb".to_string());
+    let mut gb: GB = init_gb(cartridge);
+    gb.run();
+}
+
