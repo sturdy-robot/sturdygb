@@ -9,32 +9,45 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn new() -> Self {
+    pub fn new(cartridge: Cartridge) -> Self {
         Self {
             reg: Registers::new(),
-            mmu: MMU::new(),
+            mmu: MMU::new(cartridge),
             halted: false,
         }
     }
 
-    pub fn decode(&mut self, cartridge: &mut Cartridge) {
-        let mut pc: usize = self.reg.pc as usize;
-        let instruction: u16 = cartridge.rom_data[pc] as u16;
+    pub fn decode(&mut self) {
+        let mut pc: u16 = self.reg.pc as u16;
+        let instruction: u8 = self.mmu.read_byte(pc);
         let opcode = match instruction {
-            0x00 => instruction_nop(self),
-            _ => not_supported_instruction(self),
+            0x00 => self.in_nop(),
+            0x01 => self.in_ld_bc(),
+            0x02 => self.in_ld_bc_a(),
+            _ => self.not_supported_instruction(),
         };
+        self.reg.pc += 1;
+    }
+
+    fn in_nop(&mut self) {
+        
+    }
+
+    fn in_ld_bc(&mut self) {
+        self.reg.c = self.mmu.read_byte(self.reg.pc);
+        self.reg.b = self.mmu.read_byte(self.reg.pc.wrapping_add(1) & 0xFFFF);
+        self.reg.pc = (self.reg.pc.wrapping_add(2)) & 0xFFFF;
+    }
+
+    fn in_ld_bc_a(&mut self) {
+        let value = self.mmu.read_byte(self.reg.pc);
+        self.mmu.write_byte(self.reg.bc(), value);
+    }
+
+    fn not_supported_instruction(&mut self) {
+        println!("Instruction not supported, {instruction}", instruction=self.reg.pc);
     }
 }
 
-pub fn instruction_nop(cpu: &mut CPU) -> u8 {
-    cpu.reg.pc += 1;
-    println!("NOP instruction");
-    1
-}
 
-pub fn not_supported_instruction(cpu: &mut CPU) -> u8 {
-    cpu.reg.pc += 1;
-    println!("Instruction not supported, {instruction}", instruction=cpu.reg.pc);
-    0
-}
+

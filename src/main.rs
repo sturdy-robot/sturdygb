@@ -1,5 +1,3 @@
-extern crate glfw;
-
 use glfw::{Action, Context, Key};
 use crate::core::gb::GB;
 use crate::core::cartridge::Cartridge;

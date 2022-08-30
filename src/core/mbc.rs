@@ -1,54 +1,58 @@
+use super::cartridge::Cartridge;
+
 pub enum MBCTypes {
-    ROMONLY = 0x00,
-    MBC1 = 0x01,
-    MBC1RAM = 0x02,
-    MBC1RAMBATTERY = 0x03,
-    MBC2 = 0x05,
-    MBC2BATTERY = 0x06,
-    ROMRAM = 0x08,
-    ROMRAMBATTERY = 0x09,
-    MMM01 = 0x0B,
-    MMM01RAM = 0x0C,
-    MMM01RAMBATTERY = 0x0D,
-    MBC3TIMERBATTERY = 0x0F,
-    MBC3TIMERRAMBATTERY = 0x10,
-    MBC3 = 0x11,
-    MBC3RAM = 0x12,
-    MBC3RAMBATTERY = 0x13,
-    MBC5 = 0x19,
-    MBC5RAM = 0x1A,
-    MBC5RAMBATTERY = 0x1B,
-    MBC5RUMBLE = 0x1C,
-    MBC5RUMBLERAM = 0x1D,
-    MBC5RUMBLERAMBATTERY = 0x1E,
-    MBC6 = 0x20,
-    MBC7SENSORRUMBLERAMBATTERY = 0x22,
-    POCKETCAMERA = 0xFC,
-    BANDAITAMA5 = 0xFD,
-    HUC3 = 0xFE,
-    HUC1RAMBATTERY = 0xFF,
+    ROMONLY,
+    MBC1,
+    MBC2,
+    MMM01,
+    MBC3,
+    MBC5,
+    MBC6,
+    MBC7,
+    TAMA5,
+    HUC1,
+    HUC3,
+    UNKNOWN,
 }
 
-pub struct MBC1 {
-    
+pub struct MBC {
+    cartridge: Cartridge,
+    mbc_type: MBCTypes,
 }
 
-pub struct MBC2 {
+impl MBC {
+    pub fn new(cartridge: Cartridge) -> Self {
+        let mbc_type: MBCTypes = match cartridge.rom_data[0x0147] {
+            0x00 => MBCTypes::ROMONLY,
+            0x01 ..= 0x03 => MBCTypes::MBC1,
+            0x05 ..= 0x06 => MBCTypes::MBC2,
+            0x0B ..= 0x0D => MBCTypes::MMM01,
+            0x0F ..= 0x13 => MBCTypes::MBC3,
+            0x19 ..= 0x1E => MBCTypes::MBC5,
+            0x20 => MBCTypes::MBC6,
+            0x22 => MBCTypes::MBC7,
+            _ => MBCTypes::UNKNOWN,
+        };
+        
+        Self {
+            cartridge: cartridge,
+            mbc_type: mbc_type,
+        }
+    }
 
-}
+    pub fn read_rom(&self, address: u16) -> u8 {
+        self.cartridge.rom_data[address as usize]
+    }
 
-pub struct MBC3 {
+    pub fn read_ram(&self, address: u16) -> u8 {
+        todo!()
+    }
 
-}
+    pub fn write_rom(&mut self, address: u16) -> u8 {
+        todo!()
+    }
 
-pub struct MBC5 {
-
-}
-
-pub struct MBC6 {
-
-}
-
-pub struct MBC7 {
-
+    pub fn write_ram(&mut self, address: u16) -> u8 {
+        todo!()
+    }
 }
