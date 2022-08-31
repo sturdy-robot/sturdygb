@@ -150,4 +150,17 @@ mod test {
         assert_eq!(r.de(), 0x3333);
         assert_eq!(r.hl(), 0x4444);
     }
+
+    #[test]
+    fn test_cpu_flags() {
+        let mut r: Registers = Registers::new();
+        r.set_f(CPUFlags::C, true);
+        assert_eq!(r.f, 0xB0);
+        r.set_f(CPUFlags::H, true);
+        assert_eq!(r.f, 0xF0);
+        r.set_f(CPUFlags::N, false);
+        assert_eq!(r.f, 0xD0);
+        r.set_f(CPUFlags::Z, false);
+        assert_eq!(r.f, 0x50);
+    }
 }
