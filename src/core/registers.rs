@@ -65,6 +65,16 @@ impl Registers {
         self.h = (value >> 8) as u8;
         self.l = (value & 0x00FF) as u8;
     }
+
+    pub fn set_f(&mut self, flag: CPUFlags, condition: bool) {
+        let value: u8 = flag as u8;
+        match condition {
+            true => self.f |= value,
+            false => self.f &= !value,
+        }
+        self.f &= 0xF0;
+    }
+
 }
 
 #[allow(dead_code)]
