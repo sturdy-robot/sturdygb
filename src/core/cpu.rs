@@ -49,7 +49,7 @@ impl CPU {
     }
 
     fn inc_bc(&mut self) {
-        let value = self.reg.set_bc(self.reg.bc().wrapping_add(1));
+        self.reg.set_bc(self.reg.bc().wrapping_add(1));
         println!("INC BC");
     }
 
