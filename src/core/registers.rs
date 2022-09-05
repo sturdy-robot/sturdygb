@@ -82,10 +82,10 @@ impl Registers {
 #[allow(unused_imports)]
 #[derive(Copy, Clone)]
 pub enum CPUFlags {
-    C = 0b00010000,
-    N = 0b00100000,
-    H = 0b01000000,
-    Z = 0b10000000,
+    C = 0x10,
+    N = 0x40,
+    H = 0x20,
+    Z = 0x80,
 }
 
 #[cfg(test)]

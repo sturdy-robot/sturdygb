@@ -48,11 +48,11 @@ impl MBC {
         todo!()
     }
 
-    pub fn write_rom(&mut self, address: u16) -> u8 {
+    pub fn write_rom(&mut self, address: u16, value: u8) -> u8 {
         todo!()
     }
 
-    pub fn write_ram(&mut self, address: u16) -> u8 {
+    pub fn write_ram(&mut self, address: u16, value: u8) -> u8 {
         todo!()
     }
 }

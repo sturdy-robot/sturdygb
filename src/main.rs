@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
+
 use glfw::{Action, Context, Key};
 use crate::core::gb::GB;
 use crate::core::cartridge::Cartridge;

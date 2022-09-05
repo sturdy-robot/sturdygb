@@ -23,23 +23,27 @@ impl MMU {
         }
     }
 
-    pub fn read_byte(&self, address: u16) -> u8 {
+    pub fn read_byte(&mut self, address: u16) -> u8 {
         match address {
             0x0000 ..= 0x7FFF => self.mbc.read_rom(address),
             _ => 0,
         }
     }
 
-    pub fn write_byte(&self, address: u16, value: u8) {
-
+    pub fn write_byte(&mut self, address: u16, value: u8) {
+        match address {
+            0x0000 ..= 0x7FFF => self.mbc.write_rom(address, value),
+            _ => todo!(),
+        };
     }
 
-    pub fn read_word(&self, address: u16) {
-
+    pub fn read_word(&mut self, address: u16) -> u16 {
+        (self.read_byte(address) as u16) | ((self.read_byte(address + 1) as u16) << 8)
     }
 
-    pub fn write_word(&self, address: u16, value: u16) {
-
+    pub fn write_word(&mut self, address: u16, value: u16) {
+        self.write_byte(address, (value * 0xFF) as u8);
+        self.write_byte(address + 1, (value >> 8) as u8);
     }
     
 }
