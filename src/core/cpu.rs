@@ -21,7 +21,7 @@ impl CPU {
 
     fn fetch_instruction(&mut self) -> u8 {
         let instruction = self.mmu.read_byte(self.reg.pc);
-        self.reg.pc += 1;
+        self.reg.pc = self.reg.pc.wrapping_add(1);
         instruction
     }
 
@@ -37,45 +37,45 @@ impl CPU {
             0x06 => self.ld_b_n(),
             0x07 => self.rlca(),
             0x08 => self.ld_nn_sp(),
-            0x09 => (()),
-            0x0A => (()),
-            0x0B => (()),
-            0x0C => (()),
-            0x0D => (()),
-            0x0E => (()),
-            0x0F => (()),
-            0x10 => (()),
-            0x11 => (()),
-            0x12 => (()),
-            0x13 => (()),
-            0x14 => (()),
-            0x15 => (()),
-            0x16 => (()),
-            0x17 => (()),
+            0x09 => self.add_hl_bc(),
+            0x0A => self.ld_a_bc(),
+            0x0B => self.dec_bc(),
+            0x0C => self.inc_c(),
+            0x0D => self.dec_c(),
+            0x0E => self.ld_c_n(),
+            0x0F => self.rrca(),
+            0x10 => self.stop(),
+            0x11 => self.ld_de_nn(),
+            0x12 => self.ld_de_a(),
+            0x13 => self.inc_de(),
+            0x14 => self.inc_d(),
+            0x15 => self.dec_d(),
+            0x16 => self.ld_d_n(),
+            0x17 => self.rla(),
             0x18 => (()),
-            0x19 => (()),
-            0x1A => (()),
-            0x1B => (()),
-            0x1C => (()),
-            0x1D => (()),
-            0x1E => (()),
-            0x1F => (()),
-            0x20 => (()),
-            0x21 => (()),
+            0x19 => self.add_hl_de(),
+            0x1A => self.ld_a_de(),
+            0x1B => self.dec_de(),
+            0x1C => self.inc_e(),
+            0x1D => self.dec_e(),
+            0x1E => self.ld_e_n(),
+            0x1F => self.rra(),
+            0x20 => self.jr_nz_n(),
+            0x21 => self.ld_hl_nn(),
             0x22 => (()),
-            0x23 => (()),
-            0x24 => (()),
-            0x25 => (()),
-            0x26 => (()),
-            0x27 => (()),
-            0x28 => (()),
-            0x29 => (()),
+            0x23 => self.inc_hl(),
+            0x24 => self.inc_h(),
+            0x25 => self.dec_h(),
+            0x26 => self.ld_h_n(),
+            0x27 => self.daa(),
+            0x28 => self.jr_z_n(),
+            0x29 => self.add_hl_hl(),
             0x2A => (()),
-            0x2B => (()),
-            0x2C => (()),
-            0x2D => (()),
-            0x2E => (()),
-            0x2F => (()),
+            0x2B => self.dec_hl(),
+            0x2C => self.inc_l(),
+            0x2D => self.dec_l(),
+            0x2E => self.ld_l_n(),
+            0x2F => self.cpl(),
             0x30 => (()),
             0x31 => (()),
             0x32 => (()),
@@ -286,7 +286,7 @@ impl CPU {
             0xFF => (()),
             _ => self.not_supported_instruction(instruction),
         };
-        self.reg.pc += 1;
+        self.reg.pc = self.reg.pc.wrapping_add(1);
     }
 
     fn nop(&mut self) {
@@ -294,7 +294,9 @@ impl CPU {
     }
 
     fn ld_bc_nn(&mut self) {
-        self.reg.set_bc(self.mmu.read_word(self.reg.pc));
+        let value = self.mmu.read_word(self.reg.pc);
+        self.reg.pc = self.reg.pc.wrapping_add(2);
+        self.reg.set_bc(value);
     }
 
     fn ld_bc_a(&mut self) {
@@ -333,7 +335,224 @@ impl CPU {
     }
 
     fn ld_nn_sp(&mut self) {
+        let value = self.mmu.read_word(self.reg.pc);
+        self.reg.pc = self.reg.pc.wrapping_add(2);
+        self.mmu.write_word(value, self.reg.sp);
+    }
 
+    fn add_hl_bc(&mut self) {
+        let value = self.reg.hl() as u32 + self.reg.bc() as u32;
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (self.reg.hl() & 0xFFF) > (value as u16 & 0xFFF));
+        self.reg.set_f(CPUFlags::C, value > 0xFFFF);
+        self.reg.set_hl(value as u16);
+    }
+
+    fn ld_a_bc(&mut self) {
+        self.reg.a = self.mmu.read_byte(self.reg.bc());
+    }
+
+    fn dec_bc(&mut self) {
+        self.reg.set_bc(self.reg.bc().wrapping_sub(1));
+    }
+
+    fn inc_c(&mut self) {
+        self.reg.c = self.reg.c.wrapping_add(1);
+        self.reg.set_f(CPUFlags::Z, self.reg.c == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (self.reg.c & 0xF) == 0);
+    }
+
+    fn dec_c(&mut self) {
+        self.reg.c = self.reg.c.wrapping_sub(1);
+        self.reg.set_f(CPUFlags::Z, self.reg.c == 0);
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.c & 0xF) == 0);
+    }
+
+    fn ld_c_n(&mut self) {
+        self.reg.c = self.mmu.read_byte(self.reg.pc);
+        self.reg.pc = self.reg.pc.wrapping_add(1);
+    }
+
+    fn rrca(&mut self) {
+        self.reg.a = (self.reg.a >> 1) | ((self.reg.a & 1) << 7);
+        self.reg.set_f(CPUFlags::Z, false);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, self.reg.a > 0x7F);
+    }
+
+    fn stop(&mut self) {
+        
+    }
+
+    fn ld_de_nn(&mut self) {
+        let value = self.mmu.read_word(self.reg.pc);
+        self.reg.pc = self.reg.pc.wrapping_add(2);
+        self.reg.set_de(value);
+    }
+
+    fn ld_de_a(&mut self) {
+        self.mmu.write_byte(self.reg.de(), self.reg.a);
+    }
+
+    fn inc_de(&mut self) {
+        self.reg.set_de(self.reg.de().wrapping_add(1));
+    }
+
+    fn inc_d(&mut self) {
+        self.reg.d = self.reg.d.wrapping_add(1);
+        self.reg.set_f(CPUFlags::Z, self.reg.d == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (self.reg.d & 0xF) == 0);
+    }
+
+    fn dec_d(&mut self) {
+        self.reg.d = self.reg.d.wrapping_sub(1);
+        self.reg.set_f(CPUFlags::Z, self.reg.d == 0);
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.d & 0xF) == 0);
+    }
+
+    fn ld_d_n(&mut self) {
+        self.reg.d = self.mmu.read_byte(self.reg.pc);
+        self.reg.pc = self.reg.pc.wrapping_add(1);
+    }
+
+    fn rla(&mut self) {
+
+    }
+
+    fn jn_n(&mut self) {
+
+    }
+
+    fn add_hl_de(&mut self) {
+        let value = self.reg.hl() as u32 + self.reg.de() as u32;
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (self.reg.hl() & 0xFFF) > (value as u16 & 0xFFF));
+        self.reg.set_f(CPUFlags::C, value > 0xFFFF);
+        self.reg.set_hl(value as u16);
+    }
+
+    fn ld_a_de(&mut self) {
+        self.reg.a = self.mmu.read_byte(self.reg.de());
+    }
+
+    fn dec_de(&mut self) {
+        self.reg.set_de(self.reg.de().wrapping_sub(1));
+    }
+
+    fn inc_e(&mut self) {
+        self.reg.e = self.reg.e.wrapping_add(1);
+        self.reg.set_f(CPUFlags::Z, self.reg.e == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (self.reg.e & 0xF) == 0);
+    }
+
+    fn dec_e(&mut self) {
+        self.reg.e = self.reg.e.wrapping_sub(1);
+        self.reg.set_f(CPUFlags::Z, self.reg.e == 0);
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.e & 0xF) == 0);
+    }
+
+    fn ld_e_n(&mut self) {
+        self.reg.e = self.mmu.read_byte(self.reg.pc);
+        self.reg.pc = self.reg.pc.wrapping_add(1);
+    }
+
+    fn rra(&mut self) {
+
+    }
+
+    fn jr_nz_n(&mut self) {
+
+    }
+
+    fn ld_hl_nn(&mut self) {
+        let value = self.mmu.read_word(self.reg.pc);
+        self.reg.pc = self.reg.pc.wrapping_add(2);
+        self.reg.set_hl(value);
+    }
+
+    fn ldi_hl_a(&mut self) {
+
+    }
+
+    fn inc_hl(&mut self) {
+        self.reg.set_hl(self.reg.hl().wrapping_sub(1));
+    }
+
+    fn inc_h(&mut self) {
+        self.reg.h = self.reg.h.wrapping_add(1);
+        self.reg.set_f(CPUFlags::Z, self.reg.h == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (self.reg.h & 0xF) == 0);
+    }
+
+    fn dec_h(&mut self) {
+        self.reg.h = self.reg.h.wrapping_sub(1);
+        self.reg.set_f(CPUFlags::Z, self.reg.h == 0);
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.h & 0xF) == 0);
+    }
+
+    fn ld_h_n(&mut self) {
+        self.reg.h = self.mmu.read_byte(self.reg.pc);
+        self.reg.pc = self.reg.pc.wrapping_add(1);
+    }
+
+    fn daa(&mut self) {
+
+    }
+
+    fn jr_z_n(&mut self) {
+
+    }
+
+    fn add_hl_hl(&mut self) {
+        self.reg.set_hl((self.reg.hl() << 1) & 0xFFFF);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (self.reg.hl() & 0xFFF) > 0x7FF);
+        self.reg.set_f(CPUFlags::C, self.reg.hl() > 0x7FFF);
+    }
+
+    fn ldi_a_hl(&mut self) {
+
+    }
+
+    fn dec_hl(&mut self) {
+        self.reg.set_hl(self.reg.hl().wrapping_sub(1));
+    }
+
+    fn inc_l(&mut self) {
+        self.reg.l = self.reg.l.wrapping_add(1);
+        self.reg.set_f(CPUFlags::Z, self.reg.l == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (self.reg.l & 0xF) == 0);
+    }
+
+    fn dec_l(&mut self) {
+        self.reg.l = self.reg.l.wrapping_sub(1);
+        self.reg.set_f(CPUFlags::Z, self.reg.l == 0);
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.l & 0xF) == 0);
+    }
+    
+    fn ld_l_n(&mut self) {
+        self.reg.l = self.mmu.read_byte(self.reg.pc);
+        self.reg.pc = self.reg.pc.wrapping_add(1);
+    }
+
+    fn ld_a_n(&mut self) {
+        self.reg.a = self.mmu.read_byte(self.reg.pc);
+        self.reg.pc = self.reg.pc.wrapping_add(1);
+    }
+
+    fn cpl(&mut self) {
+        
     }
 
     
