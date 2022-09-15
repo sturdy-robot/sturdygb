@@ -341,11 +341,11 @@ impl CPU {
     }
 
     fn add_hl_bc(&mut self) {
-        let value = self.reg.hl() as u32 + self.reg.bc() as u32;
+        let (value, did_overflow) = self.reg.hl().overflowing_add(self.reg.bc());
         self.reg.set_f(CPUFlags::N, false);
-        self.reg.set_f(CPUFlags::H, (self.reg.hl() & 0xFFF) > (value as u16 & 0xFFF));
-        self.reg.set_f(CPUFlags::C, value > 0xFFFF);
-        self.reg.set_hl(value as u16);
+        self.reg.set_f(CPUFlags::H, (self.reg.hl() & 0xFFF) > (value & 0xFFF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.set_hl(value);
     }
 
     fn ld_a_bc(&mut self) {
@@ -429,11 +429,11 @@ impl CPU {
     }
 
     fn add_hl_de(&mut self) {
-        let value = self.reg.hl() as u32 + self.reg.de() as u32;
+        let (value, did_overflow) = self.reg.hl().overflowing_add(self.reg.de());
         self.reg.set_f(CPUFlags::N, false);
-        self.reg.set_f(CPUFlags::H, (self.reg.hl() & 0xFFF) > (value as u16 & 0xFFF));
-        self.reg.set_f(CPUFlags::C, value > 0xFFFF);
-        self.reg.set_hl(value as u16);
+        self.reg.set_f(CPUFlags::H, (self.reg.hl() & 0xFFF) > (value & 0xFFF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.set_hl(value);
     }
 
     fn ld_a_de(&mut self) {
@@ -513,10 +513,11 @@ impl CPU {
     }
 
     fn add_hl_hl(&mut self) {
-        self.reg.set_hl((self.reg.hl() << 1) & 0xFFFF);
+        let (value, did_overflow) = self.reg.hl().overflowing_add(self.reg.hl());
         self.reg.set_f(CPUFlags::N, false);
         self.reg.set_f(CPUFlags::H, (self.reg.hl() & 0xFFF) > 0x7FF);
-        self.reg.set_f(CPUFlags::C, self.reg.hl() > 0x7FFF);
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.set_hl(value);
     }
 
     fn ldi_a_hl(&mut self) {
