@@ -42,7 +42,7 @@ fn handle_window_event(window: &mut glfw::Window, event: glfw::WindowEvent) {
 }
 
 fn main() {
-    let cartridge: Cartridge = load_cartridge("roms/dmg-acid2.gb".to_string());
+    let mut cartridge: Cartridge = load_cartridge("roms/dmg-acid2.gb".to_string());
     let mut gb: GB = init_gb(cartridge);
     gb.run();
 }

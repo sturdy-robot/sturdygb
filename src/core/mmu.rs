@@ -1,8 +1,8 @@
-use super::{mbc::MBC, cartridge::Cartridge};
+use super::{cartridge::Cartridge};
 
 pub struct MMU {
     pub current_rom_bank: u8,
-    mbc: MBC,
+    mbc: Cartridge,
     vram: Vec<u8>,
     eram: Vec<u8>,
     wram: Vec<u8>,
@@ -14,7 +14,7 @@ impl MMU {
     pub fn new(cartridge: Cartridge) -> Self {
         Self {
             current_rom_bank: 0,
-            mbc: MBC::new(cartridge.clone()),
+            mbc: cartridge,
             vram: Vec::new(),
             eram: Vec::new(),
             wram: Vec::new(),

@@ -10,7 +10,7 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn new(cartridge: Cartridge) -> Self {
+    pub fn new(mut cartridge: Cartridge) -> Self {
         Self {
             reg: Registers::new(),
             mmu: MMU::new(cartridge),

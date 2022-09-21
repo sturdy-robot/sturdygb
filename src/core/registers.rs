@@ -95,7 +95,7 @@ mod test {
 
     #[test]
     fn test_new_registers() {
-        let mut r: Registers = Registers::new();
+        let r: Registers = Registers::new();
         assert_eq!(r.a, 0x01);
         assert_eq!(r.b, 0x00);
         assert_eq!(r.c, 0x13);
@@ -157,10 +157,10 @@ mod test {
         r.set_f(CPUFlags::C, true);
         assert_eq!(r.f, 0xB0);
         r.set_f(CPUFlags::H, true);
-        assert_eq!(r.f, 0xF0);
+        assert_eq!(r.f, 0xB0);
         r.set_f(CPUFlags::N, false);
-        assert_eq!(r.f, 0xD0);
+        assert_eq!(r.f, 0xB0);
         r.set_f(CPUFlags::Z, false);
-        assert_eq!(r.f, 0x50);
+        assert_eq!(r.f, 0x30);
     }
 }
