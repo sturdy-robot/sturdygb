@@ -187,7 +187,7 @@ impl Cartridge {
     }
 
     pub fn is_cgb_only(&self) -> bool {
-        match self.rom_data[0x0143] {
+        match self.header.cgb_flag {
             0x80 => false,
             0xC0 => true,
             _ => false,

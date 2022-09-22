@@ -4,7 +4,7 @@ An experimental GameBoy emulator written in Rust.
 
 ## Plans
 
-The plan is to be a fully compatible GameBoy emulator that is able to run GB and GBC games.
+The plan is to be a fully compatible GameBoy emulator that runs GB and GBC games.
 
 Checklist of (not yet) implemented features:
 
@@ -17,11 +17,13 @@ Checklist of (not yet) implemented features:
 - [ ] Joystick and input
 - [ ] Load/Save
 - [ ] Windowing and display
-- [ ] Debugging
+- [ ] Debugger
 - [ ] Cheats and GameShark
 - [ ] SaveStates
 - [ ] Rewind
 - [ ] Libretro core
+- [ ] Android port
+- [ ] Frontend
 
 ## License
 

@@ -7,15 +7,17 @@ pub struct CPU {
     pub mmu: MMU,
     pub halted: bool,
     pub cycles: u8,
+    pub is_cgb: bool,
 }
 
 impl CPU {
-    pub fn new(mut cartridge: Cartridge) -> Self {
+    pub fn new(cartridge: Cartridge, is_cgb: bool) -> Self {
         Self {
             reg: Registers::new(),
             mmu: MMU::new(cartridge),
             halted: false,
             cycles: 0,
+            is_cgb,
         }
     }
 
