@@ -286,7 +286,6 @@ impl CPU {
             0xFD => self.not_supported_instruction(instruction),
             0xFE => self.cp_a_n(),
             0xFF => self.rst_38h(),
-            _ => self.not_supported_instruction(instruction),
         };
         self.reg.pc = self.reg.pc.wrapping_add(1);
     }
@@ -893,125 +892,491 @@ impl CPU {
         // Do nothing
     }
     
-    fn add_a_b(&mut self) {}
+    fn add_a_b(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_add(self.reg.b);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
     
-    fn add_a_c(&mut self) {}
+    fn add_a_c(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_add(self.reg.c);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
     
-    fn add_a_d(&mut self) {}
+    fn add_a_d(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_add(self.reg.d);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
     
-    fn add_a_e(&mut self) {}
+    fn add_a_e(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_add(self.reg.e);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
     
-    fn add_a_h(&mut self) {}
+    fn add_a_h(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_add(self.reg.h);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
     
-    fn add_a_l(&mut self) {}
+    fn add_a_l(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_add(self.reg.l);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
     
-    fn add_a_hl(&mut self) {}
+    fn add_a_hl(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_add(self.mmu.read_byte(self.reg.hl()));
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
     
-    fn add_a_a(&mut self) {}
+    fn add_a_a(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_add(self.reg.a);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
     
-    fn adc_a_b(&mut self) {}
+    fn adc_a_b(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_add(self.reg.b.wrapping_add(CPUFlags::C as u8));
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
     
-    fn adc_a_c(&mut self) {}
+    fn adc_a_c(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_add(self.reg.c.wrapping_add(CPUFlags::C as u8));
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
     
-    fn adc_a_d(&mut self) {}
+    fn adc_a_d(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_add(self.reg.d.wrapping_add(CPUFlags::C as u8));
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
     
-    fn adc_a_e(&mut self) {}
+    fn adc_a_e(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_add(self.reg.e.wrapping_add(CPUFlags::C as u8));
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
     
-    fn adc_a_h(&mut self) {}
+    fn adc_a_h(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_add(self.reg.h.wrapping_add(CPUFlags::C as u8));
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
     
-    fn adc_a_l(&mut self) {}
+    fn adc_a_l(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_add(self.reg.l.wrapping_add(CPUFlags::C as u8));
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
     
-    fn adc_a_hl(&mut self) {}
+    fn adc_a_hl(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_add(self.mmu.read_byte(self.reg.hl().wrapping_add(CPUFlags::C as u16)));
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
     
-    fn adc_a_a(&mut self) {}
+    fn adc_a_a(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_add(self.reg.a.wrapping_add(CPUFlags::C as u8));
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
 
-    fn sub_a_b(&mut self) {}
+    fn sub_a_b(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_sub(self.reg.b);
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
 
-    fn sub_a_c(&mut self) {}
+    fn sub_a_c(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_sub(self.reg.c);
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
 
-    fn sub_a_d(&mut self) {}
+    fn sub_a_d(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_sub(self.reg.d);
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
 
-    fn sub_a_e(&mut self) {}
+    fn sub_a_e(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_sub(self.reg.e);
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
 
-    fn sub_a_h(&mut self) {}
+    fn sub_a_h(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_sub(self.reg.h);
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
 
-    fn sub_a_l(&mut self) {}
+    fn sub_a_l(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_sub(self.reg.l);
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
 
-    fn sub_a_hl(&mut self) {}
+    fn sub_a_hl(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_sub(self.mmu.read_byte(self.reg.hl()));
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
 
-    fn sub_a_a(&mut self) {}
+    fn sub_a_a(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_sub(self.reg.a);
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
 
-    fn sbc_a_b(&mut self) {}
+    fn sbc_a_b(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_sub(self.reg.b.wrapping_sub(CPUFlags::C as u8));
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
 
-    fn sbc_a_c(&mut self) {}
+    fn sbc_a_c(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_sub(self.reg.c.wrapping_sub(CPUFlags::C as u8));
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
 
-    fn sbc_a_d(&mut self) {}
+    fn sbc_a_d(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_sub(self.reg.d.wrapping_sub(CPUFlags::C as u8));
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
 
-    fn sbc_a_e(&mut self) {}
+    fn sbc_a_e(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_sub(self.reg.e.wrapping_sub(CPUFlags::C as u8));
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
 
-    fn sbc_a_h(&mut self) {}
+    fn sbc_a_h(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_sub(self.reg.h.wrapping_sub(CPUFlags::C as u8));
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
 
-    fn sbc_a_l(&mut self) {}
+    fn sbc_a_l(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_sub(self.reg.l.wrapping_sub(CPUFlags::C as u8));
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
 
-    fn sbc_a_hl(&mut self) {}
+    fn sbc_a_hl(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_sub(self.mmu.read_byte(self.reg.hl().wrapping_sub(CPUFlags::C as u16)));
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
 
-    fn sbc_a_a(&mut self) {}
+    fn sbc_a_a(&mut self) {
+        let (value, did_overflow) = self.reg.a.overflowing_sub(self.reg.a.wrapping_sub(CPUFlags::C as u8));
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+        self.reg.set_f(CPUFlags::C, did_overflow);
+        self.reg.a = value;
+    }
 
-    fn and_a_b(&mut self) {}
+    fn and_a_b(&mut self) {
+        let value = self.reg.a & self.reg.b;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, true);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn and_a_c(&mut self) {}
+    fn and_a_c(&mut self) {
+        let value = self.reg.a & self.reg.c;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, true);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn and_a_d(&mut self) {}
+    fn and_a_d(&mut self) {
+        let value = self.reg.a & self.reg.d;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, true);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn and_a_e(&mut self) {}
+    fn and_a_e(&mut self) {
+        let value = self.reg.a & self.reg.e;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, true);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn and_a_h(&mut self) {}
+    fn and_a_h(&mut self) {
+        let value = self.reg.a & self.reg.h;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, true);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn and_a_l(&mut self) {}
+    fn and_a_l(&mut self) {
+        let value = self.reg.a & self.reg.l;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, true);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn and_a_hl(&mut self) {}
+    fn and_a_hl(&mut self) {
+        let value = self.reg.a & self.mmu.read_byte(self.reg.hl());
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, true);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn and_a_a(&mut self) {}
+    fn and_a_a(&mut self) {
+        self.reg.set_f(CPUFlags::Z, self.reg.a == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, true);
+        self.reg.set_f(CPUFlags::C, false);
+    }
 
-    fn xor_a_b(&mut self) {}
+    fn xor_a_b(&mut self) {
+        let value = self.reg.a ^ self.reg.b;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn xor_a_c(&mut self) {}
+    fn xor_a_c(&mut self) {
+        let value = self.reg.a ^ self.reg.c;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn xor_a_d(&mut self) {}
+    fn xor_a_d(&mut self) {
+        let value = self.reg.a ^ self.reg.d;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn xor_a_e(&mut self) {}
+    fn xor_a_e(&mut self) {
+        let value = self.reg.a ^ self.reg.e;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn xor_a_h(&mut self) {}
+    fn xor_a_h(&mut self) {
+        let value = self.reg.a ^ self.reg.h;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn xor_a_l(&mut self) {}
+    fn xor_a_l(&mut self) {
+        let value = self.reg.a ^ self.reg.l;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn xor_a_hl(&mut self) {}
+    fn xor_a_hl(&mut self) {
+        let value = self.reg.a ^ self.mmu.read_byte(self.reg.hl());
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn xor_a_a(&mut self) {}
+    fn xor_a_a(&mut self) {
+        let value = self.reg.a ^ self.reg.a;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn or_a_b(&mut self) {}
+    fn or_a_b(&mut self) {
+        let value = self.reg.a | self.reg.b;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn or_a_c(&mut self) {}
+    fn or_a_c(&mut self) {
+        let value = self.reg.a | self.reg.c;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn or_a_d(&mut self) {}
+    fn or_a_d(&mut self) {
+        let value = self.reg.a | self.reg.d;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn or_a_e(&mut self) {}
+    fn or_a_e(&mut self) {
+        let value = self.reg.a | self.reg.e;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn or_a_h(&mut self) {}
+    fn or_a_h(&mut self) {
+        let value = self.reg.a | self.reg.h;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn or_a_l(&mut self) {}
+    fn or_a_l(&mut self) {
+        let value = self.reg.a | self.reg.l;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn or_a_hl(&mut self) {}
+    fn or_a_hl(&mut self) {
+        let value = self.reg.a | self.mmu.read_byte(self.reg.hl());
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn or_a_a(&mut self) {}
+    fn or_a_a(&mut self) {
+        let value = self.reg.a | self.reg.a;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
+    }
 
-    fn cp_a_b(&mut self) {}
+    fn cp_a_b(&mut self) {
+        
+    }
 
-    fn cp_a_c(&mut self) {}
+    fn cp_a_c(&mut self) {
 
-    fn cp_a_d(&mut self) {}
+    }
 
-    fn cp_a_e(&mut self) {}
+    fn cp_a_d(&mut self) {
+
+    }
+
+    fn cp_a_e(&mut self) {
+
+    }
 
 
     fn cp_a_h(&mut self) {
@@ -1216,7 +1581,12 @@ impl CPU {
 
 
     fn xor_a_n(&mut self) {
-
+        let value = self.reg.a | self.mmu.read_byte(self.reg.pc);
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, false);
+        self.reg.a = value;
     }
 
 
@@ -1270,7 +1640,7 @@ impl CPU {
     }
 
     fn ld_a_nn(&mut self) {
-
+        self.reg.a = self.mmu.read_byte(self.reg.pc);
     }
 
     fn ei(&mut self) {
