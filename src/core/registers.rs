@@ -15,7 +15,22 @@ pub struct Registers {
 }
 
 impl Registers {
-    pub fn new() -> Self {
+    pub fn new(is_cgb: &bool) -> Self {
+        if *is_cgb {
+            return Self {
+                a: 0x11,
+                b: 0x00,
+                c: 0x00,
+                d: 0xFF,
+                e: 0x56,
+                f: 0x80,
+                h: 0x00,
+                l: 0x0D,
+                pc: 0x0100,
+                sp: 0xFFFE,
+            }
+        }
+        
         Self {
             a: 0x01,
             b: 0x00,
@@ -28,6 +43,7 @@ impl Registers {
             pc: 0x0100,
             sp: 0xFFFE,
         }
+        
     }
 
     pub fn af(&self) -> u16 {
@@ -95,7 +111,7 @@ mod test {
 
     #[test]
     fn test_new_registers() {
-        let r: Registers = Registers::new();
+        let r: Registers = Registers::new(&false);
         assert_eq!(r.a, 0x01);
         assert_eq!(r.b, 0x00);
         assert_eq!(r.c, 0x13);
@@ -110,7 +126,7 @@ mod test {
 
     #[test]
     fn test_set_registers() {
-        let mut r: Registers = Registers::new();
+        let mut r: Registers = Registers::new(&false);
         r.a = 0xAA;
         r.b = 0xBB;
         r.c = 0x33;
@@ -140,7 +156,7 @@ mod test {
 
     #[test]
     fn test_set_wide_registers() {
-        let mut r: Registers = Registers::new();
+        let mut r: Registers = Registers::new(&false);
         r.set_af(0x1111);
         r.set_bc(0x2222);
         r.set_de(0x3333);
@@ -153,7 +169,7 @@ mod test {
 
     #[test]
     fn test_cpu_flags() {
-        let mut r: Registers = Registers::new();
+        let mut r: Registers = Registers::new(&false);
         r.set_f(CPUFlags::C, true);
         assert_eq!(r.f, 0xB0);
         r.set_f(CPUFlags::H, true);

@@ -159,6 +159,8 @@ pub struct Cartridge {
 }
 
 pub fn load_file(filename: String) -> Vec<u8>{
+    // TODO: check if file is .gb, .gbc, or even try to open ZIP files if they're identified
+    // Even if there's no extension, we need to check if this is a compatible file
     let rom_data = fs::read(filename)
         .expect("Unable to read file contents!");
 
@@ -192,22 +194,6 @@ impl Cartridge {
             0xC0 => true,
             _ => false,
         }
-    }
-
-    pub fn read_rom(&self, address: u16) -> u8 {
-        self.rom_data[address as usize]
-    }
-
-    pub fn read_ram(&self, address: u16) -> u8 {
-        todo!()
-    }
-
-    pub fn write_rom(&mut self, address: u16, value: u8) -> u8 {
-        todo!()
-    }
-
-    pub fn write_ram(&mut self, address: u16, value: u8) -> u8 {
-        todo!()
     }
 }
 
