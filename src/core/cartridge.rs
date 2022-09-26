@@ -17,7 +17,7 @@ pub enum MBCTypes {
 }
 
 fn get_licensee_codes(old_licensee: u8, new_licensee: &[u8]) -> String {
-    let mut code: u16;
+    let code: u16;
     
     if old_licensee == 0x33 {
         code = (new_licensee[0] as u16) << 8 | new_licensee[1] as u16;

@@ -84,7 +84,7 @@ impl CPU {
             0x33 => self.inc_sp(),
             0x34 => self.inc_hl_(),
             0x35 => self.dec_hl_(),
-            0x36 => self.ldd_hln(),
+            0x36 => self.ldd_hl_n(),
             0x37 => self.scf(),
             0x38 => self.jr_c_n(),
             0x39 => self.add_hl_sp(),
@@ -590,7 +590,7 @@ impl CPU {
         self.reg.set_f(CPUFlags::H, self.reg.hl() == 0);
     }
 
-    fn ldd_hln(&mut self) {
+    fn ldd_hl_n(&mut self) {
         self.mmu.write_word(self.reg.hl(), self.reg.pc);
         self.reg.pc = self.reg.pc.wrapping_add(1);
     }
