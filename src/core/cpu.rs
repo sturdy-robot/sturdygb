@@ -568,79 +568,127 @@ impl CPU {
             },
             // SBC A, A
             0x9F => { self.alu_sbc(self.reg.a); },
-            // AND A, B
+            // OR B
             0xA0 => { self.alu_and(self.reg.b); },
-            // AND A, C
+            // OR C
             0xA1 => { self.alu_and(self.reg.c); },
-            // AND A, D
+            // OR D
             0xA2 => { self.alu_and(self.reg.d); },
-            // AND A, E
+            // OR E
             0xA3 => { self.alu_and(self.reg.e); },
-            // AND A, H
+            // OR H
             0xA4 => { self.alu_and(self.reg.h); },
-            // AND A, L
+            // OR L
             0xA5 => { self.alu_and(self.reg.l); },
-            // AND A, (HL)
+            // OR (HL)
             0xA6 => {
                 let value = self.mmu.read_byte(self.reg.hl());
                 self.alu_and(value);
             },
-            // AND A, A
+            // OR A
             0xA7 => { self.alu_and(self.reg.a); },
-            // XOR A, B
+            // XOR B
             0xA8 => { self.alu_xor(self.reg.b); },
-            // XOR A, C
+            // XOR C
             0xA9 => { self.alu_xor(self.reg.c); },
-            // XOR A, D
+            // XOR D
             0xAA => { self.alu_xor(self.reg.d); },
-            // XOR A, E
+            // XOR E
             0xAB => { self.alu_xor(self.reg.e); },
-            // XOR A, H
+            // XOR H
             0xAC => { self.alu_xor(self.reg.h); },
-            // XOR A, L
+            // XOR L
             0xAD => { self.alu_xor(self.reg.l); },
-            // XOR A, (HL)
+            // XOR (HL)
             0xAE => {
                 let value = self.mmu.read_byte(self.reg.hl());
                 self.alu_xor(value);
             },
-            // XOR A, A
+            // XOR A
             0xAF => { self.alu_xor(self.reg.a); },
-            // OR A, B
+            // OR B
             0xB0 => { self.alu_or(self.reg.b); },
-            // OR A, C
+            // OR C
             0xB1 => { self.alu_or(self.reg.c); },
-            // OR A, D
+            // OR D
             0xB2 => { self.alu_or(self.reg.b); },
-            // OR A, E
+            // OR E
             0xB3 => { self.alu_or(self.reg.e); },
-            // OR A, H
+            // OR H
             0xB4 => { self.alu_or(self.reg.h); },
-            // OR A, L
+            // OR L
             0xB5 => { self.alu_or(self.reg.l); },
-            // OR A, (HL)
+            // OR (HL)
             0xB6 => {
                 let value = self.mmu.read_byte(self.reg.hl());
                 self.alu_or(self.reg.b);
             },
-            // OR A, A
+            // OR A
             0xB7 => { self.alu_or(self.reg.a); },
-            // CP A, B
-            0xB8 => self.cp_a_b(),
-            0xB9 => self.cp_a_c(),
-            0xBA => self.cp_a_d(),
-            0xBB => self.cp_a_e(),
-            0xBC => self.cp_a_h(),
-            0xBD => self.cp_a_l(),
-            0xBE => self.cp_a_hl(),
-            0xBF => self.cp_a_a(),
-            0xC0 => self.ret_nz(),
-            0xC1 => self.pop_bc(),
-            0xC2 => self.jp_nz_nn(),
-            0xC3 => self.jp_nn(),
-            0xC4 => self.call_nz_nn(),
-            0xC5 => self.push_bc(),
-            0xC6 => self.add_a_n(),
+            // CP B
+            0xB8 => { self.alu_cp(self.reg.b); },
+            // CP C
+            0xB9 => { self.alu_cp(self.reg.c); },
+            // CP D
+            0xBA => { self.alu_cp(self.reg.d); },
+            // CP E
+            0xBB => { self.alu_cp(self.reg.e); },
+            // CP H
+            0xBC => { self.alu_cp(self.reg.h); },
+            // CP L
+            0xBD => { self.alu_cp(self.reg.l); },
+            // CP (HL)
+            0xBE => {
+                let value = self.mmu.read_byte(self.reg.hl());
+                self.alu_cp(value);
+            },
+            // CP A
+            0xBF => { self.alu_cp(self.reg.a); },
+            // RET NZ
+            0xC0 => {
+                let value = self.reg.f & CPUFlags::Z as u8 > 0;
+                if !value {
+                    let sp = self.mmu.read_word(self.reg.sp);
+                    self.reg.sp = self.reg.sp.wrapping_add(2);  
+                    self.reg.pc = sp;        
+                }
+            },
+            // POP BC
+            0xC1 => {
+                let sp = self.mmu.read_word(self.reg.sp);
+                self.reg.sp = self.reg.sp.wrapping_add(2);
+                self.reg.set_bc(sp);
+            },
+            // JP NZ, a16
+            0xC2 => {
+                let value = self.reg.f & CPUFlags::Z as u8 > 0;
+                if !value {
+                    self.reg.pc = self.mmu.read_word(self.reg.pc);
+                }
+            },
+            // JP a16
+            0xC3 => {
+                self.reg.pc = self.mmu.read_word(self.reg.pc);
+            },
+            // CALL NZ, a16
+            0xC4 => {
+                let value = self.reg.f & CPUFlags::Z as u8 > 0;
+                if !value {
+                    self.reg.sp = self.reg.sp.wrapping_sub(2);
+                    self.mmu.write_word(self.reg.sp, self.reg.pc.wrapping_add(2));
+                    self.reg.pc = self.mmu.read_word(self.reg.pc).wrapping_add(2);
+                }
+            },
+            // PUSH BC
+            0xC5 => {
+                self.reg.sp = self.reg.sp.wrapping_sub(2);
+                self.mmu.write_word(self.reg.sp, self.reg.bc());
+            },
+            // ADD A, u8
+            0xC6 => {
+                let value = self.mmu.read_byte(self.reg.pc);
+                self.alu_add(value);
+            },
             0xC7 => self.rst_00h(),
             0xC8 => self.ret_z(),
             0xC9 => self.ret(),
@@ -680,7 +728,7 @@ impl CPU {
             0xEB => self.not_supported_instruction(instruction),
             0xEC => self.not_supported_instruction(instruction),
             0xED => self.not_supported_instruction(instruction),
-            // XOR A, u8
+            // XOR u8
             0xEE => {
                 let value = self.mmu.read_byte(self.reg.pc);
                 self.alu_xor(value);
@@ -697,7 +745,10 @@ impl CPU {
             0xF8 => self.ld_hl_spi8(),
             0xF9 => self.ld_sp_hl(),
             // LD A, u8
-            0xFA => { self.reg.a = self.mmu.read_byte(self.reg.pc); },
+            0xFA => {
+                self.reg.a = self.mmu.read_byte(self.reg.pc);
+                self.reg.pc = self.reg.pc.wrapping_add(1);
+            },
             0xFB => self.ei(),
             0xFC => self.not_supported_instruction(instruction),
             0xFD => self.not_supported_instruction(instruction),
@@ -776,46 +827,12 @@ impl CPU {
         self.reg.a = value;        
     }
 
-
-    fn cp_a_b(&mut self) {
-        
-    }
-
-    fn cp_a_c(&mut self) {
-
-    }
-
-    fn cp_a_d(&mut self) {
-
-    }
-
-    fn cp_a_e(&mut self) {
-
-    }
-
-
-    fn cp_a_h(&mut self) {
-
-    }
-
-
-    fn cp_a_l(&mut self) {
-
-    }
-
-
-    fn cp_a_hl(&mut self) {
-
-    }
-
-
-    fn cp_a_a(&mut self) {
-
-    }
-
-
-    fn ret_nz(&mut self) {
-
+    fn alu_cp(&mut self, reg: u8) {
+        let value = self.reg.a.wrapping_sub(reg);
+        self.reg.set_f(CPUFlags::Z, self.reg.a == reg);
+        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(CPUFlags::H, value > self.reg.a);
+        self.reg.set_f(CPUFlags::C, self.reg.a < reg);
     }
 
 
