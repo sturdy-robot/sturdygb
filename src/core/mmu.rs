@@ -1,4 +1,4 @@
-use super::cartridge::{Cartridge, CartridgeHeader, MBCTypes};
+use super::cartridge::{Cartridge, MBCTypes};
 
 pub struct MMU {
     pub current_rom_bank: u8,
