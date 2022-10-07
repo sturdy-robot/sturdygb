@@ -1379,8 +1379,6 @@ impl CPU {
         value
     }
 
-    fn call_nz_nn(&mut self) {}
-
     fn ret(&mut self) {
         self.reg.pc = self.pop_stack();
     }
