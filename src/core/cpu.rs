@@ -72,7 +72,7 @@ impl CPU {
             // RLCA
             0x07 => {
                 self.reg.a = ((self.reg.a << 1) & 0xFF) | (self.reg.a >> 7);
-                self.reg.set_f(CPUFlags::Z, false);
+                self.reg.set_f(CPUFlags::Z, self.reg.a == 0);
                 self.reg.set_f(CPUFlags::N, false);
                 self.reg.set_f(CPUFlags::H, false);
                 self.reg.set_f(CPUFlags::C, self.reg.a > 0x7F);
@@ -122,7 +122,7 @@ impl CPU {
             // RRCA
             0x0F => {
                 self.reg.a = (self.reg.a >> 1) | ((self.reg.a & 1) << 7);
-                self.reg.set_f(CPUFlags::Z, false);
+                self.reg.set_f(CPUFlags::Z, self.reg.a == 0);
                 self.reg.set_f(CPUFlags::N, false);
                 self.reg.set_f(CPUFlags::H, false);
                 self.reg.set_f(CPUFlags::C, self.reg.a > 0x7F);
@@ -165,7 +165,7 @@ impl CPU {
             // RLA
             0x17 => {
                 let c = self.reg.f & CPUFlags::C as u8;
-                self.reg.set_f(CPUFlags::Z, false);
+                self.reg.set_f(CPUFlags::Z, self.reg.a == 0);
                 self.reg.set_f(CPUFlags::N, false);
                 self.reg.set_f(CPUFlags::H, false);
                 self.reg.set_f(CPUFlags::C, self.reg.a > 0x7F);
@@ -214,7 +214,7 @@ impl CPU {
             // RRA
             0x1F => {
                 let c = self.reg.f & CPUFlags::C as u8;
-                self.reg.set_f(CPUFlags::Z, false);
+                self.reg.set_f(CPUFlags::Z, self.reg.a == 0);
                 self.reg.set_f(CPUFlags::N, false);
                 self.reg.set_f(CPUFlags::H, false);
                 self.reg.set_f(CPUFlags::C, (self.reg.a & 1) == 1);
@@ -1386,268 +1386,1227 @@ impl CPU {
     fn decode_cb(&mut self) {
         let instruction = self.fetch_instruction();
         match instruction {
-            0x00 => {}
-            0x01 => {}
-            0x02 => {}
-            0x03 => {}
-            0x04 => {}
-            0x05 => {}
-            0x06 => {}
-            0x07 => {}
-            0x08 => {}
-            0x09 => {}
-            0x0A => {}
-            0x0B => {}
-            0x0C => {}
-            0x0D => {}
-            0x0E => {}
-            0x0F => {}
-            0x10 => {}
-            0x11 => {}
-            0x12 => {}
-            0x13 => {}
-            0x14 => {}
-            0x15 => {}
-            0x16 => {}
-            0x17 => {}
-            0x18 => {}
-            0x19 => {}
-            0x1A => {}
-            0x1B => {}
-            0x1C => {}
-            0x1D => {}
-            0x1E => {}
-            0x1F => {}
-            0x20 => {}
-            0x21 => {}
-            0x22 => {}
-            0x23 => {}
-            0x24 => {}
-            0x25 => {}
-            0x26 => {}
-            0x27 => {}
-            0x28 => {}
-            0x29 => {}
-            0x2A => {}
-            0x2B => {}
-            0x2C => {}
-            0x2D => {}
-            0x2E => {}
-            0x2F => {}
-            0x30 => {}
-            0x31 => {}
-            0x32 => {}
-            0x33 => {}
-            0x34 => {}
-            0x35 => {}
-            0x36 => {}
-            0x37 => {}
-            0x38 => {}
-            0x39 => {}
-            0x3A => {}
-            0x3B => {}
-            0x3C => {}
-            0x3D => {}
-            0x3E => {}
-            0x3F => {}
-            0x40 => {}
-            0x41 => {}
-            0x42 => {}
-            0x43 => {}
-            0x44 => {}
-            0x45 => {}
-            0x46 => {}
-            0x47 => {}
-            0x48 => {}
-            0x49 => {}
-            0x4A => {}
-            0x4B => {}
-            0x4C => {}
-            0x4D => {}
-            0x4E => {}
-            0x4F => {}
-            0x50 => {}
-            0x51 => {}
-            0x52 => {}
-            0x53 => {}
-            0x54 => {}
-            0x55 => {}
-            0x56 => {}
-            0x57 => {}
-            0x58 => {}
-            0x59 => {}
-            0x5A => {}
-            0x5B => {}
-            0x5C => {}
-            0x5D => {}
-            0x5E => {}
-            0x5F => {}
-            0x60 => {}
-            0x61 => {}
-            0x62 => {}
-            0x63 => {}
-            0x64 => {}
-            0x65 => {}
-            0x66 => {}
-            0x67 => {}
-            0x68 => {}
-            0x69 => {}
-            0x6A => {}
-            0x6B => {}
-            0x6C => {}
-            0x6D => {}
-            0x6E => {}
-            0x6F => {}
-            0x70 => {}
-            0x71 => {}
-            0x72 => {}
-            0x73 => {}
-            0x74 => {}
-            0x75 => {}
-            0x76 => {}
-            0x77 => {}
-            0x78 => {}
-            0x79 => {}
-            0x7A => {}
-            0x7B => {}
-            0x7C => {}
-            0x7D => {}
-            0x7E => {}
-            0x7F => {}
-            0x80 => {}
-            0x81 => {}
-            0x82 => {}
-            0x83 => {}
-            0x84 => {}
-            0x85 => {}
-            0x86 => {}
-            0x87 => {}
-            0x88 => {}
-            0x89 => {}
-            0x8A => {}
-            0x8B => {}
-            0x8C => {}
-            0x8D => {}
-            0x8E => {}
-            0x8F => {}
-            0x90 => {}
-            0x91 => {}
-            0x92 => {}
-            0x93 => {}
-            0x94 => {}
-            0x95 => {}
-            0x96 => {}
-            0x97 => {}
-            0x98 => {}
-            0x99 => {}
-            0x9A => {}
-            0x9B => {}
-            0x9C => {}
-            0x9D => {}
-            0x9E => {}
-            0x9F => {}
-            0xA0 => {}
-            0xA1 => {}
-            0xA2 => {}
-            0xA3 => {}
-            0xA4 => {}
-            0xA5 => {}
-            0xA6 => {}
-            0xA7 => {}
-            0xA8 => {}
-            0xA9 => {}
-            0xAA => {}
-            0xAB => {}
-            0xAC => {}
-            0xAD => {}
-            0xAE => {}
-            0xAF => {}
-            0xB0 => {}
-            0xB1 => {}
-            0xB2 => {}
-            0xB3 => {}
-            0xB4 => {}
-            0xB5 => {}
-            0xB6 => {}
-            0xB7 => {}
-            0xB8 => {}
-            0xB9 => {}
-            0xBA => {}
-            0xBB => {}
-            0xBC => {}
-            0xBD => {}
-            0xBE => {}
-            0xBF => {}
-            0xC0 => {}
-            0xC1 => {}
-            0xC2 => {}
-            0xC3 => {}
-            0xC4 => {}
-            0xC5 => {}
-            0xC6 => {}
-            0xC7 => {}
-            0xC8 => {}
-            0xC9 => {}
-            0xCA => {}
-            0xCB => {}
-            0xCC => {}
-            0xCD => {}
-            0xCE => {}
-            0xCF => {}
-            0xD0 => {}
-            0xD1 => {}
-            0xD2 => {}
-            0xD3 => {}
-            0xD4 => {}
-            0xD5 => {}
-            0xD6 => {}
-            0xD7 => {}
-            0xD8 => {}
-            0xD9 => {}
-            0xDA => {}
-            0xDB => {}
-            0xDC => {}
-            0xDD => {}
-            0xDE => {}
-            0xDF => {}
-            0xE0 => {}
-            0xE1 => {}
-            0xE2 => {}
-            0xE3 => {}
-            0xE4 => {}
-            0xE5 => {}
-            0xE6 => {}
-            0xE7 => {}
-            0xE8 => {}
-            0xE9 => {}
-            0xEA => {}
-            0xEB => {}
-            0xEC => {}
-            0xED => {}
-            0xEE => {}
-            0xEF => {}
-            0xF0 => {}
-            0xF1 => {}
-            0xF2 => {}
-            0xF3 => {}
-            0xF4 => {}
-            0xF5 => {}
-            0xF6 => {}
-            0xF7 => {}
-            0xF8 => {}
-            0xF9 => {}
-            0xFA => {}
-            0xFB => {}
-            0xFC => {}
-            0xFD => {}
-            0xFE => {}
-            0xFF => {}
+            // RLC B
+            0x00 => {
+                self.reg.b = self.rlcn(self.reg.b);
+            }
+            // RLC C
+            0x01 => {
+                self.reg.c = self.rlcn(self.reg.c);
+            }
+            // RLC D
+            0x02 => {
+                self.reg.d = self.rlcn(self.reg.d);
+            }
+            // RLC E
+            0x03 => {
+                self.reg.e = self.rlcn(self.reg.e);
+            }
+            // RLC H
+            0x04 => {
+                self.reg.h = self.rlcn(self.reg.h);
+            }
+            // RLC L
+            0x05 => {
+                self.reg.l = self.rlcn(self.reg.l);
+            }
+            // RLC (HL)
+            0x06 => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.rlcn(byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // RLC A
+            0x07 => {
+                self.reg.a = self.rlcn(self.reg.a);
+            }
+            // RRC B
+            0x08 => {
+                self.reg.b = self.rrcn(self.reg.b);
+            }
+            // RRC C
+            0x09 => {
+                self.reg.c = self.rrcn(self.reg.c);
+            }
+            // RRC D
+            0x0A => {
+                self.reg.d = self.rrcn(self.reg.d);
+            }
+            // RRC E
+            0x0B => {
+                self.reg.e = self.rrcn(self.reg.e);
+            }
+            // RRC H
+            0x0C => {
+                self.reg.h = self.rrcn(self.reg.h);
+            }
+            // RRC L
+            0x0D => {
+                self.reg.l = self.rrcn(self.reg.l);
+            }
+            // RRC (HL)
+            0x0E => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.rrcn(byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // RRC A
+            0x0F => {
+                self.reg.a = self.rrcn(self.reg.a);
+            }
+            // RL B
+            0x10 => {
+                self.reg.b = self.rln(self.reg.b);
+            }
+            // RL C
+            0x11 => {
+                self.reg.c = self.rln(self.reg.c);
+            }
+            // RL D
+            0x12 => {
+                self.reg.d = self.rln(self.reg.d);
+            }
+            // RL E
+            0x13 => {
+                self.reg.e = self.rln(self.reg.e);
+            }
+            // RL H
+            0x14 => {
+                self.reg.h = self.rln(self.reg.h);
+            }
+            // RL L
+            0x15 => {
+                self.reg.l = self.rln(self.reg.l);
+            }
+            // RL (HL)
+            0x16 => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.rln(byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // RL A
+            0x17 => {
+                self.reg.a = self.rln(self.reg.a);
+            }
+            // RR B
+            0x18 => {
+                self.reg.b = self.rrn(self.reg.b);
+            }
+            // RR C
+            0x19 => {
+                self.reg.c = self.rrn(self.reg.c);
+            }
+            // RR D
+            0x1A => {
+                self.reg.d = self.rrn(self.reg.d);
+            }
+            // RR E
+            0x1B => {
+                self.reg.e = self.rrn(self.reg.e);
+            }
+            // RR H
+            0x1C => {
+                self.reg.h = self.rrn(self.reg.h);
+            }
+            // RR L
+            0x1D => {
+                self.reg.l = self.rrn(self.reg.l);
+            }
+            // RR (HL)
+            0x1E => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.rrn(byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // RR A
+            0x1F => {
+                self.reg.a = self.rrn(self.reg.a);
+            }
+            // SLA B
+            0x20 => {
+                self.reg.b = self.slan(self.reg.b);
+            }
+            // SLA C
+            0x21 => {
+                self.reg.c = self.slan(self.reg.c);
+            }
+            // SLA D
+            0x22 => {
+                self.reg.d = self.slan(self.reg.d);
+            }
+            // SLA E
+            0x23 => {
+                self.reg.e = self.slan(self.reg.e);
+            }
+            // SLA H
+            0x24 => {
+                self.reg.h = self.slan(self.reg.h);
+            }
+            // SLA L
+            0x25 => {
+                self.reg.l = self.slan(self.reg.l);
+            }
+            // SLA (HL)
+            0x26 => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.slan(byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // SLA A
+            0x27 => {
+                self.reg.a = self.slan(self.reg.a);
+            }
+            // SRA B
+            0x28 => {
+                self.reg.b = self.sran(self.reg.b);
+            }
+            // SRA C
+            0x29 => {
+                self.reg.c = self.sran(self.reg.c);
+            }
+            // SRA D
+            0x2A => {
+                self.reg.d = self.sran(self.reg.d);
+            }
+            // SRA E
+            0x2B => {
+                self.reg.e = self.sran(self.reg.e);
+            }
+            // SRA H
+            0x2C => {
+                self.reg.h = self.sran(self.reg.h);
+            }
+            // SRA L
+            0x2D => {
+                self.reg.l = self.sran(self.reg.l);
+            }
+            // SRA (HL)
+            0x2E => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.sran(byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // SRA A
+            0x2F => {
+                self.reg.a = self.sran(self.reg.a);
+            }
+            // SWAP B
+            0x30 => {
+                self.reg.b = self.swapn(self.reg.b);
+            }
+            // SWAP C
+            0x31 => {
+                self.reg.c = self.swapn(self.reg.c);
+            }
+            // SWAP D
+            0x32 => {
+                self.reg.d = self.swapn(self.reg.d);
+            }
+            // SWAP E
+            0x33 => {
+                self.reg.e = self.swapn(self.reg.e);
+            }
+            // SWAP H
+            0x34 => {
+                self.reg.h = self.swapn(self.reg.h);
+            }
+            // SWAP L
+            0x35 => {
+                self.reg.l = self.swapn(self.reg.l);
+            }
+            // SWAP (HL)
+            0x36 => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.swapn(byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // SWAP A
+            0x37 => {
+                self.reg.a = self.swapn(self.reg.a);
+            }
+            // SRL B
+            0x38 => {
+                self.reg.b = self.srln(self.reg.b);
+            }
+            // SRL C
+            0x39 => {
+                self.reg.c = self.srln(self.reg.c);
+            }
+            // SRL D
+            0x3A => {
+                self.reg.d = self.srln(self.reg.d);
+            }
+            // SRL E
+            0x3B => {
+                self.reg.e = self.srln(self.reg.e);
+            }
+            // SRL H
+            0x3C => {
+                self.reg.h = self.srln(self.reg.h);
+            }
+            // SRL L
+            0x3D => {
+                self.reg.l = self.srln(self.reg.l);
+            }
+            // SRL (HL)
+            0x3E => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.srln(byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // SRL A
+            0x3F => {
+                self.reg.a = self.srln(self.reg.a);
+            }
+            // BIT 0,B
+            0x40 => {
+                self.bitn(0, self.reg.b);
+            }
+            // BIT 0,C
+            0x41 => {
+                self.bitn(0, self.reg.c);
+            }
+            // BIT 0,D
+            0x42 => {
+                self.bitn(0, self.reg.d);
+            }
+            // BIT 0,E
+            0x43 => {
+                self.bitn(0, self.reg.e);
+            }
+            // BIT 0,H
+            0x44 => {
+                self.bitn(0, self.reg.h);
+            }
+            // BIT 0,L
+            0x45 => {
+                self.bitn(0, self.reg.l);
+            }
+            // BIT 0,(HL)
+            0x46 => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                self.bitn(0, byte_hl);
+            }
+            // BIT 0,A
+            0x47 => {
+                self.bitn(0, self.reg.a);
+            }
+            // BIT 1,B
+            0x48 => {
+                self.bitn(1, self.reg.b);
+            }
+            // BIT 1,C
+            0x49 => {
+                self.bitn(1, self.reg.c);
+            }
+            // BIT 1,D
+            0x4A => {
+                self.bitn(1, self.reg.d);
+            }
+            // BIT 1,E
+            0x4B => {
+                self.bitn(1, self.reg.e);
+            }
+            // BIT 1,H
+            0x4C => {
+                self.bitn(1, self.reg.h);
+            }
+            // BIT 1,L
+            0x4D => {
+                self.bitn(1, self.reg.l);
+            }
+            // BIT 1,(HL)
+            0x4E => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                self.bitn(1, byte_hl);
+            }
+            // BIT 1,A
+            0x4F => {
+                self.bitn(1, self.reg.a);
+            }
+            // BIT 2,B
+            0x50 => {
+                self.bitn(2, self.reg.b);
+            }
+            // BIT 2,C
+            0x51 => {
+                self.bitn(2, self.reg.c);
+            }
+            // BIT 2,D
+            0x52 => {
+                self.bitn(2, self.reg.d);
+            }
+            // BIT 2,E
+            0x53 => {
+                self.bitn(2, self.reg.e);
+            }
+            // BIT 2,H
+            0x54 => {
+                self.bitn(2, self.reg.h);
+            }
+            // BIT 2,L
+            0x55 => {
+                self.bitn(2, self.reg.l);
+            }
+            // BIT 2,(HL)
+            0x56 => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                self.bitn(2, byte_hl);
+            }
+            // BIT 2,A
+            0x57 => {
+                self.bitn(2, self.reg.a);
+            }
+            // BIT 3,B
+            0x58 => {
+                self.bitn(3, self.reg.b);
+            }
+            // BIT 3,C
+            0x59 => {
+                self.bitn(3, self.reg.c);
+            }
+            // BIT 3,D
+            0x5A => {
+                self.bitn(3, self.reg.d);
+            }
+            // BIT 3,E
+            0x5B => {
+                self.bitn(3, self.reg.e);
+            }
+            // BIT 3,H
+            0x5C => {
+                self.bitn(3, self.reg.h);
+            }
+            // BIT 3,L
+            0x5D => {
+                self.bitn(3, self.reg.l);
+            }
+            // BIT 3,(HL)
+            0x5E => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                self.bitn(3, byte_hl);
+            }
+            // BIT 3,A
+            0x5F => {
+                self.bitn(3, self.reg.a);
+            }
+            // BIT 4,B
+            0x60 => {
+                self.bitn(4, self.reg.b);
+            }
+            // BIT 4,C
+            0x61 => {
+                self.bitn(4, self.reg.c);
+            }
+            // BIT 4,D
+            0x62 => {
+                self.bitn(4, self.reg.d);
+            }
+            // BIT 4,E
+            0x63 => {
+                self.bitn(4, self.reg.e);
+            }
+            // BIT 4,H
+            0x64 => {
+                self.bitn(4, self.reg.h);
+            }
+            // BIT 4,L
+            0x65 => {
+                self.bitn(4, self.reg.l);
+            }
+            // BIT 4,(HL)
+            0x66 => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                self.bitn(4, byte_hl);
+            }
+            // BIT 4,A
+            0x67 => {
+                self.bitn(4, self.reg.a);
+            }
+            // BIT 5,B
+            0x68 => {
+                self.bitn(5, self.reg.b);
+            }
+            // BIT 5,C
+            0x69 => {
+                self.bitn(5, self.reg.c);
+            }
+            // BIT 5,D
+            0x6A => {
+                self.bitn(5, self.reg.d);
+            }
+            // BIT 5,E
+            0x6B => {
+                self.bitn(5, self.reg.e);
+            }
+            // BIT 5,H
+            0x6C => {
+                self.bitn(5, self.reg.h);
+            }
+            // BIT 5,L
+            0x6D => {
+                self.bitn(5, self.reg.l);
+            }
+            // BIT 5,(HL)
+            0x6E => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                self.bitn(5, byte_hl);
+            }
+            // BIT 5,A
+            0x6F => {
+                self.bitn(5, self.reg.a);
+            }
+            // BIT 6,B
+            0x70 => {
+                self.bitn(6, self.reg.b);
+            }
+            // BIT 6,C
+            0x71 => {
+                self.bitn(6, self.reg.c);
+            }
+            // BIT 6,D
+            0x72 => {
+                self.bitn(6, self.reg.d);
+            }
+            // BIT 6,E
+            0x73 => {
+                self.bitn(6, self.reg.e);
+            }
+            // BIT 6,H
+            0x74 => {
+                self.bitn(6, self.reg.h);
+            }
+            // BIT 6,L
+            0x75 => {
+                self.bitn(6, self.reg.l);
+            }
+            // BIT 6,(HL)
+            0x76 => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                self.bitn(6, byte_hl);
+            }
+            // BIT 6,A
+            0x77 => {
+                self.bitn(6, self.reg.a);
+            }
+            // BIT 7,B
+            0x78 => {
+                self.bitn(7, self.reg.b);
+            }
+            // BIT 7,C
+            0x79 => {
+                self.bitn(7, self.reg.c);
+            }
+            // BIT 7,D
+            0x7A => {
+                self.bitn(7, self.reg.d);
+            }
+            // BIT 7,E
+            0x7B => {
+                self.bitn(7, self.reg.e);
+            }
+            // BIT 7,H
+            0x7C => {
+                self.bitn(7, self.reg.h);
+            }
+            // BIT 7,L
+            0x7D => {
+                self.bitn(7, self.reg.l);
+            }
+            // BIT 7,(HL)
+            0x7E => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                self.bitn(7, byte_hl);
+            }
+            // BIT 7,A
+            0x7F => {
+                self.bitn(7, self.reg.a);
+            }
+            // RES 0,B
+            0x80 => {
+                self.reg.b = self.resn(0, self.reg.b);
+            }
+            // RES 0,C
+            0x81 => {
+                self.reg.c = self.resn(0, self.reg.c);
+            }
+            // RES 0,D
+            0x82 => {
+                self.reg.d = self.resn(0, self.reg.d);
+            }
+            // RES 0,E
+            0x83 => {
+                self.reg.e = self.resn(0, self.reg.e);
+            }
+            // RES 0,H
+            0x84 => {
+                self.reg.h = self.resn(0, self.reg.h);
+            }
+            // RES 0,L
+            0x85 => {
+                self.reg.l = self.resn(0, self.reg.l);
+            }
+            // RES 0,(HL)
+            0x86 => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.resn(0, byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // RES 0,A
+            0x87 => {
+                self.reg.a = self.resn(0, self.reg.a);
+            }
+            // RES 1,B
+            0x88 => {
+                self.reg.b = self.resn(1, self.reg.b);
+            }
+            // RES 1,C
+            0x89 => {
+                self.reg.c = self.resn(1, self.reg.c);
+            }
+            // RES 1,D
+            0x8A => {
+                self.reg.d = self.resn(1, self.reg.d);
+            }
+            // RES 1,E
+            0x8B => {
+                self.reg.e = self.resn(1, self.reg.e);
+            }
+            // RES 1,H
+            0x8C => {
+                self.reg.h = self.resn(1, self.reg.h);
+            }
+            // RES 1,L
+            0x8D => {
+                self.reg.l = self.resn(1, self.reg.l);
+            }
+            // RES 1,(HL)
+            0x8E => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.resn(1, byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // RES 1,A
+            0x8F => {
+                self.reg.a = self.resn(1, self.reg.a);
+            }
+            // RES 2,B
+            0x90 => {
+                self.reg.b = self.resn(2, self.reg.b);
+            }
+            // RES 2,C
+            0x91 => {
+                self.reg.c = self.resn(2, self.reg.c);
+            }
+            // RES 2,D
+            0x92 => {
+                self.reg.d = self.resn(2, self.reg.d);
+            }
+            // RES 2,E
+            0x93 => {
+                self.reg.e = self.resn(2, self.reg.e);
+            }
+            // RES 2,H
+            0x94 => {
+                self.reg.h = self.resn(2, self.reg.h);
+            }
+            // RES 2,L
+            0x95 => {
+                self.reg.l = self.resn(2, self.reg.l);
+            }
+            // RES 2,(HL)
+            0x96 => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.resn(2, byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // RES 2,A
+            0x97 => {
+                self.reg.a = self.resn(2, self.reg.a);
+            }
+            // RES 3,B
+            0x98 => {
+                self.reg.b = self.resn(3, self.reg.b);
+            }
+            // RES 3,C
+            0x99 => {
+                self.reg.c = self.resn(3, self.reg.c);
+            }
+            // RES 3,D
+            0x9A => {
+                self.reg.d = self.resn(3, self.reg.d);
+            }
+            // RES 3,E
+            0x9B => {
+                self.reg.e = self.resn(3, self.reg.e);
+            }
+            // RES 3,H
+            0x9C => {
+                self.reg.h = self.resn(3, self.reg.h);
+            }
+            // RES 3,L
+            0x9D => {
+                self.reg.l = self.resn(3, self.reg.l);
+            }
+            // RES 3,(HL)
+            0x9E => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.resn(3, byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // RES 3,A
+            0x9F => {
+                self.reg.a = self.resn(3, self.reg.a);
+            }
+            // RES 4,B
+            0xA0 => {
+                self.reg.b = self.resn(4, self.reg.b);
+            }
+            // RES 4,C
+            0xA1 => {
+                self.reg.c = self.resn(4, self.reg.c);
+            }
+            // RES 4,D
+            0xA2 => {
+                self.reg.d = self.resn(4, self.reg.d);
+            }
+            // RES 4,E
+            0xA3 => {
+                self.reg.e = self.resn(4, self.reg.e);
+            }
+            // RES 4,H
+            0xA4 => {
+                self.reg.h = self.resn(4, self.reg.h);
+            }
+            // RES 4,L
+            0xA5 => {
+                self.reg.l = self.resn(4, self.reg.l);
+            }
+            // RES 4,(HL)
+            0xA6 => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.resn(4, byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // RES 4,A
+            0xA7 => {
+                self.reg.a = self.resn(4, self.reg.a);
+            }
+            // RES 5,B
+            0xA8 => {
+                self.reg.b = self.resn(5, self.reg.b);
+            }
+            // RES 5,C
+            0xA9 => {
+                self.reg.c = self.resn(5, self.reg.c);
+            }
+            // RES 5,D
+            0xAA => {
+                self.reg.d = self.resn(5, self.reg.d);
+            }
+            // RES 5,E
+            0xAB => {
+                self.reg.e = self.resn(5, self.reg.e);
+            }
+            // RES 5,H
+            0xAC => {
+                self.reg.h = self.resn(5, self.reg.h);
+            }
+            // RES 5,L
+            0xAD => {
+                self.reg.l = self.resn(5, self.reg.l);
+            }
+            // RES 5,(HL)
+            0xAE => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.resn(5, byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // RES 5,A
+            0xAF => {
+                self.reg.a = self.resn(5, self.reg.a);
+            }
+            // RES 6,B
+            0xB0 => {
+                self.reg.b = self.resn(6, self.reg.b);
+            }
+            // RES 6,C
+            0xB1 => {
+                self.reg.c = self.resn(6, self.reg.c);
+            }
+            // RES 6,D
+            0xB2 => {
+                self.reg.d = self.resn(6, self.reg.d);
+            }
+            // RES 6,E
+            0xB3 => {
+                self.reg.e = self.resn(6, self.reg.e);
+            }
+            // RES 6,H
+            0xB4 => {
+                self.reg.h = self.resn(6, self.reg.h);
+            }
+            // RES 6,L
+            0xB5 => {
+                self.reg.l = self.resn(6, self.reg.l);
+            }
+            // RES 6,(HL)
+            0xB6 => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.resn(6, byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // RES 6,A
+            0xB7 => {
+                self.reg.a = self.resn(6, self.reg.a);
+            }
+            // RES 7,B
+            0xB8 => {
+                self.reg.b = self.resn(7, self.reg.b);
+            }
+            // RES 7,C
+            0xB9 => {
+                self.reg.c = self.resn(7, self.reg.c);
+            }
+            // RES 7,D
+            0xBA => {
+                self.reg.d = self.resn(7, self.reg.d);
+            }
+            // RES 7,E
+            0xBB => {
+                self.reg.e = self.resn(7, self.reg.e);
+            }
+            // RES 7,H
+            0xBC => {
+                self.reg.h = self.resn(7, self.reg.h);
+            }
+            // RES 7,L
+            0xBD => {
+                self.reg.l = self.resn(7, self.reg.l);
+            }
+            // RES 7,(HL)
+            0xBE => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.resn(7, byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // RES 7,A
+            0xBF => {
+                self.reg.a = self.resn(7, self.reg.a);
+            }
+            // SET 0,B
+            0xC0 => {
+                self.reg.b = self.setn(0, self.reg.b);
+            }
+            // SET 0,C
+            0xC1 => {
+                self.reg.c = self.setn(0, self.reg.c);
+            }
+            // SET 0,D
+            0xC2 => {
+                self.reg.d = self.setn(0, self.reg.d);
+            }
+            // SET 0,E
+            0xC3 => {
+                self.reg.e = self.setn(0, self.reg.e);
+            }
+            // SET 0,H
+            0xC4 => {
+                self.reg.h = self.setn(0, self.reg.h);
+            }
+            // SET 0,L
+            0xC5 => {
+                self.reg.l = self.setn(0, self.reg.l);
+            }
+            // SET 0,(HL)
+            0xC6 => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.setn(0, byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // SET 0,A
+            0xC7 => {
+                self.reg.a = self.setn(0, self.reg.a);
+            }
+            // SET 1,B
+            0xC8 => {
+                self.reg.b = self.setn(1, self.reg.b);
+            }
+            // SET 1,C
+            0xC9 => {
+                self.reg.c = self.setn(1, self.reg.c);
+            }
+            // SET 1,D
+            0xCA => {
+                self.reg.d = self.setn(1, self.reg.d);
+            }
+            // SET 1,E
+            0xCB => {
+                self.reg.e = self.setn(1, self.reg.e);
+            }
+            // SET 1,H
+            0xCC => {
+                self.reg.h = self.setn(1, self.reg.h);
+            }
+            // SET 1,L
+            0xCD => {
+                self.reg.l = self.setn(1, self.reg.l);
+            }
+            // SET 1,(HL)
+            0xCE => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.setn(1, byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // SET 1,A
+            0xCF => {
+                self.reg.a = self.setn(1, self.reg.a);
+            }
+            // SET 2,B
+            0xD0 => {
+                self.reg.b = self.setn(2, self.reg.b);
+            }
+            // SET 2,C
+            0xD1 => {
+                self.reg.c = self.setn(2, self.reg.c);
+            }
+            // SET 2,D
+            0xD2 => {
+                self.reg.d = self.setn(2, self.reg.d);
+            }
+            // SET 2,E
+            0xD3 => {
+                self.reg.e = self.setn(2, self.reg.e);
+            }
+            // SET 2,H
+            0xD4 => {
+                self.reg.h = self.setn(2, self.reg.h);
+            }
+            // SET 2,L
+            0xD5 => {
+                self.reg.l = self.setn(2, self.reg.l);
+            }
+            // SET 2,(HL)
+            0xD6 => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.setn(2, byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // SET 2,A
+            0xD7 => {
+                self.reg.a = self.setn(2, self.reg.a);
+            }
+            // SET 3,B
+            0xD8 => {
+                self.reg.b = self.setn(3, self.reg.b);
+            }
+            // SET 3,C
+            0xD9 => {
+                self.reg.c = self.setn(3, self.reg.c);
+            }
+            // SET 3,D
+            0xDA => {
+                self.reg.d = self.setn(3, self.reg.d);
+            }
+            // SET 3,E
+            0xDB => {
+                self.reg.e = self.setn(3, self.reg.e);
+            }
+            // SET 3,H
+            0xDC => {
+                self.reg.h = self.setn(3, self.reg.h);
+            }
+            // SET 3,L
+            0xDD => {
+                self.reg.l = self.setn(3, self.reg.l);
+            }
+            // SET 3,(HL)
+            0xDE => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.setn(3, byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // SET 3,A
+            0xDF => {
+                self.reg.a = self.setn(3, self.reg.a);
+            }
+            // SET 4,B
+            0xE0 => {
+                self.reg.b = self.setn(4, self.reg.b);
+            }
+            // SET 4,C
+            0xE1 => {
+                self.reg.c = self.setn(4, self.reg.c);
+            }
+            // SET 4,D
+            0xE2 => {
+                self.reg.d = self.setn(4, self.reg.d);
+            }
+            // SET 4,E
+            0xE3 => {
+                self.reg.e = self.setn(4, self.reg.e);
+            }
+            // SET 4,H
+            0xE4 => {
+                self.reg.h = self.setn(4, self.reg.h);
+            }
+            // SET 4,L
+            0xE5 => {
+                self.reg.l = self.setn(4, self.reg.l);
+            }
+            // SET 4,(HL)
+            0xE6 => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.setn(4, byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // SET 4,A
+            0xE7 => {
+                self.reg.a = self.setn(4, self.reg.a);
+            }
+            // SET 5,B
+            0xE8 => {
+                self.reg.b = self.setn(5, self.reg.b);
+            }
+            // SET 5,C
+            0xE9 => {
+                self.reg.c = self.setn(5, self.reg.c);
+            }
+            // SET 5,D
+            0xEA => {
+                self.reg.d = self.setn(5, self.reg.d);
+            }
+            // SET 5,E
+            0xEB => {
+                self.reg.e = self.setn(5, self.reg.e);
+            }
+            // SET 5,H
+            0xEC => {
+                self.reg.h = self.setn(5, self.reg.h);
+            }
+            // SET 5,L
+            0xED => {
+                self.reg.l = self.setn(5, self.reg.l);
+            }
+            // SET 5,(HL)
+            0xEE => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.setn(5, byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // SET 5,A
+            0xEF => {
+                self.reg.a = self.setn(5, self.reg.a);
+            }
+            // SET 6,B
+            0xF0 => {
+                self.reg.b = self.setn(6, self.reg.b);
+            }
+            // SET 6,C
+            0xF1 => {
+                self.reg.c = self.setn(6, self.reg.c);
+            }
+            // SET 6,D
+            0xF2 => {
+                self.reg.d = self.setn(6, self.reg.d);
+            }
+            // SET 6,E
+            0xF3 => {
+                self.reg.e = self.setn(6, self.reg.e);
+            }
+            // SET 6,H
+            0xF4 => {
+                self.reg.h = self.setn(6, self.reg.h);
+            }
+            // SET 6,L
+            0xF5 => {
+                self.reg.l = self.setn(6, self.reg.l);
+            }
+            // SET 6,(HL)
+            0xF6 => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.setn(6, byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // SET 6,A
+            0xF7 => {
+                self.reg.a = self.setn(6, self.reg.a);
+            }
+            // SET 7,B
+            0xF8 => {
+                self.reg.b = self.setn(7, self.reg.b);
+            }
+            // SET 7,C
+            0xF9 => {
+                self.reg.c = self.setn(7, self.reg.c);
+            }
+            // SET 7,D
+            0xFA => {
+                self.reg.d = self.setn(7, self.reg.d);
+            }
+            // SET 7,E
+            0xFB => {
+                self.reg.e = self.setn(7, self.reg.e);
+            }
+            // SET 7,H
+            0xFC => {
+                self.reg.h = self.setn(7, self.reg.h);
+            }
+            // SET 7,L
+            0xFD => {
+                self.reg.l = self.setn(7, self.reg.l);
+            }
+            // SET 7,(HL)
+            0xFE => {
+                let byte_hl = self.mmu.read_byte(self.reg.hl());
+                let value = self.setn(7, byte_hl);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }
+            // SET 7,A
+            0xFF => {
+                self.reg.a = self.setn(7, self.reg.a);
+            }
         };
     }
 
     fn rst(&mut self, n: u8) {
         self.push_stack(self.reg.pc);
         self.reg.pc = n as u16;
+    }
+
+    fn rlcn(&mut self, reg: u8) -> u8 {
+        let flag: u8 = match self.reg.f & CPUFlags::C as u8 == CPUFlags::C as u8 {
+            true => 1,
+            false => 0,
+        };
+        let value = ((reg << 1) & 0xFF) | flag;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, value > 0x7F);
+        value
+    }
+
+    fn rrcn(&mut self, reg: u8) -> u8 {
+        let flag: u8 = match self.reg.f & CPUFlags::C as u8 == CPUFlags::C as u8 {
+            true => 0x80,
+            false => 0,
+        };
+        let value = flag | (reg >> 1);
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, (value & 0x01) == 0x01 );
+        value
+    }
+
+    fn rln(&mut self, reg: u8) -> u8 {
+        let flag = match reg > 0x7F {
+            true => 1,
+            false => 0,
+        };
+        let value = (reg << 1) & 0xFF | flag;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, reg > 0x7F);
+        value
+    }
+
+    fn rrn(&mut self, reg: u8) -> u8 {
+        let flag = match (reg & 0x01) == 0x01 {
+            true => 0x80,
+            false => 0,
+        };
+        let value = flag | (reg >> 1);
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, (reg & 0x01) == 0x01);
+        value
+    }
+
+    fn slan(&mut self, reg: u8) -> u8 {
+        let value = (reg << 1) & 0xFF;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, value > 0x7F);
+        value
+    }
+
+    fn sran(&mut self, reg: u8) -> u8 {
+        let value = (reg & 0x80) | (reg >> 1);
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, (value & 0x01) == 0x01);
+        value
+    }
+
+    fn swapn(&mut self, reg: u8) -> u8 {
+        let value = ((reg & 0xF) << 4) | (reg >> 4);
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, false);
+        value
+    }
+
+    fn srln(&mut self, reg: u8) -> u8 {
+        let value = reg >> 1;
+        self.reg.set_f(CPUFlags::Z, value == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, false);
+        self.reg.set_f(CPUFlags::C, (value & 0x01) == 0x01);
+        value
+    }
+
+    fn bitn(&mut self, n: u8, reg: u8) {
+        let b: u8 = match n {
+            0 => 0x01,
+            1 => 0x02,
+            2 => 0x04,
+            3 => 0x08,
+            4 => 0x10,
+            5 => 0x20,
+            6 => 0x40,
+            7 => 0x80,
+            _ => 0x01,
+        };
+        self.reg.set_f(CPUFlags::Z, (reg & b) == 0);
+        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(CPUFlags::H, true);
+    }
+
+    fn resn(&mut self, n: u8, reg: u8) -> u8 {
+        let b: u8 = match n {
+            0 => 0xFE,
+            1 => 0xFD,
+            2 => 0xFB,
+            3 => 0xF7,
+            4 => 0xEF,
+            5 => 0xDF,
+            6 => 0xBF,
+            7 => 0x7F,
+            _ => 0xFE,
+        };
+        reg & b
+    }
+
+    fn setn(&mut self, n: u8, reg: u8) -> u8 {
+        let b: u8 = match n {
+            0 => 0x01,
+            1 => 0x02,
+            2 => 0x04,
+            3 => 0x08,
+            4 => 0x10,
+            5 => 0x20,
+            6 => 0x40,
+            7 => 0x80,
+            _ => 0x01,
+        };
+        reg | b
     }
 
     fn not_supported_instruction(&mut self, instruction: u8) {
