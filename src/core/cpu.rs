@@ -1242,7 +1242,7 @@ impl CPU {
     }
 
     fn stop(&mut self) {
-        self.reg.pc.wrapping_add(1); // stop instruction skips a byte
+        self.reg.pc = self.reg.pc.wrapping_add(1); // stop instruction skips a byte
     }
 
     fn halt(&mut self) {
