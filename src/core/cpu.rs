@@ -2496,7 +2496,7 @@ impl CPU {
         self.reg.set_f(CPUFlags::Z, value == 0);
         self.reg.set_f(CPUFlags::N, false);
         self.reg.set_f(CPUFlags::H, false);
-        self.reg.set_f(CPUFlags::C, (value & 0x01) == 0x01 );
+        self.reg.set_f(CPUFlags::C, (value & 0x01) == 0x01);
         value
     }
 

@@ -1,6 +1,6 @@
 mod registers;
 mod cpu;
-mod gpu;
+mod ppu;
 mod mmu;
 pub mod cartridge;
 pub mod gb;

@@ -1,8 +1,10 @@
 use super::cartridge::{Cartridge, MBCTypes};
+use super::ppu::{PPU};
 
 pub struct MMU {
     pub current_rom_bank: u8,
     pub mbc: Cartridge,
+    pub ppu: PPU,
     vram: Vec<u8>,
     eram: Vec<u8>,
     wram: Vec<u8>,
@@ -15,6 +17,7 @@ impl MMU {
         Self {
             current_rom_bank: 0,
             mbc: cartridge,
+            ppu: PPU::new(),
             vram: Vec::new(),
             eram: Vec::new(),
             wram: Vec::new(),
