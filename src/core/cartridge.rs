@@ -148,7 +148,6 @@ impl CartridgeHeader {
             checksum: rom_data[0x14D],
         }
     }
-
 }
 
 #[derive(PartialEq, Eq)]

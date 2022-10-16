@@ -16,8 +16,6 @@ impl GB {
     }
 
     pub fn run(&mut self) {
-        while !self.cpu.is_halted && usize::from(self.cpu.reg.pc) < 0x8000 {
-            self.cpu.decode()
-        }
+        self.cpu.execute();
     }
 }

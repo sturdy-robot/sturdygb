@@ -1,5 +1,5 @@
 use crate::core::mmu::MMU;
-use crate::core::registers::{CPUFlags, Registers};
+use crate::core::registers::{CPUFlags, Registers, ByteRegister, WordRegister};
 use crate::Cartridge;
 
 pub struct CPU {
@@ -23,14 +23,21 @@ impl CPU {
         }
     }
 
+    pub fn execute(&mut self) {
+        while !self.is_halted && self.reg.pc < 0x8000 {
+            let instruction = self.fetch_instruction();
+            self.decode(instruction);
+            self.reg.pc = self.reg.pc.wrapping_add(1);
+        }
+    }
+
     fn fetch_instruction(&mut self) -> u8 {
         let instruction = self.mmu.read_byte(self.reg.pc);
         self.reg.pc = self.reg.pc.wrapping_add(1);
         instruction
     }
 
-    pub fn decode(&mut self) {
-        let instruction: u8 = self.fetch_instruction();
+    pub fn decode(&mut self, instruction: u8) {
         match instruction {
             // NOP
             0x00 => {
@@ -1227,7 +1234,6 @@ impl CPU {
                 self.rst(0x38);
             }
         };
-        self.reg.pc = self.reg.pc.wrapping_add(1);
     }
 
     fn push_stack(&mut self, address: u16) {
@@ -2617,5 +2623,37 @@ impl CPU {
 #[cfg(test)]
 mod test {
     use super::CPU;
-    use crate::core::cartridge::Cartridge;
+    use crate::core::cartridge::{Cartridge, CartridgeHeader, MBCTypes};
+    use crate::core::mmu::MMU;
+    use crate::core::registers::Registers;
+
+    fn set_up(rom_data: Vec<u8>) -> CPU {
+        let cartridge_header = CartridgeHeader {
+            entry: [0; 4],
+            logo: [0; 0x30],
+            title: [0; 16],
+            cgb_flag: 0x80,
+            licensee_code: "".to_string(),
+            sgb_flag: 0x00,
+            rom_type: MBCTypes::ROMONLY,
+            rom_size: 0x00,
+            ram_size: 0x00,
+            dest_code: 0x00,
+            checksum: 0x00,
+        };
+        let cartridge = Cartridge {
+            header: cartridge_header,
+            rom_data: rom_data,
+            ram: Vec::new(),
+        };
+
+        CPU {
+            cycles: 0,
+            ime: true,
+            is_cgb: false,
+            is_halted: false,
+            mmu: MMU::new(cartridge),
+            reg: Registers::new(&false),
+        }
+    }
 }
