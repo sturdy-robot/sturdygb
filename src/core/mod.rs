@@ -5,3 +5,4 @@ mod mmu;
 pub mod cartridge;
 pub mod gb;
 pub mod io;
+pub mod opcodes;
