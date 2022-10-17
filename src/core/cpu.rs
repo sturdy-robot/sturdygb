@@ -1,6 +1,7 @@
 use crate::core::mmu::MMU;
 use crate::core::registers::{CPUFlags, Registers, ByteRegister, WordRegister};
-use crate::Cartridge;
+use crate::core::cartridge::Cartridge;
+use crate::core::opcodes::Opcode;
 
 pub struct CPU {
     pub reg: Registers,
@@ -26,7 +27,9 @@ impl CPU {
     pub fn execute(&mut self) {
         while !self.is_halted && self.reg.pc < 0x8000 {
             let instruction = self.fetch_instruction();
-            self.decode(instruction);
+            let mut opcode = Opcode::new(instruction, &self.reg);
+            opcode.decode();
+            //self.decode(instruction);
             self.reg.pc = self.reg.pc.wrapping_add(1);
         }
     }

@@ -1,6 +1,6 @@
 #[allow(dead_code)]
 #[allow(unused_variables)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct Registers {
     pub a: u8,
     pub b: u8,
@@ -12,6 +12,14 @@ pub struct Registers {
     pub l: u8,
     pub sp: u16,
     pub pc: u16,
+}
+
+pub enum ByteRegister {
+    A, B, C, D, E, F, H, L
+}
+
+pub enum WordRegister {
+    AF, BC, DE, HL
 }
 
 impl Registers {
