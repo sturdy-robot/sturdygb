@@ -12,6 +12,7 @@ pub struct Registers {
     pub l: u8,
     pub sp: u16,
     pub pc: u16,
+    pub ime: bool,
 }
 
 pub enum ByteRegister {
@@ -36,6 +37,7 @@ impl Registers {
                 l: 0x0D,
                 pc: 0x0100,
                 sp: 0xFFFE,
+                ime: true,
             }
         }
         
@@ -50,6 +52,7 @@ impl Registers {
             l: 0x4D,
             pc: 0x0100,
             sp: 0xFFFE,
+            ime: true,
         }
         
     }

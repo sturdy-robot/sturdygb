@@ -29,6 +29,12 @@ impl MMU {
         }
     }
 
+    pub fn fetch_instruction(&mut self, pc: &mut u16) -> (u8, u16) {
+        let instruction = self.read_byte(*pc);
+        let inc_pc = pc.wrapping_add(1);
+        (instruction, inc_pc)
+    }
+
     pub fn read_byte(&mut self, address: u16) -> u8 {
         match address {
             0x0000 ..= 0x7FFF => self.read_rom(address),
