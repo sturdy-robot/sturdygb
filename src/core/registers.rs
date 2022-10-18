@@ -23,6 +23,14 @@ pub enum WordRegister {
     AF, BC, DE, HL
 }
 
+pub enum ByteRegister {
+    A, B, C, D, E, F, H, L
+}
+
+pub enum WordRegister {
+    AF, BC, DE, HL
+}
+
 impl Registers {
     pub fn new(is_cgb: &bool) -> Self {
         if *is_cgb {
