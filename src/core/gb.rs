@@ -1,6 +1,5 @@
 use crate::core::cpu::CPU;
 use crate::core::cartridge::Cartridge;
-use crate::core::ppu::PPU;
 
 /// GameBoy emulator implementation
 pub struct GB {

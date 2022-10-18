@@ -4,3 +4,4 @@ mod ppu;
 mod mmu;
 pub mod cartridge;
 pub mod gb;
+pub mod io;

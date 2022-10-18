@@ -1,10 +1,12 @@
 use super::cartridge::{Cartridge, MBCTypes};
 use super::ppu::{PPU};
+use super::io::{IO};
 
 pub struct MMU {
     pub current_rom_bank: u8,
     pub mbc: Cartridge,
     pub ppu: PPU,
+    pub io: IO,
     vram: [u8; 0x4000],
     eram: Vec<u8>,
     wram: Vec<u8>,
@@ -18,6 +20,7 @@ impl MMU {
             current_rom_bank: 0,
             mbc: cartridge,
             ppu: PPU::new(),
+            io: IO::new(),
             vram: [0; 0x4000],
             eram: Vec::new(),
             wram: Vec::new(),
@@ -29,14 +32,21 @@ impl MMU {
     pub fn read_byte(&mut self, address: u16) -> u8 {
         match address {
             0x0000 ..= 0x7FFF => self.read_rom(address),
-            _ => 0,
+            0x8000 ..= 0x9FFF => self.vram[(address & 0x1FFF) as usize],
+            0xA000 ..= 0xBFFF => self.eram[(address & 0x1FFF) as usize],
+            0xC000 ..= 0xCFFF | 0xE000 ..= 0xEFFF => self.wram[(address & 0x1FFF) as usize],
+            0xD000 ..= 0xDFFF | 0xF000 ..= 0xFDFF => self.wram[(address & 0x1FFF) as usize], // switchable banks later
+            0xFE00 ..= 0xFE9F => self.oam[(address & 0x1FFF) as usize],
+            0xFF00 ..= 0xFF7F => self.io.read_byte(address),
+            0xFF80 ..= 0xFFFE => self.hram[(address & 0x1FFF) as usize],
+            _ => 0xFF,
         }
     }
 
     pub fn write_byte(&mut self, address: u16, value: u8) {
         match address {
             0x0000 ..= 0x7FFF => self.write_rom(address, value),
-            _ => todo!(),
+            _ => 0xFF,
         };
     }
 
@@ -60,16 +70,17 @@ impl MMU {
                     _ => 0 as u8,
                 }
             },
-            MBCTypes::MBC2 => todo!(),
-            MBCTypes::MMM01 => todo!(),
-            MBCTypes::MBC3 => todo!(),
-            MBCTypes::MBC5 => todo!(),
-            MBCTypes::MBC6 => todo!(),
-            MBCTypes::MBC7 => todo!(),
-            MBCTypes::TAMA5 => todo!(),
-            MBCTypes::HUC1 => todo!(),
-            MBCTypes::HUC3 => todo!(),
-            MBCTypes::UNKNOWN => todo!(),
+            // TODO: IMPLEMENT THESE
+            MBCTypes::MBC2 => 0xFF,
+            MBCTypes::MMM01 => 0xFF,
+            MBCTypes::MBC3 => 0xFF,
+            MBCTypes::MBC5 => 0xFF,
+            MBCTypes::MBC6 => 0xFF,
+            MBCTypes::MBC7 => 0xFF,
+            MBCTypes::TAMA5 => 0xFF,
+            MBCTypes::HUC1 => 0xFF,
+            MBCTypes::HUC3 => 0xFF,
+            MBCTypes::UNKNOWN => 0xFF,
         }
         
         
@@ -78,52 +89,54 @@ impl MMU {
     pub fn read_ram(&self, address: u16) -> u8 {
         match self.mbc.header.rom_type {
             MBCTypes::ROMONLY => 0,
-            MBCTypes::MBC1 => todo!(),
-            MBCTypes::MBC2 => todo!(),
-            MBCTypes::MMM01 => todo!(),
-            MBCTypes::MBC3 => todo!(),
-            MBCTypes::MBC5 => todo!(),
-            MBCTypes::MBC6 => todo!(),
-            MBCTypes::MBC7 => todo!(),
-            MBCTypes::TAMA5 => todo!(),
-            MBCTypes::HUC1 => todo!(),
-            MBCTypes::HUC3 => todo!(),
-            MBCTypes::UNKNOWN => todo!(),
+            // TODO: IMPLEMENT THESE
+            MBCTypes::MBC1 => 0xFF,
+            MBCTypes::MBC2 => 0xFF,
+            MBCTypes::MMM01 => 0xFF,
+            MBCTypes::MBC3 => 0xFF,
+            MBCTypes::MBC5 => 0xFF,
+            MBCTypes::MBC6 => 0xFF,
+            MBCTypes::MBC7 => 0xFF,
+            MBCTypes::TAMA5 => 0xFF,
+            MBCTypes::HUC1 => 0xFF,
+            MBCTypes::HUC3 => 0xFF,
+            MBCTypes::UNKNOWN => 0xFF,
         }
     }
 
     pub fn write_rom(&mut self, address: u16, value: u8) -> u8 {
         match self.mbc.header.rom_type {
             MBCTypes::ROMONLY => 0,
-            MBCTypes::MBC1 => todo!(),
-            MBCTypes::MBC2 => todo!(),
-            MBCTypes::MMM01 => todo!(),
-            MBCTypes::MBC3 => todo!(),
-            MBCTypes::MBC5 => todo!(),
-            MBCTypes::MBC6 => todo!(),
-            MBCTypes::MBC7 => todo!(),
-            MBCTypes::TAMA5 => todo!(),
-            MBCTypes::HUC1 => todo!(),
-            MBCTypes::HUC3 => todo!(),
-            MBCTypes::UNKNOWN => todo!(),
+            // TODO: IMPLEMENT THESE
+            MBCTypes::MBC1 => 0xFF,
+            MBCTypes::MBC2 => 0xFF,
+            MBCTypes::MMM01 => 0xFF,
+            MBCTypes::MBC3 => 0xFF,
+            MBCTypes::MBC5 => 0xFF,
+            MBCTypes::MBC6 => 0xFF,
+            MBCTypes::MBC7 => 0xFF,
+            MBCTypes::TAMA5 => 0xFF,
+            MBCTypes::HUC1 => 0xFF,
+            MBCTypes::HUC3 => 0xFF,
+            MBCTypes::UNKNOWN => 0xFF,
         }
     }
 
     pub fn write_ram(&mut self, address: u16, value: u8) -> u8 {
         match self.mbc.header.rom_type {
             MBCTypes::ROMONLY => 0,
-            MBCTypes::MBC1 => todo!(),
-            MBCTypes::MBC2 => todo!(),
-            MBCTypes::MMM01 => todo!(),
-            MBCTypes::MBC3 => todo!(),
-            MBCTypes::MBC5 => todo!(),
-            MBCTypes::MBC6 => todo!(),
-            MBCTypes::MBC7 => todo!(),
-            MBCTypes::TAMA5 => todo!(),
-            MBCTypes::HUC1 => todo!(),
-            MBCTypes::HUC3 => todo!(),
-            MBCTypes::UNKNOWN => todo!(),
+            // TODO: IMPLEMENT THESE
+            MBCTypes::MBC1 => 0xFF,
+            MBCTypes::MBC2 => 0xFF,
+            MBCTypes::MMM01 => 0xFF,
+            MBCTypes::MBC3 => 0xFF,
+            MBCTypes::MBC5 => 0xFF,
+            MBCTypes::MBC6 => 0xFF,
+            MBCTypes::MBC7 => 0xFF,
+            MBCTypes::TAMA5 => 0xFF,
+            MBCTypes::HUC1 => 0xFF,
+            MBCTypes::HUC3 => 0xFF,
+            MBCTypes::UNKNOWN => 0xFF,
         }
     }
-    
 }
