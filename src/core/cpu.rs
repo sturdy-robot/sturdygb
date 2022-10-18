@@ -27,7 +27,7 @@ impl CPU {
     pub fn execute(&mut self) {
         while !self.is_halted && self.reg.pc < 0x8000 {
             let instruction = self.fetch_instruction();
-            let mut opcode = Opcode::new(instruction, &self.reg);
+            let mut opcode = Opcode::new(instruction, &self.reg, &self.mmu);
             opcode.decode();
             //self.decode(instruction);
             self.reg.pc = self.reg.pc.wrapping_add(1);
