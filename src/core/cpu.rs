@@ -1,5 +1,5 @@
 use crate::core::mmu::MMU;
-use crate::core::registers::{CPUFlags, Registers, ByteRegister, WordRegister};
+use crate::core::registers::Registers;
 use crate::core::cartridge::Cartridge;
 use crate::core::opcodes::Opcode;
 
@@ -42,37 +42,86 @@ impl CPU {
 #[cfg(test)]
 mod test {
     use super::CPU;
-    use crate::core::cartridge::{Cartridge, CartridgeHeader, MBCTypes};
-    use crate::core::mmu::MMU;
-    use crate::core::registers::Registers;
+    use crate::core::cartridge::Cartridge;
+    use crate::core::opcodes::Opcode;
 
-    fn set_up(rom_data: Vec<u8>) -> CPU {
-        let cartridge_header = CartridgeHeader {
-            entry: [0; 4],
-            logo: [0; 0x30],
-            title: [0; 16],
-            cgb_flag: 0x80,
-            licensee_code: "".to_string(),
-            sgb_flag: 0x00,
-            rom_type: MBCTypes::ROMONLY,
-            rom_size: 0x00,
-            ram_size: 0x00,
-            dest_code: 0x00,
-            checksum: 0x00,
-        };
-        let cartridge = Cartridge {
-            header: cartridge_header,
-            rom_data: rom_data,
-            ram: Vec::new(),
-        };
+    fn set_up() -> CPU {
+        let cartridge = Cartridge::new("roms/gb-test-roms/cpu_instrs/cpu_instrs.gb");
+        let is_cgb = cartridge.is_cgb_only();
+        CPU::new(cartridge, is_cgb)
+    }
 
-        CPU {
-            cycles: 0,
-            ime: true,
-            is_cgb: false,
-            is_halted: false,
-            mmu: MMU::new(cartridge),
-            reg: Registers::new(&false),
-        }
+    #[test]
+    fn test_add_instructions() {
+        let mut cpu = set_up();
+        let mut opcode = Opcode::new(0x80, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.a, 0x01);
+        assert_eq!(cpu.reg.f, 0x00);
+        opcode = Opcode::new(0x81, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.a, 0x14);
+        assert_eq!(cpu.reg.f, 0x00);
+        opcode = Opcode::new(0x82, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.a, 0x14);
+        assert_eq!(cpu.reg.f, 0x00);
+        opcode = Opcode::new(0x83, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.a, 0xEC);
+        assert_eq!(cpu.reg.f, 0x00);
+        opcode = Opcode::new(0x84, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.a, 0xED);
+        assert_eq!(cpu.reg.f, 0x00);
+        opcode = Opcode::new(0x85, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.a, 0x3A);
+        assert_eq!(cpu.reg.f, 0x30);
+        opcode = Opcode::new(0x86, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.a, 0x3A);
+        assert_eq!(cpu.reg.f, 0x00);
+        opcode = Opcode::new(0x87, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.a, 0x74);
+        assert_eq!(cpu.reg.f, 0x20);
+    }
+
+    #[test]
+    fn test_adc_instructions() {
+        let mut cpu = set_up();
+        let mut opcode = Opcode::new(0x88, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.a, 0x01);
+        assert_eq!(cpu.reg.f, 0x00);
+        opcode = Opcode::new(0x89, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.a, 0x14);
+        assert_eq!(cpu.reg.f, 0x00);
+        opcode = Opcode::new(0x8A, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.a, 0x14);
+        assert_eq!(cpu.reg.f, 0x00);
+        opcode = Opcode::new(0x8B, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.a, 0xEC);
+        assert_eq!(cpu.reg.f, 0x00);
+        opcode = Opcode::new(0x8C, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.a, 0xED);
+        assert_eq!(cpu.reg.f, 0x00);
+        opcode = Opcode::new(0x8D, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.a, 0x3A);
+        assert_eq!(cpu.reg.f, 0x30);
+        opcode = Opcode::new(0x8E, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.a, 0x3A);
+        assert_eq!(cpu.reg.f, 0x00);
+        opcode = Opcode::new(0x8F, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.a, 0x74);
+        assert_eq!(cpu.reg.f, 0x20);
     }
 }
