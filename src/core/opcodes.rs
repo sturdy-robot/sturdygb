@@ -1,5 +1,5 @@
 use crate::core::mmu::MMU;
-use crate::core::registers::{CPUFlags, Registers};
+use crate::core::registers::{FFlags, Registers};
 
 pub struct Opcode<'a> {
     opcode: u8,
@@ -28,18 +28,18 @@ impl<'a> Opcode<'a> {
         macro_rules! inc_r {
             ($reg:ident) => {{
                 self.reg.$reg = self.reg.$reg.wrapping_add(1);
-                self.reg.set_f(CPUFlags::Z, self.reg.b == 0);
-                self.reg.set_f(CPUFlags::N, false);
-                self.reg.set_f(CPUFlags::H, self.reg.b == 0);
+                self.reg.set_f(FFlags::Z, self.reg.b == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, self.reg.b == 0);
             }};
         }
 
         macro_rules! dec_r {
             ($reg:ident) => {{
                 self.reg.$reg = self.reg.$reg.wrapping_sub(1);
-                self.reg.set_f(CPUFlags::Z, self.reg.b == 0);
-                self.reg.set_f(CPUFlags::N, true);
-                self.reg.set_f(CPUFlags::H, self.reg.b == 0);
+                self.reg.set_f(FFlags::Z, self.reg.b == 0);
+                self.reg.set_f(FFlags::N, true);
+                self.reg.set_f(FFlags::H, self.reg.b == 0);
             }};
         }
 
@@ -52,6 +52,103 @@ impl<'a> Opcode<'a> {
         macro_rules! ld_r_hl {
             ($reg:ident) => {{
                 self.reg.$reg = self.mmu.read_byte(self.reg.hl());
+            }};
+        }
+
+        macro_rules! add {
+            ($reg:ident) => {{
+                let (value, did_overflow) = self.reg.a.overflowing_add(self.reg.$reg);
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg
+                    .set_f(FFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+                self.reg.set_f(FFlags::C, did_overflow);
+                self.reg.a = value;
+            }};
+        }
+
+        macro_rules! adc {
+            ($reg:ident) => {{
+                let (value, did_overflow) = self
+                    .reg
+                    .a
+                    .overflowing_add(self.reg.$reg.wrapping_add(FFlags::C as u8));
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg
+                    .set_f(FFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+                self.reg.set_f(FFlags::C, did_overflow);
+                self.reg.a = value;
+            }};
+        }
+
+        macro_rules! sub {
+            ($reg:ident) => {{
+                let (value, did_overflow) = self.reg.a.overflowing_sub(self.reg.$reg);
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, true);
+                self.reg
+                    .set_f(FFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+                self.reg.set_f(FFlags::C, did_overflow);
+                self.reg.a = value;
+            }};
+        }
+
+        macro_rules! sbc {
+            ($reg:ident) => {{
+                let (value, did_overflow) = self
+                    .reg
+                    .a
+                    .overflowing_sub(self.reg.$reg.wrapping_sub(FFlags::C as u8));
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, true);
+                self.reg
+                    .set_f(FFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+                self.reg.set_f(FFlags::C, did_overflow);
+                self.reg.a = value;
+            }};
+        }
+
+        macro_rules! and {
+            ($reg:ident) => {{
+                let value = self.reg.a & self.reg.$reg;
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, true);
+                self.reg.set_f(FFlags::C, false);
+                self.reg.a = value;
+            }};
+        }
+
+        macro_rules! xor {
+            ($reg:ident) => {{
+                let value = self.reg.a ^ self.reg.$reg;
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, false);
+                self.reg.set_f(FFlags::C, false);
+                self.reg.a = value;
+            }};
+        }
+
+        macro_rules! or {
+            ($reg:ident) => {{
+                let value = self.reg.a | self.reg.$reg;
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, false);
+                self.reg.set_f(FFlags::C, false);
+                self.reg.a = value;
+            }};
+        }
+
+        macro_rules! cp {
+            ($reg:ident) => {{
+                let value = self.reg.a.wrapping_sub(self.reg.$reg);
+                self.reg.set_f(FFlags::Z, self.reg.a == self.reg.$reg);
+                self.reg.set_f(FFlags::N, true);
+                self.reg.set_f(FFlags::H, value > self.reg.a);
+                self.reg.set_f(FFlags::C, self.reg.a < self.reg.$reg);
             }};
         }
 
@@ -86,10 +183,10 @@ impl<'a> Opcode<'a> {
             // RLCA
             0x07 => {
                 self.reg.a = ((self.reg.a << 1) & 0xFF) | (self.reg.a >> 7);
-                self.reg.set_f(CPUFlags::Z, self.reg.a == 0);
-                self.reg.set_f(CPUFlags::N, false);
-                self.reg.set_f(CPUFlags::H, false);
-                self.reg.set_f(CPUFlags::C, self.reg.a > 0x7F);
+                self.reg.set_f(FFlags::Z, self.reg.a == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, false);
+                self.reg.set_f(FFlags::C, self.reg.a > 0x7F);
             }
             // LD u16, SP
             0x08 => {
@@ -100,10 +197,10 @@ impl<'a> Opcode<'a> {
             // ADD HL, BC
             0x09 => {
                 let (value, did_overflow) = self.reg.hl().overflowing_add(self.reg.bc());
-                self.reg.set_f(CPUFlags::N, false);
+                self.reg.set_f(FFlags::N, false);
                 self.reg
-                    .set_f(CPUFlags::H, (self.reg.hl() & 0xFFF) > (value & 0xFFF));
-                self.reg.set_f(CPUFlags::C, did_overflow);
+                    .set_f(FFlags::H, (self.reg.hl() & 0xFFF) > (value & 0xFFF));
+                self.reg.set_f(FFlags::C, did_overflow);
                 self.reg.set_hl(value);
             }
             // LD A, BC
@@ -126,10 +223,10 @@ impl<'a> Opcode<'a> {
             // RRCA
             0x0F => {
                 self.reg.a = (self.reg.a >> 1) | ((self.reg.a & 1) << 7);
-                self.reg.set_f(CPUFlags::Z, self.reg.a == 0);
-                self.reg.set_f(CPUFlags::N, false);
-                self.reg.set_f(CPUFlags::H, false);
-                self.reg.set_f(CPUFlags::C, self.reg.a > 0x7F);
+                self.reg.set_f(FFlags::Z, self.reg.a == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, false);
+                self.reg.set_f(FFlags::C, self.reg.a > 0x7F);
             }
             // STOP
             0x10 => self.stop(),
@@ -158,11 +255,11 @@ impl<'a> Opcode<'a> {
             }
             // RLA
             0x17 => {
-                let c = self.reg.f & CPUFlags::C as u8;
-                self.reg.set_f(CPUFlags::Z, self.reg.a == 0);
-                self.reg.set_f(CPUFlags::N, false);
-                self.reg.set_f(CPUFlags::H, false);
-                self.reg.set_f(CPUFlags::C, self.reg.a > 0x7F);
+                let c = self.reg.f & FFlags::C as u8;
+                self.reg.set_f(FFlags::Z, self.reg.a == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, false);
+                self.reg.set_f(FFlags::C, self.reg.a > 0x7F);
                 self.reg.a = ((self.reg.a << 1) & 0xFF) | c;
             }
             // JR u8
@@ -172,10 +269,10 @@ impl<'a> Opcode<'a> {
             // ADD HL, DE
             0x19 => {
                 let (value, did_overflow) = self.reg.hl().overflowing_add(self.reg.de());
-                self.reg.set_f(CPUFlags::N, false);
+                self.reg.set_f(FFlags::N, false);
                 self.reg
-                    .set_f(CPUFlags::H, (self.reg.hl() & 0xFFF) > (value & 0xFFF));
-                self.reg.set_f(CPUFlags::C, did_overflow);
+                    .set_f(FFlags::H, (self.reg.hl() & 0xFFF) > (value & 0xFFF));
+                self.reg.set_f(FFlags::C, did_overflow);
                 self.reg.set_hl(value);
             }
             // LD A, DE
@@ -197,16 +294,16 @@ impl<'a> Opcode<'a> {
             }
             // RRA
             0x1F => {
-                let c = self.reg.f & CPUFlags::C as u8;
-                self.reg.set_f(CPUFlags::Z, self.reg.a == 0);
-                self.reg.set_f(CPUFlags::N, false);
-                self.reg.set_f(CPUFlags::H, false);
-                self.reg.set_f(CPUFlags::C, (self.reg.a & 1) == 1);
+                let c = self.reg.f & FFlags::C as u8;
+                self.reg.set_f(FFlags::Z, self.reg.a == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, false);
+                self.reg.set_f(FFlags::C, (self.reg.a & 1) == 1);
                 self.reg.a = (self.reg.a >> 1) | c;
             }
             // JR NZ, r8
             0x20 => {
-                self.jr_nf(CPUFlags::Z as u8);
+                self.jr_nf(FFlags::Z as u8);
             }
             // LD HL, u16
             0x21 => {
@@ -236,7 +333,7 @@ impl<'a> Opcode<'a> {
             0x27 => self.daa(),
             // JR Z, r8
             0x28 => {
-                self.jr_if(CPUFlags::Z as u8);
+                self.jr_if(FFlags::Z as u8);
             }
             // ADD HL, HL
             0x29 => {
@@ -263,12 +360,12 @@ impl<'a> Opcode<'a> {
             // CPL
             0x2F => {
                 self.reg.a = !self.reg.a;
-                self.reg.set_f(CPUFlags::N, true);
-                self.reg.set_f(CPUFlags::H, true);
+                self.reg.set_f(FFlags::N, true);
+                self.reg.set_f(FFlags::H, true);
             }
             // JR NC, r8
             0x30 => {
-                self.jr_nf(CPUFlags::C as u8);
+                self.jr_nf(FFlags::C as u8);
             }
             // LD SP, u16
             0x31 => {
@@ -288,16 +385,16 @@ impl<'a> Opcode<'a> {
             // INC (HL)
             0x34 => {
                 self.reg.set_hl(self.reg.hl().wrapping_add(1));
-                self.reg.set_f(CPUFlags::Z, self.reg.hl() == 0);
-                self.reg.set_f(CPUFlags::N, false);
-                self.reg.set_f(CPUFlags::H, self.reg.hl() == 0);
+                self.reg.set_f(FFlags::Z, self.reg.hl() == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, self.reg.hl() == 0);
             }
             // DEC (HL)
             0x35 => {
                 self.reg.set_hl(self.reg.hl().wrapping_sub(1));
-                self.reg.set_f(CPUFlags::Z, self.reg.hl() == 0);
-                self.reg.set_f(CPUFlags::N, true);
-                self.reg.set_f(CPUFlags::H, self.reg.hl() == 0);
+                self.reg.set_f(FFlags::Z, self.reg.hl() == 0);
+                self.reg.set_f(FFlags::N, true);
+                self.reg.set_f(FFlags::H, self.reg.hl() == 0);
             }
             // LDD HL, u8
             0x36 => {
@@ -306,21 +403,21 @@ impl<'a> Opcode<'a> {
             }
             // SCF
             0x37 => {
-                self.reg.set_f(CPUFlags::N, false);
-                self.reg.set_f(CPUFlags::H, false);
-                self.reg.set_f(CPUFlags::C, true);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, false);
+                self.reg.set_f(FFlags::C, true);
             }
             // JR C, r8
             0x38 => {
-                self.jr_if(CPUFlags::C as u8);
+                self.jr_if(FFlags::C as u8);
             }
             // ADD HL, SP
             0x39 => {
                 let (value, did_overflow) = self.reg.hl().overflowing_add(self.reg.sp);
-                self.reg.set_f(CPUFlags::N, false);
+                self.reg.set_f(FFlags::N, false);
                 self.reg
-                    .set_f(CPUFlags::H, (self.reg.hl() & 0xFFF) > (value & 0xFFF));
-                self.reg.set_f(CPUFlags::C, did_overflow);
+                    .set_f(FFlags::H, (self.reg.hl() & 0xFFF) > (value & 0xFFF));
+                self.reg.set_f(FFlags::C, did_overflow);
                 self.reg.set_hl(value);
             }
             // LDD A, HL
@@ -340,12 +437,12 @@ impl<'a> Opcode<'a> {
             }
             // CCF
             0x3F => {
-                self.reg.set_f(CPUFlags::N, false);
-                self.reg.set_f(CPUFlags::H, false);
-                if self.reg.f & CPUFlags::C as u8 == 0x10 {
-                    self.reg.set_f(CPUFlags::C, false);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, false);
+                if self.reg.f & FFlags::C as u8 == 0x10 {
+                    self.reg.set_f(FFlags::C, false);
                 } else {
-                    self.reg.set_f(CPUFlags::C, true);
+                    self.reg.set_f(FFlags::C, true);
                 }
             }
             // LD B, B
@@ -491,160 +588,160 @@ impl<'a> Opcode<'a> {
                 // Do nothing
             }
             // ADD A, B
-            0x80 => self.alu_add(self.reg.b),
+            0x80 => add!(b),
             // ADD A, C
-            0x81 => self.alu_add(self.reg.c),
+            0x81 => add!(c),
             // ADD A, D
-            0x82 => self.alu_add(self.reg.d),
+            0x82 => add!(d),
             // ADD A, E
-            0x83 => self.alu_add(self.reg.e),
+            0x83 => add!(e),
             // ADD A, H
-            0x84 => self.alu_add(self.reg.h),
+            0x84 => add!(h),
             // ADD A, L
-            0x85 => self.alu_add(self.reg.l),
+            0x85 => add!(l),
             // ADD A, (HL)
             0x86 => {
                 let value = self.mmu.read_byte(self.reg.hl());
                 self.alu_add(value);
             }
             // ADD A, A
-            0x87 => self.alu_add(self.reg.a),
+            0x87 => add!(a),
             // ADC A, B
-            0x88 => self.alu_adc(self.reg.b),
+            0x88 => adc!(b),
             // ADC A, C
-            0x89 => self.alu_adc(self.reg.c),
+            0x89 => adc!(c),
             // ADC A, D
-            0x8A => self.alu_adc(self.reg.d),
+            0x8A => adc!(d),
             // ADC A, E
-            0x8B => self.alu_adc(self.reg.e),
+            0x8B => adc!(e),
             // ADC A, H
-            0x8C => self.alu_adc(self.reg.h),
+            0x8C => adc!(h),
             // ADC A, L
-            0x8D => self.alu_adc(self.reg.l),
+            0x8D => adc!(l),
             // ADC A, (HL)
             0x8E => {
                 let value = self.mmu.read_byte(self.reg.hl());
                 self.alu_adc(value);
             }
             // ADC A, A
-            0x8F => self.alu_adc(self.reg.a),
+            0x8F => adc!(a),
             // SUB A, B
-            0x90 => self.alu_sub(self.reg.b),
+            0x90 => sub!(b),
             // SUB A, C
-            0x91 => self.alu_sub(self.reg.c),
+            0x91 => sub!(c),
             // SUB A, D
-            0x92 => self.alu_sub(self.reg.d),
+            0x92 => sub!(d),
             // SUB A, B
-            0x93 => self.alu_sub(self.reg.e),
+            0x93 => sub!(e),
             // SUB A, H
-            0x94 => self.alu_sub(self.reg.h),
+            0x94 => sub!(h),
             // SUB A, L
-            0x95 => self.alu_sub(self.reg.l),
+            0x95 => sub!(l),
             // SUB A, (HL)
             0x96 => {
                 let value = self.mmu.read_byte(self.reg.hl());
                 self.alu_sub(value);
             }
             // SUB A, A
-            0x97 => self.alu_sub(self.reg.a),
+            0x97 => sub!(a),
             // SBC A, B
-            0x98 => self.alu_sbc(self.reg.b),
+            0x98 => sbc!(b),
             // SBC A, C
-            0x99 => self.alu_sbc(self.reg.c),
+            0x99 => sbc!(c),
             // SBC A, D
-            0x9A => self.alu_sbc(self.reg.d),
+            0x9A => sbc!(d),
             // SBC A, E
-            0x9B => self.alu_sbc(self.reg.e),
+            0x9B => sbc!(e),
             // SBC A, H
-            0x9C => self.alu_sbc(self.reg.h),
+            0x9C => sbc!(h),
             // SBC A, L
-            0x9D => self.alu_sbc(self.reg.l),
+            0x9D => sbc!(l),
             // SBC A, (HL)
             0x9E => {
                 let value = self.mmu.read_byte(self.reg.hl());
                 self.alu_sbc(value);
             }
             // SBC A, A
-            0x9F => self.alu_sbc(self.reg.a),
+            0x9F => sbc!(a),
             // OR B
-            0xA0 => self.alu_and(self.reg.b),
+            0xA0 => and!(b),
             // OR C
-            0xA1 => self.alu_and(self.reg.c),
+            0xA1 => and!(c),
             // OR D
-            0xA2 => self.alu_and(self.reg.d),
+            0xA2 => and!(d),
             // OR E
-            0xA3 => self.alu_and(self.reg.e),
+            0xA3 => and!(e),
             // OR H
-            0xA4 => self.alu_and(self.reg.h),
+            0xA4 => and!(h),
             // OR L
-            0xA5 => self.alu_and(self.reg.l),
+            0xA5 => and!(l),
             // OR (HL)
             0xA6 => {
                 let value = self.mmu.read_byte(self.reg.hl());
                 self.alu_and(value);
             }
             // OR A
-            0xA7 => self.alu_and(self.reg.a),
+            0xA7 => and!(a),
             // XOR B
-            0xA8 => self.alu_xor(self.reg.b),
+            0xA8 => xor!(b),
             // XOR C
-            0xA9 => self.alu_xor(self.reg.c),
+            0xA9 => xor!(c),
             // XOR D
-            0xAA => self.alu_xor(self.reg.d),
+            0xAA => xor!(d),
             // XOR E
-            0xAB => self.alu_xor(self.reg.e),
+            0xAB => xor!(e),
             // XOR H
-            0xAC => self.alu_xor(self.reg.h),
+            0xAC => xor!(h),
             // XOR L
-            0xAD => self.alu_xor(self.reg.l),
+            0xAD => xor!(l),
             // XOR (HL)
             0xAE => {
                 let value = self.mmu.read_byte(self.reg.hl());
                 self.alu_xor(value);
             }
             // XOR A
-            0xAF => self.alu_xor(self.reg.a),
+            0xAF => xor!(a),
             // OR B
-            0xB0 => self.alu_or(self.reg.b),
+            0xB0 => or!(b),
             // OR C
-            0xB1 => self.alu_or(self.reg.c),
+            0xB1 => or!(c),
             // OR D
-            0xB2 => self.alu_or(self.reg.b),
+            0xB2 => or!(b),
             // OR E
-            0xB3 => self.alu_or(self.reg.e),
+            0xB3 => or!(e),
             // OR H
-            0xB4 => self.alu_or(self.reg.h),
+            0xB4 => or!(h),
             // OR L
-            0xB5 => self.alu_or(self.reg.l),
+            0xB5 => or!(l),
             // OR (HL)
             0xB6 => {
                 let value = self.mmu.read_byte(self.reg.hl());
-                self.alu_or(self.reg.b);
+                or!(b);
             }
             // OR A
-            0xB7 => self.alu_or(self.reg.a),
+            0xB7 => or!(a),
             // CP B
-            0xB8 => self.alu_cp(self.reg.b),
+            0xB8 => cp!(b),
             // CP C
-            0xB9 => self.alu_cp(self.reg.c),
+            0xB9 => cp!(c),
             // CP D
-            0xBA => self.alu_cp(self.reg.d),
+            0xBA => cp!(d),
             // CP E
-            0xBB => self.alu_cp(self.reg.e),
+            0xBB => cp!(e),
             // CP H
-            0xBC => self.alu_cp(self.reg.h),
+            0xBC => cp!(h),
             // CP L
-            0xBD => self.alu_cp(self.reg.l),
+            0xBD => cp!(l),
             // CP (HL)
             0xBE => {
                 let value = self.mmu.read_byte(self.reg.hl());
                 self.alu_cp(value);
             }
             // CP A
-            0xBF => self.alu_cp(self.reg.a),
+            0xBF => cp!(a),
             // RET NZ
             0xC0 => {
-                if (self.reg.f & CPUFlags::Z as u8) != 0x80 {
+                if (self.reg.f & FFlags::Z as u8) != 0x80 {
                     self.ret();
                 }
             }
@@ -655,7 +752,7 @@ impl<'a> Opcode<'a> {
             }
             // JP NZ, u16
             0xC2 => {
-                if (self.reg.f & CPUFlags::Z as u8) != 0x80 {
+                if (self.reg.f & FFlags::Z as u8) != 0x80 {
                     self.reg.pc = self.jp();
                 }
             }
@@ -665,7 +762,7 @@ impl<'a> Opcode<'a> {
             }
             // CALL NZ, a16
             0xC4 => {
-                if (self.reg.f & CPUFlags::Z as u8) != 0x80 {
+                if (self.reg.f & FFlags::Z as u8) != 0x80 {
                     self.push_stack(self.reg.pc.wrapping_add(2));
                     self.reg.pc = self.mmu.read_word(self.reg.pc).wrapping_add(2);
                 } else {
@@ -685,7 +782,7 @@ impl<'a> Opcode<'a> {
             0xC7 => self.rst(0x00),
             // RET Z
             0xC8 => {
-                if (self.reg.f & CPUFlags::Z as u8) == 0x80 {
+                if (self.reg.f & FFlags::Z as u8) == 0x80 {
                     self.ret();
                 }
             }
@@ -695,14 +792,14 @@ impl<'a> Opcode<'a> {
             }
             // JP Z, u16
             0xCA => {
-                if (self.reg.f & CPUFlags::Z as u8) == 0x80 {
+                if (self.reg.f & FFlags::Z as u8) == 0x80 {
                     self.reg.pc = self.jp();
                 }
             }
             0xCB => self.decode_cb(),
             // CALL Z, u16
             0xCC => {
-                if (self.reg.f & CPUFlags::Z as u8) == 0x80 {
+                if (self.reg.f & FFlags::Z as u8) == 0x80 {
                     self.push_stack(self.reg.pc.wrapping_add(2));
                     self.reg.pc = self.mmu.read_word(self.reg.pc);
                 } else {
@@ -724,7 +821,7 @@ impl<'a> Opcode<'a> {
             0xCF => self.rst(0x08),
             // RET NC
             0xD0 => {
-                if (self.reg.f & CPUFlags::C as u8) != 0x10 {
+                if (self.reg.f & FFlags::C as u8) != 0x10 {
                     self.ret();
                 }
             }
@@ -735,13 +832,13 @@ impl<'a> Opcode<'a> {
             }
             // JP NC, u16
             0xD2 => {
-                if (self.reg.f & CPUFlags::C as u8) != 0x10 {
+                if (self.reg.f & FFlags::C as u8) != 0x10 {
                     self.reg.pc = self.jp();
                 }
             }
             // CALL NC, u16
             0xD4 => {
-                if self.reg.f & CPUFlags::C as u8 != 0x10 {
+                if self.reg.f & FFlags::C as u8 != 0x10 {
                     self.push_stack(self.reg.pc.wrapping_add(2));
                     self.reg.pc = self.mmu.read_word(self.reg.pc).wrapping_add(2);
                 } else {
@@ -761,7 +858,7 @@ impl<'a> Opcode<'a> {
             0xD7 => self.rst(0x10),
             // RET C
             0xD8 => {
-                if (self.reg.f & CPUFlags::C as u8) == 0x10 {
+                if (self.reg.f & FFlags::C as u8) == 0x10 {
                     self.ret();
                 }
             }
@@ -772,13 +869,13 @@ impl<'a> Opcode<'a> {
             }
             // JP C, u16
             0xDA => {
-                if (self.reg.f & CPUFlags::C as u8) == 0x10 {
+                if (self.reg.f & FFlags::C as u8) == 0x10 {
                     self.reg.pc = self.jp();
                 }
             }
             // CALL C, u16
             0xDC => {
-                if self.reg.f & CPUFlags::C as u8 == 0x10 {
+                if self.reg.f & FFlags::C as u8 == 0x10 {
                     self.push_stack(self.reg.pc.wrapping_add(2));
                     self.reg.pc = self.mmu.read_word(self.reg.pc).wrapping_add(2);
                 } else {
@@ -823,14 +920,14 @@ impl<'a> Opcode<'a> {
             0xE8 => {
                 let value = self.mmu.read_byte(self.reg.pc) as u16;
                 self.reg.pc = self.reg.pc.wrapping_add(1);
-                self.reg.set_f(CPUFlags::Z, false);
-                self.reg.set_f(CPUFlags::N, false);
+                self.reg.set_f(FFlags::Z, false);
+                self.reg.set_f(FFlags::N, false);
                 self.reg.set_f(
-                    CPUFlags::H,
+                    FFlags::H,
                     (self.reg.pc & 0x000F).wrapping_add(value & 0x000F) > 0x000F,
                 );
                 self.reg.set_f(
-                    CPUFlags::C,
+                    FFlags::C,
                     (self.reg.sp & 0x00FF).wrapping_add(value & 0x00FF) > 0x00FF,
                 );
                 self.reg.sp = self.reg.sp.wrapping_add(value);
@@ -862,10 +959,10 @@ impl<'a> Opcode<'a> {
             0xF1 => {
                 let sp = self.pop_stack();
                 self.reg.set_af(sp);
-                self.reg.set_f(CPUFlags::Z, sp > 0x7F);
-                self.reg.set_f(CPUFlags::N, (sp & 0x40) == 0x40);
-                self.reg.set_f(CPUFlags::H, (sp & 0x20) == 0x20);
-                self.reg.set_f(CPUFlags::C, (sp & 0x10) == 0x10);
+                self.reg.set_f(FFlags::Z, sp > 0x7F);
+                self.reg.set_f(FFlags::N, (sp & 0x40) == 0x40);
+                self.reg.set_f(FFlags::H, (sp & 0x20) == 0x20);
+                self.reg.set_f(FFlags::C, (sp & 0x10) == 0x10);
             }
             // LD A, (C)
             0xF2 => {
@@ -890,14 +987,14 @@ impl<'a> Opcode<'a> {
             0xF8 => {
                 let value = self.mmu.read_byte(self.reg.pc) as u16;
                 self.reg.pc = self.reg.pc.wrapping_add(1);
-                self.reg.set_f(CPUFlags::Z, false);
-                self.reg.set_f(CPUFlags::N, false);
+                self.reg.set_f(FFlags::Z, false);
+                self.reg.set_f(FFlags::N, false);
                 self.reg.set_f(
-                    CPUFlags::H,
+                    FFlags::H,
                     (self.reg.pc & 0x000F).wrapping_add(value & 0x000F) > 0x000F,
                 );
                 self.reg.set_f(
-                    CPUFlags::C,
+                    FFlags::C,
                     (self.reg.sp & 0x00FF).wrapping_add(value & 0x00FF) > 0x00FF,
                 );
                 let sum_value = self.reg.sp.wrapping_add(value);
@@ -948,11 +1045,11 @@ impl<'a> Opcode<'a> {
 
     fn alu_add(&mut self, reg: u8) {
         let (value, did_overflow) = self.reg.a.overflowing_add(reg);
-        self.reg.set_f(CPUFlags::Z, value == 0);
-        self.reg.set_f(CPUFlags::N, false);
+        self.reg.set_f(FFlags::Z, value == 0);
+        self.reg.set_f(FFlags::N, false);
         self.reg
-            .set_f(CPUFlags::H, (value & 0xF) < (self.reg.a & 0xF));
-        self.reg.set_f(CPUFlags::C, did_overflow);
+            .set_f(FFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+        self.reg.set_f(FFlags::C, did_overflow);
         self.reg.a = value;
     }
 
@@ -960,22 +1057,22 @@ impl<'a> Opcode<'a> {
         let (value, did_overflow) = self
             .reg
             .a
-            .overflowing_add(reg.wrapping_add(CPUFlags::C as u8));
-        self.reg.set_f(CPUFlags::Z, value == 0);
-        self.reg.set_f(CPUFlags::N, false);
+            .overflowing_add(reg.wrapping_add(FFlags::C as u8));
+        self.reg.set_f(FFlags::Z, value == 0);
+        self.reg.set_f(FFlags::N, false);
         self.reg
-            .set_f(CPUFlags::H, (value & 0xF) < (self.reg.a & 0xF));
-        self.reg.set_f(CPUFlags::C, did_overflow);
+            .set_f(FFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+        self.reg.set_f(FFlags::C, did_overflow);
         self.reg.a = value;
     }
 
     fn alu_sub(&mut self, reg: u8) {
         let (value, did_overflow) = self.reg.a.overflowing_sub(reg);
-        self.reg.set_f(CPUFlags::Z, value == 0);
-        self.reg.set_f(CPUFlags::N, true);
+        self.reg.set_f(FFlags::Z, value == 0);
+        self.reg.set_f(FFlags::N, true);
         self.reg
-            .set_f(CPUFlags::H, (self.reg.a & 0xF) > (value & 0xF));
-        self.reg.set_f(CPUFlags::C, did_overflow);
+            .set_f(FFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+        self.reg.set_f(FFlags::C, did_overflow);
         self.reg.a = value;
     }
 
@@ -983,70 +1080,70 @@ impl<'a> Opcode<'a> {
         let (value, did_overflow) = self
             .reg
             .a
-            .overflowing_sub(reg.wrapping_sub(CPUFlags::C as u8));
-        self.reg.set_f(CPUFlags::Z, value == 0);
-        self.reg.set_f(CPUFlags::N, true);
+            .overflowing_sub(reg.wrapping_sub(FFlags::C as u8));
+        self.reg.set_f(FFlags::Z, value == 0);
+        self.reg.set_f(FFlags::N, true);
         self.reg
-            .set_f(CPUFlags::H, (self.reg.a & 0xF) > (value & 0xF));
-        self.reg.set_f(CPUFlags::C, did_overflow);
+            .set_f(FFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+        self.reg.set_f(FFlags::C, did_overflow);
         self.reg.a = value;
     }
 
     fn alu_and(&mut self, reg: u8) {
         let value = self.reg.a & reg;
-        self.reg.set_f(CPUFlags::Z, value == 0);
-        self.reg.set_f(CPUFlags::N, false);
-        self.reg.set_f(CPUFlags::H, true);
-        self.reg.set_f(CPUFlags::C, false);
+        self.reg.set_f(FFlags::Z, value == 0);
+        self.reg.set_f(FFlags::N, false);
+        self.reg.set_f(FFlags::H, true);
+        self.reg.set_f(FFlags::C, false);
         self.reg.a = value;
     }
 
     fn alu_xor(&mut self, reg: u8) {
         let value = self.reg.a ^ reg;
-        self.reg.set_f(CPUFlags::Z, value == 0);
-        self.reg.set_f(CPUFlags::N, false);
-        self.reg.set_f(CPUFlags::H, false);
-        self.reg.set_f(CPUFlags::C, false);
+        self.reg.set_f(FFlags::Z, value == 0);
+        self.reg.set_f(FFlags::N, false);
+        self.reg.set_f(FFlags::H, false);
+        self.reg.set_f(FFlags::C, false);
         self.reg.a = value;
     }
 
     fn alu_or(&mut self, reg: u8) {
         let value = self.reg.a | reg;
-        self.reg.set_f(CPUFlags::Z, value == 0);
-        self.reg.set_f(CPUFlags::N, false);
-        self.reg.set_f(CPUFlags::H, false);
-        self.reg.set_f(CPUFlags::C, false);
+        self.reg.set_f(FFlags::Z, value == 0);
+        self.reg.set_f(FFlags::N, false);
+        self.reg.set_f(FFlags::H, false);
+        self.reg.set_f(FFlags::C, false);
         self.reg.a = value;
     }
 
     fn alu_cp(&mut self, reg: u8) {
         let value = self.reg.a.wrapping_sub(reg);
-        self.reg.set_f(CPUFlags::Z, self.reg.a == reg);
-        self.reg.set_f(CPUFlags::N, true);
-        self.reg.set_f(CPUFlags::H, value > self.reg.a);
-        self.reg.set_f(CPUFlags::C, self.reg.a < reg);
+        self.reg.set_f(FFlags::Z, self.reg.a == reg);
+        self.reg.set_f(FFlags::N, true);
+        self.reg.set_f(FFlags::H, value > self.reg.a);
+        self.reg.set_f(FFlags::C, self.reg.a < reg);
     }
 
     fn daa(&mut self) {
-        if self.reg.f & CPUFlags::N as u8 != 0x40 {
-            if (self.reg.f & CPUFlags::C as u8 == 0x10) || self.reg.a > 0x99 {
+        if self.reg.f & FFlags::N as u8 != 0x40 {
+            if (self.reg.f & FFlags::C as u8 == 0x10) || self.reg.a > 0x99 {
                 self.reg.a = self.reg.a.wrapping_add(0x60);
-                self.reg.set_f(CPUFlags::C, true);
+                self.reg.set_f(FFlags::C, true);
             }
-            if (self.reg.f & CPUFlags::H as u8 == 0x20) || (self.reg.a & 0xF) > 0x9 {
+            if (self.reg.f & FFlags::H as u8 == 0x20) || (self.reg.a & 0xF) > 0x9 {
                 self.reg.a = self.reg.a.wrapping_add(0x06);
-                self.reg.set_f(CPUFlags::C, false);
+                self.reg.set_f(FFlags::C, false);
             }
-        } else if (self.reg.f & CPUFlags::C as u8 == 0x10)
-            && (self.reg.f & CPUFlags::H as u8 == 0x20)
+        } else if (self.reg.f & FFlags::C as u8 == 0x10)
+            && (self.reg.f & FFlags::H as u8 == 0x20)
         {
             self.reg.a = self.reg.a.wrapping_add(0x9A);
-            self.reg.set_f(CPUFlags::H, false);
-        } else if self.reg.f & CPUFlags::C as u8 == 0x10 {
+            self.reg.set_f(FFlags::H, false);
+        } else if self.reg.f & FFlags::C as u8 == 0x10 {
             self.reg.a = self.reg.a.wrapping_add(0xFA);
-            self.reg.set_f(CPUFlags::H, false);
+            self.reg.set_f(FFlags::H, false);
         }
-        self.reg.set_f(CPUFlags::Z, self.reg.a == 0);
+        self.reg.set_f(FFlags::Z, self.reg.a == 0);
     }
 
     fn jr(&mut self) {
@@ -1095,49 +1192,49 @@ impl<'a> Opcode<'a> {
                     7 => 0x80,
                     _ => 0x01,
                 };
-                self.reg.set_f(CPUFlags::Z, (self.reg.$reg & bit) == 0);
-                self.reg.set_f(CPUFlags::N, false);
-                self.reg.set_f(CPUFlags::H, true);
+                self.reg.set_f(FFlags::Z, (self.reg.$reg & bit) == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, true);
             }};
         }
 
         macro_rules! swapn {
             ($reg:ident) => {{
                 let value = ((self.reg.$reg & 0xF) << 4) | (self.reg.$reg >> 4);
-                self.reg.set_f(CPUFlags::Z, value == 0);
-                self.reg.set_f(CPUFlags::N, false);
-                self.reg.set_f(CPUFlags::H, false);
-                self.reg.set_f(CPUFlags::C, false);
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, false);
+                self.reg.set_f(FFlags::C, false);
                 self.reg.$reg = value;
             }};
         }
 
         macro_rules! rlcn {
             ($reg:ident) => {{
-                let flag: u8 = match self.reg.f & CPUFlags::C as u8 == CPUFlags::C as u8 {
+                let flag: u8 = match self.reg.f & FFlags::C as u8 == FFlags::C as u8 {
                     true => 1,
                     false => 0,
                 };
                 let value = ((self.reg.$reg << 1) & 0xFF) | flag;
-                self.reg.set_f(CPUFlags::Z, value == 0);
-                self.reg.set_f(CPUFlags::N, false);
-                self.reg.set_f(CPUFlags::H, false);
-                self.reg.set_f(CPUFlags::C, value > 0x7F);
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, false);
+                self.reg.set_f(FFlags::C, value > 0x7F);
                 self.reg.$reg = value;
             }};
         }
 
         macro_rules! rrcn {
             ($reg:ident) => {{
-                let flag: u8 = match self.reg.f & CPUFlags::C as u8 == CPUFlags::C as u8 {
+                let flag: u8 = match self.reg.f & FFlags::C as u8 == FFlags::C as u8 {
                     true => 0x80,
                     false => 0,
                 };
                 let value = flag | (self.reg.$reg >> 1);
-                self.reg.set_f(CPUFlags::Z, value == 0);
-                self.reg.set_f(CPUFlags::N, false);
-                self.reg.set_f(CPUFlags::H, false);
-                self.reg.set_f(CPUFlags::C, (value & 0x01) == 0x01);
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, false);
+                self.reg.set_f(FFlags::C, (value & 0x01) == 0x01);
                 self.reg.$reg = value;
             }};
         }
@@ -2115,28 +2212,28 @@ impl<'a> Opcode<'a> {
     }
 
     fn rlcn(&mut self, reg: u8) -> u8 {
-        let flag: u8 = match self.reg.f & CPUFlags::C as u8 == CPUFlags::C as u8 {
+        let flag: u8 = match self.reg.f & FFlags::C as u8 == FFlags::C as u8 {
             true => 1,
             false => 0,
         };
         let value = ((reg << 1) & 0xFF) | flag;
-        self.reg.set_f(CPUFlags::Z, value == 0);
-        self.reg.set_f(CPUFlags::N, false);
-        self.reg.set_f(CPUFlags::H, false);
-        self.reg.set_f(CPUFlags::C, value > 0x7F);
+        self.reg.set_f(FFlags::Z, value == 0);
+        self.reg.set_f(FFlags::N, false);
+        self.reg.set_f(FFlags::H, false);
+        self.reg.set_f(FFlags::C, value > 0x7F);
         value
     }
 
     fn rrcn(&mut self, reg: u8) -> u8 {
-        let flag: u8 = match self.reg.f & CPUFlags::C as u8 == CPUFlags::C as u8 {
+        let flag: u8 = match self.reg.f & FFlags::C as u8 == FFlags::C as u8 {
             true => 0x80,
             false => 0,
         };
         let value = flag | (reg >> 1);
-        self.reg.set_f(CPUFlags::Z, value == 0);
-        self.reg.set_f(CPUFlags::N, false);
-        self.reg.set_f(CPUFlags::H, false);
-        self.reg.set_f(CPUFlags::C, (value & 0x01) == 0x01);
+        self.reg.set_f(FFlags::Z, value == 0);
+        self.reg.set_f(FFlags::N, false);
+        self.reg.set_f(FFlags::H, false);
+        self.reg.set_f(FFlags::C, (value & 0x01) == 0x01);
         value
     }
 
@@ -2146,10 +2243,10 @@ impl<'a> Opcode<'a> {
             false => 0,
         };
         let value = (reg << 1) & 0xFF | flag;
-        self.reg.set_f(CPUFlags::Z, value == 0);
-        self.reg.set_f(CPUFlags::N, false);
-        self.reg.set_f(CPUFlags::H, false);
-        self.reg.set_f(CPUFlags::C, reg > 0x7F);
+        self.reg.set_f(FFlags::Z, value == 0);
+        self.reg.set_f(FFlags::N, false);
+        self.reg.set_f(FFlags::H, false);
+        self.reg.set_f(FFlags::C, reg > 0x7F);
         value
     }
 
@@ -2159,46 +2256,46 @@ impl<'a> Opcode<'a> {
             false => 0,
         };
         let value = flag | (reg >> 1);
-        self.reg.set_f(CPUFlags::Z, value == 0);
-        self.reg.set_f(CPUFlags::N, false);
-        self.reg.set_f(CPUFlags::H, false);
-        self.reg.set_f(CPUFlags::C, (reg & 0x01) == 0x01);
+        self.reg.set_f(FFlags::Z, value == 0);
+        self.reg.set_f(FFlags::N, false);
+        self.reg.set_f(FFlags::H, false);
+        self.reg.set_f(FFlags::C, (reg & 0x01) == 0x01);
         value
     }
 
     fn slan(&mut self, reg: u8) -> u8 {
         let value = (reg << 1) & 0xFF;
-        self.reg.set_f(CPUFlags::Z, value == 0);
-        self.reg.set_f(CPUFlags::N, false);
-        self.reg.set_f(CPUFlags::H, false);
-        self.reg.set_f(CPUFlags::C, value > 0x7F);
+        self.reg.set_f(FFlags::Z, value == 0);
+        self.reg.set_f(FFlags::N, false);
+        self.reg.set_f(FFlags::H, false);
+        self.reg.set_f(FFlags::C, value > 0x7F);
         value
     }
 
     fn sran(&mut self, reg: u8) -> u8 {
         let value = (reg & 0x80) | (reg >> 1);
-        self.reg.set_f(CPUFlags::Z, value == 0);
-        self.reg.set_f(CPUFlags::N, false);
-        self.reg.set_f(CPUFlags::H, false);
-        self.reg.set_f(CPUFlags::C, (value & 0x01) == 0x01);
+        self.reg.set_f(FFlags::Z, value == 0);
+        self.reg.set_f(FFlags::N, false);
+        self.reg.set_f(FFlags::H, false);
+        self.reg.set_f(FFlags::C, (value & 0x01) == 0x01);
         value
     }
 
     fn swapn(&mut self, reg: u8) -> u8 {
         let value = ((reg & 0xF) << 4) | (reg >> 4);
-        self.reg.set_f(CPUFlags::Z, value == 0);
-        self.reg.set_f(CPUFlags::N, false);
-        self.reg.set_f(CPUFlags::H, false);
-        self.reg.set_f(CPUFlags::C, false);
+        self.reg.set_f(FFlags::Z, value == 0);
+        self.reg.set_f(FFlags::N, false);
+        self.reg.set_f(FFlags::H, false);
+        self.reg.set_f(FFlags::C, false);
         value
     }
 
     fn srln(&mut self, reg: u8) -> u8 {
         let value = reg >> 1;
-        self.reg.set_f(CPUFlags::Z, value == 0);
-        self.reg.set_f(CPUFlags::N, false);
-        self.reg.set_f(CPUFlags::H, false);
-        self.reg.set_f(CPUFlags::C, (value & 0x01) == 0x01);
+        self.reg.set_f(FFlags::Z, value == 0);
+        self.reg.set_f(FFlags::N, false);
+        self.reg.set_f(FFlags::H, false);
+        self.reg.set_f(FFlags::C, (value & 0x01) == 0x01);
         value
     }
 
@@ -2214,9 +2311,9 @@ impl<'a> Opcode<'a> {
             7 => 0x80,
             _ => 0x01,
         };
-        self.reg.set_f(CPUFlags::Z, (reg & b) == 0);
-        self.reg.set_f(CPUFlags::N, false);
-        self.reg.set_f(CPUFlags::H, true);
+        self.reg.set_f(FFlags::Z, (reg & b) == 0);
+        self.reg.set_f(FFlags::N, false);
+        self.reg.set_f(FFlags::H, true);
     }
 
     fn resn(&mut self, n: u8, reg: u8) -> u8 {

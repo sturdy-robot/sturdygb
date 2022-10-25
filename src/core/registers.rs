@@ -85,7 +85,7 @@ impl Registers {
         self.l = (value & 0x00FF) as u8;
     }
 
-    pub fn set_f(&mut self, flag: CPUFlags, condition: bool) {
+    pub fn set_f(&mut self, flag: FFlags, condition: bool) {
         let value: u8 = flag as u8;
         match condition {
             true => self.f |= value,
@@ -100,7 +100,7 @@ impl Registers {
 #[allow(unused_variables)]
 #[allow(unused_imports)]
 #[derive(Copy, Clone)]
-pub enum CPUFlags {
+pub enum FFlags {
     C = 0x10,
     N = 0x40,
     H = 0x20,
@@ -110,7 +110,7 @@ pub enum CPUFlags {
 #[cfg(test)]
 mod test {
     use super::Registers;
-    use super::CPUFlags;
+    use super::FFlags;
 
     #[test]
     fn test_new_registers() {
@@ -173,13 +173,13 @@ mod test {
     #[test]
     fn test_cpu_flags() {
         let mut r: Registers = Registers::new(&false);
-        r.set_f(CPUFlags::C, true);
+        r.set_f(FFlags::C, true);
         assert_eq!(r.f, 0xB0);
-        r.set_f(CPUFlags::H, true);
+        r.set_f(FFlags::H, true);
         assert_eq!(r.f, 0xB0);
-        r.set_f(CPUFlags::N, false);
+        r.set_f(FFlags::N, false);
         assert_eq!(r.f, 0xB0);
-        r.set_f(CPUFlags::Z, false);
+        r.set_f(FFlags::Z, false);
         assert_eq!(r.f, 0x30);
     }
 }

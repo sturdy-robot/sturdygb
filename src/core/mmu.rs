@@ -7,11 +7,12 @@ pub struct MMU {
     pub mbc: Cartridge,
     pub ppu: PPU,
     pub io: IO,
-    vram: [u8; 0x4000],
-    eram: Vec<u8>,
-    wram: Vec<u8>,
-    oam: Vec<u8>,
-    hram: Vec<u8>,
+    pub ieflag: u8,
+    vram: [u8; 0x2000],
+    eram: [u8; 0x2000],
+    wram: [u8; 0x2000],
+    oam: [u8; 0xA0],
+    hram: [u8; 0x7F],
 }
 
 impl MMU {
@@ -21,11 +22,12 @@ impl MMU {
             mbc: cartridge,
             ppu: PPU::new(),
             io: IO::new(),
-            vram: [0; 0x4000],
-            eram: Vec::new(),
-            wram: Vec::new(),
-            oam: Vec::new(),
-            hram: Vec::new(),
+            ieflag: 0,
+            vram: [0; 0x2000],
+            eram: [0; 0x2000],
+            wram: [0; 0x2000],
+            oam: [0; 0xA0],
+            hram: [0; 0x7F],
         }
     }
 
@@ -45,6 +47,7 @@ impl MMU {
             0xFE00 ..= 0xFE9F => self.oam[(address & 0x1FFF) as usize],
             0xFF00 ..= 0xFF7F => self.io.read_byte(address),
             0xFF80 ..= 0xFFFE => self.hram[(address & 0x1FFF) as usize],
+            0xFFFF => self.ieflag,
             _ => 0xFF,
         }
     }
@@ -52,7 +55,15 @@ impl MMU {
     pub fn write_byte(&mut self, address: u16, value: u8) {
         match address {
             0x0000 ..= 0x7FFF => self.write_rom(address, value),
-            _ => 0xFF,
+            0x8000 ..= 0x9FFF => self.vram[(address & 0x1FFF) as usize] = value,
+            0xA000 ..= 0xBFFF => self.eram[(address & 0x1FFF) as usize] = value,
+            0xC000 ..= 0xCFFF | 0xE000 ..= 0xEFFF => self.wram[(address & 0x1FFF) as usize] = value,
+            0xD000 ..= 0xDFFF | 0xF000 ..= 0xFDFF => self.wram[(address & 0x1FFF) as usize] = value, // switchable banks later
+            0xFE00 ..= 0xFE9F => self.oam[(address & 0x1FFF) as usize] = value,
+            0xFF00 ..= 0xFF7F => self.io.write_byte(address, value),
+            0xFF80 ..= 0xFFFE => self.hram[(address & 0x1FFF) as usize] = value,
+            0xFFFF => self.ieflag = value,
+            _ => println!("Attempted to write to invalid memory address!"),
         };
     }
 
@@ -110,7 +121,7 @@ impl MMU {
         }
     }
 
-    pub fn write_rom(&mut self, address: u16, value: u8) -> u8 {
+    pub fn write_rom(&mut self, address: u16, value: u8) {
         match self.mbc.header.rom_type {
             MBCTypes::ROMONLY => 0,
             // TODO: IMPLEMENT THESE
@@ -125,10 +136,10 @@ impl MMU {
             MBCTypes::HUC1 => 0xFF,
             MBCTypes::HUC3 => 0xFF,
             MBCTypes::UNKNOWN => 0xFF,
-        }
+        };
     }
 
-    pub fn write_ram(&mut self, address: u16, value: u8) -> u8 {
+    pub fn write_ram(&mut self, address: u16, value: u8) {
         match self.mbc.header.rom_type {
             MBCTypes::ROMONLY => 0,
             // TODO: IMPLEMENT THESE
@@ -143,6 +154,6 @@ impl MMU {
             MBCTypes::HUC1 => 0xFF,
             MBCTypes::HUC3 => 0xFF,
             MBCTypes::UNKNOWN => 0xFF,
-        }
+        };
     }
 }

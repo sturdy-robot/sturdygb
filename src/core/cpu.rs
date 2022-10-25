@@ -9,7 +9,6 @@ pub struct CPU {
     pub is_halted: bool,
     pub cycles: u8,
     pub is_cgb: bool,
-    pub ime: bool,
 }
 
 impl CPU {
@@ -20,12 +19,16 @@ impl CPU {
             is_halted: false,
             cycles: 0,
             is_cgb,
-            ime: true,
         }
     }
 
     pub fn execute(&mut self) {
         while !self.is_halted && self.reg.pc < 0x8000 {
+            // TODO: WRITE INTERRUPT CHECKING
+            // if self.check_interrupt() {
+            //     self.push_stack(self.reg.pc);
+
+            // }
             let instruction: u8;
             (instruction, self.reg.pc) = self.mmu.fetch_instruction(&mut self.reg.pc);
             let mut opcode = Opcode::new(instruction, &mut self.reg, &mut self.mmu);
@@ -35,6 +38,27 @@ impl CPU {
                 break;
             }
             self.reg.pc = self.reg.pc.wrapping_add(1);
+        }
+    }
+
+    fn push_stack(&mut self, address: u16) {
+        self.reg.sp = self.reg.sp.wrapping_sub(2);
+        self.mmu.write_word(self.reg.sp, address)
+    }
+
+    fn pop_stack(&mut self) -> u16 {
+        let sp = self.mmu.read_word(self.reg.sp);
+        self.reg.sp = self.reg.sp.wrapping_add(2);
+        sp
+    }
+    
+    fn check_interrupt(&mut self) -> bool {
+        let ifflag = self.mmu.read_byte(0xFF0F);
+        let ieflag = self.mmu.read_byte(0xFFFF);
+        if ifflag & ieflag != 0 {
+            true
+        } else {
+            false
         }
     }
 }
