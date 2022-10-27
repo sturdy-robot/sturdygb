@@ -61,13 +61,21 @@ impl Joypad {
 }
 
 pub struct Timer {
+    tima: u8,
+    tmna: u8,
+    tac: u8,
+    div: u8,
     memory: [u8; 0x04],
 }
 
 impl Timer {
     pub fn new() -> Self {
         Self {
-           memory: [0; 0x04], 
+            tima: 0,
+            tmna: 0,
+            tac: 0,
+            div: 0,
+            memory: [0; 0x04], 
         }
     }
 

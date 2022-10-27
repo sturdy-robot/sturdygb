@@ -2,18 +2,18 @@ use std::fs;
 
 #[derive(PartialEq, Eq)]
 pub enum MBCTypes {
-    ROMONLY,
-    MBC1,
-    MBC2,
-    MMM01,
-    MBC3,
-    MBC5,
-    MBC6,
-    MBC7,
-    TAMA5,
-    HUC1,
-    HUC3,
-    UNKNOWN,
+    Romonly,
+    Mbc1,
+    Mbc2,
+    Mm01,
+    Mbc3,
+    Mbc5,
+    Mbc6,
+    Mbc7,
+    Tama5,
+    Huc1,
+    Huc3,
+    Unknown,
 }
 
 #[derive(PartialEq, Eq)]
@@ -33,15 +33,15 @@ pub struct CartridgeHeader {
 impl CartridgeHeader {
     pub fn new(rom_data: &[u8]) -> Self {
         let rom_type: MBCTypes = match &rom_data[0x0147] {
-            0x00 => MBCTypes::ROMONLY,
-            0x01 ..= 0x03 => MBCTypes::MBC1,
-            0x05 ..= 0x06 => MBCTypes::MBC2,
-            0x0B ..= 0x0D => MBCTypes::MMM01,
-            0x0F ..= 0x13 => MBCTypes::MBC3,
-            0x19 ..= 0x1E => MBCTypes::MBC5,
-            0x20 => MBCTypes::MBC6,
-            0x22 => MBCTypes::MBC7,
-            _ => MBCTypes::UNKNOWN,
+            0x00 => MBCTypes::Romonly,
+            0x01..=0x03 => MBCTypes::Mbc1,
+            0x05..=0x06 => MBCTypes::Mbc2,
+            0x0B..=0x0D => MBCTypes::Mm01,
+            0x0F..=0x13 => MBCTypes::Mbc3,
+            0x19..=0x1E => MBCTypes::Mbc5,
+            0x20 => MBCTypes::Mbc6,
+            0x22 => MBCTypes::Mbc7,
+            _ => MBCTypes::Unknown,
         };
         let rom_size = 32 * (1 << rom_data[0x0148]);
         let ram_size: u32 = match rom_data[0x149] {
@@ -75,13 +75,10 @@ pub struct Cartridge {
     pub ram: Vec<u8>,
 }
 
-pub fn load_file(filename: String) -> Vec<u8>{
+pub fn load_file(filename: String) -> Vec<u8> {
     // TODO: check if file is .gb, .gbc, or even try to open ZIP files if they're identified
     // Even if there's no extension, we need to check if this is a compatible file
-    let rom_data = fs::read(filename)
-        .expect("Unable to read file contents!");
-
-    rom_data
+    fs::read(filename).expect("Unable to read file contents!")
 }
 
 impl Cartridge {
@@ -116,15 +113,16 @@ impl Cartridge {
 
 pub fn get_logo() -> [u8; 48] {
     [
-        0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D,
-        0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E, 0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD, 0xD9, 0x99,
-        0xBB, 0xBB, 0x67, 0x63, 0x6E, 0x0E, 0xEC, 0xCC, 0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E,
+        0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00,
+        0x0D, 0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E, 0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD,
+        0xD9, 0x99, 0xBB, 0xBB, 0x67, 0x63, 0x6E, 0x0E, 0xEC, 0xCC, 0xDD, 0xDC, 0x99, 0x9F, 0xBB,
+        0xB9, 0x33, 0x3E,
     ]
 }
 
 #[cfg(test)]
 mod test {
-    use super::{Cartridge, get_logo, load_file};
+    use super::{get_logo, load_file, Cartridge};
 
     fn get_file() -> Vec<u8> {
         let cartridge_data = load_file("roms/cgb-acid2.gbc".to_string());
@@ -160,14 +158,24 @@ mod test {
     #[test]
     fn test_entry() {
         let rom_data = get_file();
-        let entry = [rom_data[0x0100], rom_data[0x0101], rom_data[0x0102], rom_data[0x0103]];
+        let entry = [
+            rom_data[0x0100],
+            rom_data[0x0101],
+            rom_data[0x0102],
+            rom_data[0x0103],
+        ];
         assert_eq!(entry, [0, 195, 80, 1]);
     }
 
     #[test]
     fn test_entry2() {
         let rom_data = get_file2();
-        let entry = [rom_data[0x0100], rom_data[0x0101], rom_data[0x0102], rom_data[0x0103]];
+        let entry = [
+            rom_data[0x0100],
+            rom_data[0x0101],
+            rom_data[0x0102],
+            rom_data[0x0103],
+        ];
         assert_eq!(entry, [0, 195, 80, 1]);
     }
 
@@ -183,7 +191,7 @@ mod test {
     fn test_logo2() {
         let logo = get_logo().to_vec();
         let rom_data = get_file2();
-        let logo_data = &rom_data[0x0104..0x0134]; 
+        let logo_data = &rom_data[0x0104..0x0134];
         assert_eq!(logo, logo_data);
     }
 
@@ -205,7 +213,7 @@ mod test {
     fn test_new_licensee_code1() {
         let rom_data = get_file();
         let new_licensee_code = &rom_data[0x0144..0x0145];
-        assert_eq!(new_licensee_code, [0x00]); 
+        assert_eq!(new_licensee_code, [0x00]);
     }
 
     #[test]
@@ -235,7 +243,6 @@ mod test {
         let cartridge_type = rom_data[0x0147];
         assert_eq!(cartridge_type, 0x00);
     }
-
 
     #[test]
     fn test_cartridge_type2() {
@@ -285,5 +292,4 @@ mod test {
         let result = cartridge.checksum();
         assert_eq!(result, true);
     }
-
 }

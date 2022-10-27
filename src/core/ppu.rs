@@ -1,7 +1,7 @@
 const GB_WIDTH: u8 = 160;
 const GB_HEIGHT: u8 = 144;
 
-pub struct PPU {
+pub struct Ppu {
     lcdc: u8,
     stat: u8,
     scy: u8,
@@ -20,7 +20,7 @@ pub struct PPU {
     ocpd: u8,
 }
 
-impl PPU {
+impl Ppu {
     pub fn new() -> Self {
         Self {
             lcdc: 0x91,

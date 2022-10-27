@@ -1,6 +1,6 @@
 #[allow(dead_code)]
 #[allow(unused_variables)]
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Registers {
     pub a: u8,
     pub b: u8,

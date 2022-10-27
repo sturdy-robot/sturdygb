@@ -1,21 +1,21 @@
-use crate::core::mmu::MMU;
+use crate::core::mmu::Mmu;
 use crate::core::registers::Registers;
 use crate::core::cartridge::Cartridge;
 use crate::core::opcodes::Opcode;
 
-pub struct CPU {
+pub struct Cpu {
     pub reg: Registers,
-    pub mmu: MMU,
+    pub mmu: Mmu,
     pub is_halted: bool,
     pub cycles: u8,
     pub is_cgb: bool,
 }
 
-impl CPU {
+impl Cpu {
     pub fn new(cartridge: Cartridge, is_cgb: bool) -> Self {
         Self {
             reg: Registers::new(&is_cgb),
-            mmu: MMU::new(cartridge),
+            mmu: Mmu::new(cartridge),
             is_halted: false,
             cycles: 0,
             is_cgb,
@@ -55,24 +55,20 @@ impl CPU {
     fn check_interrupt(&mut self) -> bool {
         let ifflag = self.mmu.read_byte(0xFF0F);
         let ieflag = self.mmu.read_byte(0xFFFF);
-        if ifflag & ieflag != 0 {
-            true
-        } else {
-            false
-        }
+        ifflag & ieflag != 0
     }
 }
 
 #[cfg(test)]
 mod test {
-    use super::CPU;
+    use super::Cpu;
     use crate::core::cartridge::Cartridge;
     use crate::core::opcodes::Opcode;
 
-    fn set_up() -> CPU {
+    fn set_up() -> Cpu {
         let cartridge = Cartridge::new("roms/gb-test-roms/cpu_instrs/cpu_instrs.gb");
         let is_cgb = cartridge.is_cgb_only();
-        CPU::new(cartridge, is_cgb)
+        Cpu::new(cartridge, is_cgb)
     }
 
     #[test]
