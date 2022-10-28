@@ -20,10 +20,10 @@ impl IO {
     pub fn read_byte(&mut self, address: u16) -> u8 {
         match address {
             0xFF00 => self.joypad.read_byte(address),
-            0xFF01 ..= 0xFF02 => self.serial.read_byte(address),
-            0xFF04 ..= 0xFF07 => self.timer.read_byte(address),
+            0xFF01..=0xFF02 => self.serial.read_byte(address),
+            0xFF04..=0xFF07 => self.timer.read_byte(address),
             0xFF0F => self.ifflag,
-            0xFF10 ..= 0xFF26 => self.sound.read_byte(address),
+            0xFF10..=0xFF26 => self.sound.read_byte(address),
             _ => 0xFF, // TODO: implement this
         }
     }
@@ -31,10 +31,10 @@ impl IO {
     pub fn write_byte(&mut self, address: u16, value: u8) {
         match address {
             0xFF00 => self.joypad.write_byte(value),
-            0xFF01 ..= 0xFF02 => self.serial.write_byte(address, value),
-            0xFF04 ..= 0xFF07 => self.timer.write_byte(address, value),
+            0xFF01..=0xFF02 => self.serial.write_byte(address, value),
+            0xFF04..=0xFF07 => self.timer.write_byte(address, value),
             0xFF0F => self.ifflag = value,
-            0xFF10 ..= 0xFF26 => self.sound.write_byte(address, value),
+            0xFF10..=0xFF26 => self.sound.write_byte(address, value),
             _ => println!("Writing to invalid memory!"), // TODO: implement this
         };
     }
@@ -45,9 +45,7 @@ pub struct Joypad {
 
 impl Joypad {
     pub fn new() -> Self {
-        Self {
-            memory: 0,
-        }
+        Self { memory: 0 }
     }
 
     pub fn read_byte(&mut self, address: u16) -> u8 {
@@ -75,7 +73,7 @@ impl Timer {
             tmna: 0,
             tac: 0,
             div: 0,
-            memory: [0; 0x04], 
+            memory: [0; 0x04],
         }
     }
 
@@ -90,14 +88,12 @@ impl Timer {
 }
 
 pub struct Serial {
-    memory: [u8; 0x02]
+    memory: [u8; 0x02],
 }
 
 impl Serial {
     pub fn new() -> Self {
-        Self {
-            memory: [0; 0x02],
-        }
+        Self { memory: [0; 0x02] }
     }
 
     pub fn read_byte(&mut self, address: u16) -> u8 {
@@ -116,9 +112,7 @@ pub struct Sound {
 
 impl Sound {
     pub fn new() -> Self {
-        Self {
-            memory: [0; 0xA0],
-        }
+        Self { memory: [0; 0xA0] }
     }
 
     pub fn read_byte(&mut self, address: u16) -> u8 {
@@ -130,4 +124,3 @@ impl Sound {
         self.memory[(address & 0x1FFF) as usize];
     }
 }
-

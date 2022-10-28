@@ -1134,9 +1134,7 @@ impl<'a> Opcode<'a> {
                 self.reg.a = self.reg.a.wrapping_add(0x06);
                 self.reg.set_f(FFlags::C, false);
             }
-        } else if (self.reg.f & FFlags::C as u8 == 0x10)
-            && (self.reg.f & FFlags::H as u8 == 0x20)
-        {
+        } else if (self.reg.f & FFlags::C as u8 == 0x10) && (self.reg.f & FFlags::H as u8 == 0x20) {
             self.reg.a = self.reg.a.wrapping_add(0x9A);
             self.reg.set_f(FFlags::H, false);
         } else if self.reg.f & FFlags::C as u8 == 0x10 {
@@ -1147,7 +1145,7 @@ impl<'a> Opcode<'a> {
     }
 
     fn jr(&mut self) {
-        let value;
+        let value = 0;
         (value, self.reg.pc) = self.mmu.fetch_instruction(&mut self.reg.pc);
         self.reg.pc = self.reg.pc.wrapping_add(value as u16);
     }
@@ -1274,7 +1272,7 @@ impl<'a> Opcode<'a> {
             }};
         }
 
-        let instruction: u8;
+        let instruction: u8 = 0;
         (instruction, self.reg.pc) = self.mmu.fetch_instruction(&mut self.reg.pc);
         match instruction {
             // RLC B
@@ -1979,6 +1977,7 @@ impl<'a> Opcode<'a> {
             }
             // SET 7,A
             0xFF => setn!(7, a),
+            _ => unreachable!(),
         };
     }
 

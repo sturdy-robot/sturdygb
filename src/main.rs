@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use glfw::{Action, Context, Key};
-use crate::core::gb::GB;
 use crate::core::cartridge::Cartridge;
+use crate::core::gb::GB;
+use glfw::{Action, Context, Key};
 
 mod core;
 
@@ -19,7 +19,9 @@ fn load_cartridge(filename: String) -> Cartridge {
 fn init_glfw() {
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
-    let (mut window, events) = glfw.create_window(300, 300, "SturdyGB", glfw::WindowMode::Windowed).expect("Unable to create GLFW window!");
+    let (mut window, events) = glfw
+        .create_window(300, 300, "SturdyGB", glfw::WindowMode::Windowed)
+        .expect("Unable to create GLFW window!");
 
     window.set_key_polling(true);
     window.make_current();
@@ -34,15 +36,14 @@ fn init_glfw() {
 
 fn handle_window_event(window: &mut glfw::Window, event: glfw::WindowEvent) {
     match event {
-        glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
-            window.set_should_close(true)
-        }
-        _ => ()
+        glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => window.set_should_close(true),
+        _ => (),
     }
 }
 
 fn main() {
-    let cartridge: Cartridge = load_cartridge("roms/gb-test-roms/cpu_instrs/cpu_instrs.gb".to_string());
+    let cartridge: Cartridge =
+        load_cartridge("roms/gb-test-roms/cpu_instrs/cpu_instrs.gb".to_string());
     let mut gb: GB = init_gb(cartridge);
     gb.run();
 }

@@ -1,7 +1,14 @@
+const FRAME_WIDTH: u8 = 256;
+const FRAME_HEIGHT: u8 = 256;
+
 const GB_WIDTH: u8 = 160;
 const GB_HEIGHT: u8 = 144;
 
-pub struct Ppu {
+pub(crate) struct Ppu {
+    pub(crate) mode: u8,
+    pub(crate) mode_clock: u8,
+    pub(crate) line: u8,
+    pub(crate) data: [u8; 256 * 256],
     lcdc: u8,
     stat: u8,
     scy: u8,
@@ -21,8 +28,12 @@ pub struct Ppu {
 }
 
 impl Ppu {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
+            mode: 0,
+            mode_clock: 0,
+            line: 0,
+            data: [0; 256 * 256],
             lcdc: 0x91,
             stat: 0x81,
             scy: 0x00,
@@ -42,7 +53,52 @@ impl Ppu {
         }
     }
 
-    pub fn read_byte(&mut self, address: u16) -> u8 {
+    pub(crate) fn step(&mut self) {
+        match self.mode {
+            0 => {
+                if self.mode_clock >= 204 {
+                    self.mode_clock = 0;
+                    self.line = self.line.wrapping_add(1);
+
+                    if self.line == 143 {
+                        self.mode = 1;
+
+                        // Write to canvas?
+                    } else {
+                        self.mode = 2;
+                    }
+                }
+            }
+            1 => {
+                if self.mode_clock >= 456 {
+                    self.mode_clock = 0;
+                    self.line = self.line.wrapping_add(1);
+
+                    if self.line > 153 {
+                        self.mode = 2;
+                        self.line = 0;
+                    }
+                }
+            }
+            2 => {
+                if self.mode_clock >= 80 {
+                    self.mode_clock = 0;
+                    self.mode = 3;
+                }
+            }
+            3 => {
+                if self.mode_clock >= 172 {
+                    self.mode_clock = 0;
+                    self.mode = 0;
+
+                    self.render_scan();
+                }
+            }
+            _ => unreachable!(), // Unsupported write mode!
+        };
+    }
+
+    pub(crate) fn read_byte(&mut self, address: u16) -> u8 {
         match address {
             0xFF40 => self.lcdc,
             0xFF41 => self.stat,
@@ -63,7 +119,7 @@ impl Ppu {
         }
     }
 
-    pub fn write_byte(&mut self, address: u16, value: u8) {
+    pub(crate) fn write_byte(&mut self, address: u16, value: u8) {
         match address {
             0xFF40 => self.lcdc = value,
             0xFF41 => self.stat = value,

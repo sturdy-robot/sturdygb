@@ -30,9 +30,9 @@ impl Registers {
                 pc: 0x0100,
                 sp: 0xFFFE,
                 ime: true,
-            }
+            };
         }
-        
+
         Self {
             a: 0x01,
             b: 0x00,
@@ -46,7 +46,6 @@ impl Registers {
             sp: 0xFFFE,
             ime: true,
         }
-        
     }
 
     pub fn af(&self) -> u16 {
@@ -93,7 +92,6 @@ impl Registers {
         }
         self.f &= 0xF0;
     }
-
 }
 
 #[allow(dead_code)]
@@ -109,8 +107,8 @@ pub enum FFlags {
 
 #[cfg(test)]
 mod test {
-    use super::Registers;
     use super::FFlags;
+    use super::Registers;
 
     #[test]
     fn test_new_registers() {

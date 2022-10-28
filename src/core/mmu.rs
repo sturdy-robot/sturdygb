@@ -1,6 +1,6 @@
 use super::cartridge::{Cartridge, MBCTypes};
-use super::ppu::{Ppu};
-use super::io::{IO};
+use super::io::IO;
+use super::ppu::Ppu;
 
 pub struct Mmu {
     pub current_rom_bank: u8,
@@ -39,14 +39,14 @@ impl Mmu {
 
     pub fn read_byte(&mut self, address: u16) -> u8 {
         match address {
-            0x0000 ..= 0x7FFF => self.read_rom(address),
-            0x8000 ..= 0x9FFF => self.vram[(address & 0x1FFF) as usize],
-            0xA000 ..= 0xBFFF => self.eram[(address & 0x1FFF) as usize],
-            0xC000 ..= 0xCFFF | 0xE000 ..= 0xEFFF => self.wram[(address & 0x1FFF) as usize],
-            0xD000 ..= 0xDFFF | 0xF000 ..= 0xFDFF => self.wram[(address & 0x1FFF) as usize], // switchable banks later
-            0xFE00 ..= 0xFE9F => self.oam[(address & 0x1FFF) as usize],
-            0xFF00 ..= 0xFF7F => self.io.read_byte(address),
-            0xFF80 ..= 0xFFFE => self.hram[(address & 0x1FFF) as usize],
+            0x0000..=0x7FFF => self.read_rom(address),
+            0x8000..=0x9FFF => self.vram[(address & 0x1FFF) as usize],
+            0xA000..=0xBFFF => self.eram[(address & 0x1FFF) as usize],
+            0xC000..=0xCFFF | 0xE000..=0xEFFF => self.wram[(address & 0x1FFF) as usize],
+            0xD000..=0xDFFF | 0xF000..=0xFDFF => self.wram[(address & 0x1FFF) as usize], // switchable banks later
+            0xFE00..=0xFE9F => self.oam[(address & 0x1FFF) as usize],
+            0xFF00..=0xFF7F => self.io.read_byte(address),
+            0xFF80..=0xFFFE => self.hram[(address & 0x1FFF) as usize],
             0xFFFF => self.ieflag,
             _ => 0xFF,
         }
@@ -54,14 +54,14 @@ impl Mmu {
 
     pub fn write_byte(&mut self, address: u16, value: u8) {
         match address {
-            0x0000 ..= 0x7FFF => self.write_rom(address, value),
-            0x8000 ..= 0x9FFF => self.vram[(address & 0x1FFF) as usize] = value,
-            0xA000 ..= 0xBFFF => self.eram[(address & 0x1FFF) as usize] = value,
-            0xC000 ..= 0xCFFF | 0xE000 ..= 0xEFFF => self.wram[(address & 0x1FFF) as usize] = value,
-            0xD000 ..= 0xDFFF | 0xF000 ..= 0xFDFF => self.wram[(address & 0x1FFF) as usize] = value, // switchable banks later
-            0xFE00 ..= 0xFE9F => self.oam[(address & 0x1FFF) as usize] = value,
-            0xFF00 ..= 0xFF7F => self.io.write_byte(address, value),
-            0xFF80 ..= 0xFFFE => self.hram[(address & 0x1FFF) as usize] = value,
+            0x0000..=0x7FFF => self.write_rom(address, value),
+            0x8000..=0x9FFF => self.vram[(address & 0x1FFF) as usize] = value,
+            0xA000..=0xBFFF => self.eram[(address & 0x1FFF) as usize] = value,
+            0xC000..=0xCFFF | 0xE000..=0xEFFF => self.wram[(address & 0x1FFF) as usize] = value,
+            0xD000..=0xDFFF | 0xF000..=0xFDFF => self.wram[(address & 0x1FFF) as usize] = value, // switchable banks later
+            0xFE00..=0xFE9F => self.oam[(address & 0x1FFF) as usize] = value,
+            0xFF00..=0xFF7F => self.io.write_byte(address, value),
+            0xFF80..=0xFFFE => self.hram[(address & 0x1FFF) as usize] = value,
             0xFFFF => self.ieflag = value,
             _ => println!("Attempted to write to invalid memory address!"),
         };
@@ -79,10 +79,8 @@ impl Mmu {
     pub fn read_rom(&self, address: u16) -> u8 {
         match self.mbc.header.rom_type {
             MBCTypes::Romonly => self.mbc.rom_data[address as usize],
-            MBCTypes::Mbc1 => {
-                match address {
-                    _ => 0_u8,
-                }
+            MBCTypes::Mbc1 => match address {
+                _ => 0_u8,
             },
             // TODO: IMPLEMENT THESE
             MBCTypes::Mbc2 => 0xFF,
@@ -96,8 +94,6 @@ impl Mmu {
             MBCTypes::Huc3 => 0xFF,
             MBCTypes::Unknown => 0xFF,
         }
-        
-        
     }
 
     pub fn read_ram(&self, address: u16) -> u8 {

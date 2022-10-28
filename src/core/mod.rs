@@ -1,8 +1,8 @@
-mod registers;
-mod cpu;
-mod ppu;
-mod mmu;
 pub mod cartridge;
+mod cpu;
 pub mod gb;
 pub mod io;
+mod mmu;
 pub mod opcodes;
+mod ppu;
+mod registers;

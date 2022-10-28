@@ -1,7 +1,7 @@
-use crate::core::mmu::Mmu;
-use crate::core::registers::Registers;
 use crate::core::cartridge::Cartridge;
+use crate::core::mmu::Mmu;
 use crate::core::opcodes::Opcode;
+use crate::core::registers::Registers;
 
 pub struct Cpu {
     pub reg: Registers,
@@ -29,7 +29,7 @@ impl Cpu {
             //     self.push_stack(self.reg.pc);
 
             // }
-            let instruction: u8;
+            let instruction: u8 = 0;
             (instruction, self.reg.pc) = self.mmu.fetch_instruction(&mut self.reg.pc);
             let mut opcode = Opcode::new(instruction, &mut self.reg, &mut self.mmu);
             opcode.decode();
@@ -51,7 +51,7 @@ impl Cpu {
         self.reg.sp = self.reg.sp.wrapping_add(2);
         sp
     }
-    
+
     fn check_interrupt(&mut self) -> bool {
         let ifflag = self.mmu.read_byte(0xFF0F);
         let ieflag = self.mmu.read_byte(0xFFFF);
