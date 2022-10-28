@@ -29,7 +29,7 @@ impl Cpu {
             //     self.push_stack(self.reg.pc);
 
             // }
-            let instruction: u8 = 0;
+            let instruction: u8;
             (instruction, self.reg.pc) = self.mmu.fetch_instruction(&mut self.reg.pc);
             let mut opcode = Opcode::new(instruction, &mut self.reg, &mut self.mmu);
             opcode.decode();
@@ -144,4 +144,5 @@ mod test {
         assert_eq!(cpu.reg.a, 0x74);
         assert_eq!(cpu.reg.f, 0x20);
     }
+
 }

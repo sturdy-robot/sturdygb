@@ -5,7 +5,7 @@ use super::ppu::Ppu;
 pub struct Mmu {
     pub current_rom_bank: u8,
     pub mbc: Cartridge,
-    pub ppu: Ppu,
+    pub(crate) ppu: Ppu,
     pub io: IO,
     pub ieflag: u8,
     vram: [u8; 0x2000],
