@@ -1145,7 +1145,7 @@ impl<'a> Opcode<'a> {
     }
 
     fn jr(&mut self) {
-        let value = 0;
+        let mut value = 0;
         (value, self.reg.pc) = self.mmu.fetch_instruction(&mut self.reg.pc);
         self.reg.pc = self.reg.pc.wrapping_add(value as u16);
     }
@@ -1176,6 +1176,11 @@ impl<'a> Opcode<'a> {
         self.reg.pc = self.pop_stack();
     }
 
+    fn rst(&mut self, n: u8) {
+        self.push_stack(self.reg.pc);
+        self.reg.pc = n as u16;
+    }
+
     fn decode_cb(&mut self) {
         macro_rules! bitn {
             ($n:expr, $reg:ident) => {{
@@ -1194,6 +1199,7 @@ impl<'a> Opcode<'a> {
                 self.reg.set_f(FFlags::N, false);
                 self.reg.set_f(FFlags::H, true);
             }};
+            ($hl:expr, $n:expr) => {{}};
         }
 
         macro_rules! swapn {
@@ -1203,6 +1209,36 @@ impl<'a> Opcode<'a> {
                 self.reg.set_f(FFlags::N, false);
                 self.reg.set_f(FFlags::H, false);
                 self.reg.set_f(FFlags::C, false);
+                self.reg.$reg = value;
+            }};
+        }
+
+        macro_rules! rln {
+            ($reg:ident) => {{
+                let flag = match self.reg.$reg > 0x7F {
+                    true => 1,
+                    false => 0,
+                };
+                let value = (self.reg.$reg << 1) | flag;
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, false);
+                self.reg.set_f(FFlags::C, self.reg.$reg > 0x7F);
+                self.reg.$reg = value;
+            }};
+        }
+
+        macro_rules! rrn {
+            ($reg:ident) => {{
+                let flag = match (self.reg.$reg & 0x01) == 0x01 {
+                    true => 0x80,
+                    false => 0,
+                };
+                let value = flag | (self.reg.$reg >> 1);
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, false);
+                self.reg.set_f(FFlags::C, (self.reg.$reg & 0x01) == 0x01);
                 self.reg.$reg = value;
             }};
         }
@@ -1220,6 +1256,19 @@ impl<'a> Opcode<'a> {
                 self.reg.set_f(FFlags::C, value > 0x7F);
                 self.reg.$reg = value;
             }};
+            ($hl:expr) => {{
+                let byte_hl = $hl;
+                let flag: u8 = match self.reg.f & FFlags::C as u8 == FFlags::C as u8 {
+                    true => 1,
+                    false => 0,
+                };
+                let value = ((byte_hl << 1) & 0xFF) | flag;
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, false);
+                self.reg.set_f(FFlags::C, value > 0x7F);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }};
         }
 
         macro_rules! rrcn {
@@ -1234,6 +1283,19 @@ impl<'a> Opcode<'a> {
                 self.reg.set_f(FFlags::H, false);
                 self.reg.set_f(FFlags::C, (value & 0x01) == 0x01);
                 self.reg.$reg = value;
+            }};
+            ($hl:expr) => {{
+                let byte_hl = $hl;
+                let flag: u8 = match self.reg.f & FFlags::C as u8 == FFlags::C as u8 {
+                    true => 0x80,
+                    false => 0,
+                };
+                let value = flag | (byte_hl >> 1);
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, false);
+                self.reg.set_f(FFlags::C, (value & 0x01) == 0x01);
+                self.mmu.write_byte(self.reg.hl(), value);
             }};
         }
 
@@ -1250,9 +1312,23 @@ impl<'a> Opcode<'a> {
                     7 => 0x7F,
                     _ => 0xFE,
                 };
-                self.reg.$reg &= bit
+                self.reg.$reg &= bit;
             }};
-            () => {{}};
+            ($n:expr, $hl:expr) => {{
+                let byte_hl = $hl;
+                let bit: u8 = match $n {
+                    0 => 0xFE,
+                    1 => 0xFD,
+                    2 => 0xFB,
+                    3 => 0xF7,
+                    4 => 0xEF,
+                    5 => 0xDF,
+                    6 => 0xBF,
+                    7 => 0x7F,
+                    _ => 0xFE,
+                };
+                self.mmu.write_byte(self.reg.hl(), byte_hl & bit);
+            }};
         }
 
         macro_rules! setn {
@@ -1268,11 +1344,26 @@ impl<'a> Opcode<'a> {
                     7 => 0x80,
                     _ => 0x01,
                 };
-                self.reg.$reg |= bit
+                self.reg.$reg |= bit;
+            }};
+            ($n:expr, $hl:expr) => {{
+                let byte_hl = $hl;
+                let bit: u8 = match $n {
+                    0 => 0x01,
+                    1 => 0x02,
+                    2 => 0x04,
+                    3 => 0x08,
+                    4 => 0x10,
+                    5 => 0x20,
+                    6 => 0x40,
+                    7 => 0x80,
+                    _ => 0x01,
+                };
+                self.mmu.write_byte(self.reg.hl(), byte_hl | bit);
             }};
         }
 
-        let instruction: u8 = 0;
+        let mut instruction: u8 = 0;
         (instruction, self.reg.pc) = self.mmu.fetch_instruction(&mut self.reg.pc);
         match instruction {
             // RLC B
@@ -1288,11 +1379,7 @@ impl<'a> Opcode<'a> {
             // RLC L
             0x05 => rlcn!(l),
             // RLC (HL)
-            0x06 => {
-                let byte_hl = self.mmu.read_byte(self.reg.hl());
-                let value = self.rlcn(byte_hl);
-                self.mmu.write_byte(self.reg.hl(), value);
-            }
+            0x06 => rlcn!(self.mmu.read_byte(self.reg.hl())),
             // RLC A
             0x07 => rlcn!(a),
             // RRC B
@@ -1308,37 +1395,21 @@ impl<'a> Opcode<'a> {
             // RRC L
             0x0D => rrcn!(l),
             // RRC (HL)
-            0x0E => {
-                let byte_hl = self.mmu.read_byte(self.reg.hl());
-                let value = self.rrcn(byte_hl);
-                self.mmu.write_byte(self.reg.hl(), value);
-            }
+            0x0E => rrcn!(self.mmu.read_byte(self.reg.hl())),
             // RRC A
             0x0F => rrcn!(a),
             // RL B
-            0x10 => {
-                self.reg.b = self.rln(self.reg.b);
-            }
+            0x10 => rln!(b),
             // RL C
-            0x11 => {
-                self.reg.c = self.rln(self.reg.c);
-            }
+            0x11 => rln!(c),
             // RL D
-            0x12 => {
-                self.reg.d = self.rln(self.reg.d);
-            }
+            0x12 => rln!(d),
             // RL E
-            0x13 => {
-                self.reg.e = self.rln(self.reg.e);
-            }
+            0x13 => rln!(e),
             // RL H
-            0x14 => {
-                self.reg.h = self.rln(self.reg.h);
-            }
+            0x14 => rln!(h),
             // RL L
-            0x15 => {
-                self.reg.l = self.rln(self.reg.l);
-            }
+            0x15 => rln!(l),
             // RL (HL)
             0x16 => {
                 let byte_hl = self.mmu.read_byte(self.reg.hl());
@@ -1346,33 +1417,19 @@ impl<'a> Opcode<'a> {
                 self.mmu.write_byte(self.reg.hl(), value);
             }
             // RL A
-            0x17 => {
-                self.reg.a = self.rln(self.reg.a);
-            }
+            0x17 => rln!(a),
             // RR B
-            0x18 => {
-                self.reg.b = self.rrn(self.reg.b);
-            }
+            0x18 => rrn!(b),
             // RR C
-            0x19 => {
-                self.reg.c = self.rrn(self.reg.c);
-            }
+            0x19 => rrn!(c),
             // RR D
-            0x1A => {
-                self.reg.d = self.rrn(self.reg.d);
-            }
+            0x1A => rrn!(d),
             // RR E
-            0x1B => {
-                self.reg.e = self.rrn(self.reg.e);
-            }
+            0x1B => rrn!(e),
             // RR H
-            0x1C => {
-                self.reg.h = self.rrn(self.reg.h);
-            }
+            0x1C => rrn!(h),
             // RR L
-            0x1D => {
-                self.reg.l = self.rrn(self.reg.l);
-            }
+            0x1D => rrn!(l),
             // RR (HL)
             0x1E => {
                 let byte_hl = self.mmu.read_byte(self.reg.hl());
@@ -1380,9 +1437,7 @@ impl<'a> Opcode<'a> {
                 self.mmu.write_byte(self.reg.hl(), value);
             }
             // RR A
-            0x1F => {
-                self.reg.a = self.rrn(self.reg.a);
-            }
+            0x1F => rrn!(a),
             // SLA B
             0x20 => {
                 self.reg.b = self.slan(self.reg.b);
@@ -1977,13 +2032,7 @@ impl<'a> Opcode<'a> {
             }
             // SET 7,A
             0xFF => setn!(7, a),
-            _ => unreachable!(),
         };
-    }
-
-    fn rst(&mut self, n: u8) {
-        self.push_stack(self.reg.pc);
-        self.reg.pc = n as u16;
     }
 
     fn rlcn(&mut self, reg: u8) -> u8 {

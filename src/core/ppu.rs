@@ -1,13 +1,13 @@
-const FRAME_WIDTH: u8 = 256;
-const FRAME_HEIGHT: u8 = 256;
+const FRAME_WIDTH: u16 = 256;
+const FRAME_HEIGHT: u16 = 256;
 
 const GB_WIDTH: u8 = 160;
 const GB_HEIGHT: u8 = 144;
 
 pub(crate) struct Ppu {
     pub(crate) mode: u8,
-    pub(crate) mode_clock: u8,
-    pub(crate) line: u8,
+    pub(crate) mode_clock: u16,
+    pub(crate) line: u16,
     pub(crate) data: [u8; 256 * 256],
     lcdc: u8,
     stat: u8,
@@ -96,6 +96,10 @@ impl Ppu {
             }
             _ => unreachable!(), // Unsupported write mode!
         };
+    }
+
+    pub(crate) fn render_scan(&mut self) {
+
     }
 
     pub(crate) fn read_byte(&mut self, address: u16) -> u8 {
