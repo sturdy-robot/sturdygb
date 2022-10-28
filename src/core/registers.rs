@@ -1,6 +1,6 @@
 #[allow(dead_code)]
 #[allow(unused_variables)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Registers {
     pub a: u8,
     pub b: u8,
@@ -12,6 +12,7 @@ pub struct Registers {
     pub l: u8,
     pub sp: u16,
     pub pc: u16,
+    pub ime: bool,
 }
 
 impl Registers {
@@ -28,9 +29,10 @@ impl Registers {
                 l: 0x0D,
                 pc: 0x0100,
                 sp: 0xFFFE,
-            }
+                ime: true,
+            };
         }
-        
+
         Self {
             a: 0x01,
             b: 0x00,
@@ -42,8 +44,8 @@ impl Registers {
             l: 0x4D,
             pc: 0x0100,
             sp: 0xFFFE,
+            ime: true,
         }
-        
     }
 
     pub fn af(&self) -> u16 {
@@ -82,7 +84,7 @@ impl Registers {
         self.l = (value & 0x00FF) as u8;
     }
 
-    pub fn set_f(&mut self, flag: CPUFlags, condition: bool) {
+    pub fn set_f(&mut self, flag: FFlags, condition: bool) {
         let value: u8 = flag as u8;
         match condition {
             true => self.f |= value,
@@ -90,14 +92,13 @@ impl Registers {
         }
         self.f &= 0xF0;
     }
-
 }
 
 #[allow(dead_code)]
 #[allow(unused_variables)]
 #[allow(unused_imports)]
 #[derive(Copy, Clone)]
-pub enum CPUFlags {
+pub enum FFlags {
     C = 0x10,
     N = 0x40,
     H = 0x20,
@@ -106,8 +107,8 @@ pub enum CPUFlags {
 
 #[cfg(test)]
 mod test {
+    use super::FFlags;
     use super::Registers;
-    use super::CPUFlags;
 
     #[test]
     fn test_new_registers() {
@@ -170,13 +171,13 @@ mod test {
     #[test]
     fn test_cpu_flags() {
         let mut r: Registers = Registers::new(&false);
-        r.set_f(CPUFlags::C, true);
+        r.set_f(FFlags::C, true);
         assert_eq!(r.f, 0xB0);
-        r.set_f(CPUFlags::H, true);
+        r.set_f(FFlags::H, true);
         assert_eq!(r.f, 0xB0);
-        r.set_f(CPUFlags::N, false);
+        r.set_f(FFlags::N, false);
         assert_eq!(r.f, 0xB0);
-        r.set_f(CPUFlags::Z, false);
+        r.set_f(FFlags::Z, false);
         assert_eq!(r.f, 0x30);
     }
 }
