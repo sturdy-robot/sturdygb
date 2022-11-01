@@ -314,7 +314,7 @@ impl<'a> Opcode<'a> {
             // LDI HL, A
             0x22 => {
                 self.reg.set_hl(self.reg.hl().wrapping_add(1));
-                self.mmu.write_byte(self.reg.hl(), self.reg.a);
+                ld_hl_r!(a);
             }
             // INC HL
             0x23 => {
@@ -376,7 +376,7 @@ impl<'a> Opcode<'a> {
             // LDD HL, A
             0x32 => {
                 self.reg.set_hl(self.reg.hl().wrapping_sub(1));
-                self.mmu.write_byte(self.reg.hl(), self.reg.a);
+                ld_hl_r!(a);
             }
             // INC SP
             0x33 => {
@@ -421,7 +421,10 @@ impl<'a> Opcode<'a> {
                 self.reg.set_hl(value);
             }
             // LDD A, HL
-            0x3A => ld_hl_r!(a),
+            0x3A => {
+                self.reg.set_hl(self.reg.hl().wrapping_sub(1));
+                ld_r_hl!(a);
+            },
             // DEC SP
             0x3B => {
                 self.reg.sp = self.reg.sp.wrapping_sub(1);
