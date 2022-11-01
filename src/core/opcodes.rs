@@ -1025,14 +1025,13 @@ impl<'a> Opcode<'a> {
     }
 
     fn push_stack(&mut self, address: u16) {
-        self.reg.sp = self.reg.sp.wrapping_sub(2);
-        self.mmu.write_word(self.reg.sp, address)
+        self.reg.sp = self.mmu.push_stack(self.reg.sp, address)
     }
 
     fn pop_stack(&mut self) -> u16 {
-        let sp = self.mmu.read_word(self.reg.sp);
-        self.reg.sp = self.reg.sp.wrapping_add(2);
-        sp
+        let res: u16;
+        (self.reg.sp, res) = self.mmu.pop_stack(&mut self.reg.sp);
+        res
     }
 
     fn stop(&mut self) {
@@ -1145,7 +1144,7 @@ impl<'a> Opcode<'a> {
     }
 
     fn jr(&mut self) {
-        let mut value = 0;
+        let value: u8;
         (value, self.reg.pc) = self.mmu.fetch_instruction(&mut self.reg.pc);
         self.reg.pc = self.reg.pc.wrapping_add(value as u16);
     }
@@ -1363,7 +1362,7 @@ impl<'a> Opcode<'a> {
             }};
         }
 
-        let mut instruction: u8 = 0;
+        let instruction: u8;
         (instruction, self.reg.pc) = self.mmu.fetch_instruction(&mut self.reg.pc);
         match instruction {
             // RLC B

@@ -37,6 +37,19 @@ impl Mmu {
         (instruction, inc_pc)
     }
 
+    pub fn push_stack(&mut self, sp: u16, address: u16) -> u16 {
+        let new_sp = sp.wrapping_sub(2);
+        self.write_word(new_sp, address);
+        new_sp
+    }
+
+    pub fn pop_stack(&mut self, sp: &mut u16) -> (u16, u16) {
+        let mut temp_sp = sp.clone();
+        let res = self.read_word(temp_sp);
+        temp_sp = temp_sp.wrapping_add(2);
+        (temp_sp, res)
+    }
+
     pub fn read_byte(&mut self, address: u16) -> u8 {
         match address {
             0x0000..=0x7FFF => self.read_rom(address),

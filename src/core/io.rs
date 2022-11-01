@@ -60,40 +60,55 @@ impl Joypad {
 
 pub struct Timer {
     tima: u8,
-    tmna: u8,
+    tma: u8,
     tac: u8,
     div: u8,
-    memory: [u8; 0x04],
 }
 
 impl Timer {
     pub fn new() -> Self {
         Self {
             tima: 0,
-            tmna: 0,
+            tma: 0,
             tac: 0,
             div: 0,
-            memory: [0; 0x04],
         }
     }
 
     pub fn read_byte(&mut self, address: u16) -> u8 {
-        // TODO: IMPLEMENT THIS
-        0x00
+        match address {
+            0xFF05 => self.div,
+            0xFF05 => self.tima,
+            0xFF06 => self.tma,
+            0xFF07 => self.tac,
+            _ => unreachable!(),
+        }
     }
 
     pub fn write_byte(&mut self, address: u16, value: u8) {
-        self.memory[(address & 0x1FFF) as usize];
+        match address {
+            0xFF05 => self.div = 0,
+            0xFF05 => self.tima = value,
+            0xFF06 => self.tma = value,
+            0xFF07 => self.tac = value,
+            _ => unreachable!(),
+        };
     }
 }
 
 pub struct Serial {
+    sb: u8,
+    sc: u8,
     memory: [u8; 0x02],
 }
 
 impl Serial {
     pub fn new() -> Self {
-        Self { memory: [0; 0x02] }
+        Self {
+            sb: 0,
+            sc: 0,
+            memory: [0; 0x02]
+        }
     }
 
     pub fn read_byte(&mut self, address: u16) -> u8 {
