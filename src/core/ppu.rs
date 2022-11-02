@@ -102,6 +102,18 @@ impl Ppu {
 
     }
 
+    pub(crate) fn update_tile(&mut self, addr: u16, value: u8, vram: &mut [u8; 0x2000]) {
+        let address = addr & 0x1FFF;
+
+        let tile = (address >> 4) & 511;
+        let y = (address >> 1) & 7;
+
+        let mut sx: u8;
+        for i in 0..8 {
+            sx = 1 << (7 - i) as u8;
+        }
+    }
+
     pub(crate) fn read_byte(&mut self, address: u16) -> u8 {
         match address {
             0xFF40 => self.lcdc,
@@ -142,5 +154,20 @@ impl Ppu {
             0xFF6B => self.ocpd = value,
             _ => panic!("Invalid memory address!"),
         };
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn setup_ppu() -> Ppu {
+        Ppu::new()
+    }
+
+    #[test]
+    fn test() {
+        
     }
 }

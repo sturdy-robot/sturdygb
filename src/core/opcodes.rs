@@ -1042,7 +1042,15 @@ impl<'a> Opcode<'a> {
     }
 
     fn halt(&mut self) {
-        self.is_halted = true;
+        if self.reg.ime {
+            self.is_halted = true;
+        } else {
+            if (self.mmu.ieflag & self.mmu.io.ifflag & self.mmu.read_byte(0x1F)) == 0 {
+                self.is_halted = true;
+            } else {
+                self.reg.pc = self.reg.pc.wrapping_sub(1);  // HALT BUG
+            }
+        }   
     }
 
     fn alu_add(&mut self, reg: u8) {

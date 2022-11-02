@@ -68,7 +68,10 @@ impl Mmu {
     pub fn write_byte(&mut self, address: u16, value: u8) {
         match address {
             0x0000..=0x7FFF => self.write_rom(address, value),
-            0x8000..=0x9FFF => self.vram[(address & 0x1FFF) as usize] = value,
+            0x8000..=0x9FFF => {
+                self.vram[(address & 0x1FFF) as usize] = value;
+                self.ppu.update_tile(address, value, &mut self.vram);
+            },
             0xA000..=0xBFFF => self.eram[(address & 0x1FFF) as usize] = value,
             0xC000..=0xCFFF | 0xE000..=0xEFFF => self.wram[(address & 0x1FFF) as usize] = value,
             0xD000..=0xDFFF | 0xF000..=0xFDFF => self.wram[(address & 0x1FFF) as usize] = value, // switchable banks later

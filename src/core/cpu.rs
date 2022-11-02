@@ -11,6 +11,15 @@ pub struct Cpu {
     pub is_cgb: bool,
 }
 
+enum Interrupt {
+    Vblank,
+    Lcdc,
+    Serial,
+    Timer,
+    Hitolo,
+}
+
+
 impl Cpu {
     pub fn new(cartridge: Cartridge, is_cgb: bool) -> Self {
         Self {
@@ -25,9 +34,21 @@ impl Cpu {
     pub fn execute(&mut self) {
         while !self.is_halted && self.reg.pc < 0x8000 {
             // TODO: WRITE INTERRUPT CHECKING
-            // if self.check_interrupt() {
-            //     self.push_stack(self.reg.pc);
-            // }
+            if self.check_interrupt() {
+                self.reg.sp = self.mmu.push_stack(self.reg.sp, self.reg.pc);
+                if self.reg.ime {
+                    self.reg.ime = false;
+                    let interrupt = match self.mmu.ieflag & 0x1F{
+                        0x10 => Interrupt::Hitolo,
+                        0x08 | 0x18 => Interrupt::Serial,
+                        0x04 | 0x0C  => Interrupt::Timer,
+                        0x02 | 0x06 | 0x0E | 0x1E => Interrupt::Lcdc,
+                        0x01 | 0x03 | 0x07 | 0x0F | 0x1F => Interrupt::Vblank,
+                        _ => unreachable!(),
+                    };
+                    self.handle_interrupt(interrupt);
+                }
+            }
             let instruction: u8;
             (instruction, self.reg.pc) = self.mmu.fetch_instruction(&mut self.reg.pc);
             let mut opcode = Opcode::new(instruction, &mut self.reg, &mut self.mmu);
@@ -44,6 +65,26 @@ impl Cpu {
         let ifflag = self.mmu.read_byte(0xFF0F);
         let ieflag = self.mmu.read_byte(0xFFFF);
         ifflag & ieflag != 0
+    }
+
+    fn handle_interrupt(&mut self, interrupt: Interrupt) {
+        match interrupt {
+            Interrupt::Vblank => {
+
+            }
+            Interrupt::Serial => {
+
+            }
+            Interrupt::Hitolo => {
+
+            }
+            Interrupt::Lcdc => {
+
+            }
+            Interrupt::Timer => {
+
+            }
+        };
     }
 }
 

@@ -3,7 +3,7 @@ pub struct IO {
     timer: Timer,
     serial: Serial,
     sound: Sound,
-    ifflag: u8,
+    pub ifflag: u8,
 }
 
 impl IO {
