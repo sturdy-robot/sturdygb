@@ -51,13 +51,13 @@ impl Cpu {
             }
             let instruction: u8;
             (instruction, self.reg.pc) = self.mmu.fetch_instruction(&mut self.reg.pc);
+            println!("Got inst: {:X}", instruction);
             let mut opcode = Opcode::new(instruction, &mut self.reg, &mut self.mmu);
             opcode.decode();
             if opcode.is_halted {
                 self.is_halted = true;
                 break;
             }
-            self.reg.pc = self.reg.pc.wrapping_add(1);
         }
     }
 

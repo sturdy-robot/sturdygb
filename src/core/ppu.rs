@@ -9,6 +9,7 @@ pub(crate) struct Ppu {
     pub(crate) mode_clock: u16,
     pub(crate) line: u16,
     pub(crate) data: [u8; 256 * 256],
+    pub(crate) vram: [u8; 0x2000],
     lcdc: u8,
     stat: u8,
     scy: u8,
@@ -34,6 +35,7 @@ impl Ppu {
             mode_clock: 0,
             line: 0,
             data: [0; 256 * 256],
+            vram: [0; 0x2000],
             lcdc: 0x91,
             stat: 0x81,
             scy: 0x00,
@@ -102,15 +104,15 @@ impl Ppu {
 
     }
 
-    pub(crate) fn update_tile(&mut self, addr: u16, value: u8, vram: &mut [u8; 0x2000]) {
+    pub(crate) fn update_tile(&mut self, addr: u16, value: u8) {
         let address = addr & 0x1FFF;
 
         let tile = (address >> 4) & 511;
         let y = (address >> 1) & 7;
 
         let mut sx: u8;
-        for i in 0..8 {
-            sx = 1 << (7 - i) as u8;
+        for x in 0..8 {
+            sx = 1 << (7 - x) as u8;
         }
     }
 
