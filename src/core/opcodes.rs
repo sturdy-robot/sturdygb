@@ -28,18 +28,18 @@ impl<'a> Opcode<'a> {
         macro_rules! inc_r {
             ($reg:ident) => {{
                 self.reg.$reg = self.reg.$reg.wrapping_add(1);
-                self.reg.set_f(FFlags::Z, self.reg.b == 0);
+                self.reg.set_f(FFlags::Z, self.reg.$reg == 0);
                 self.reg.set_f(FFlags::N, false);
-                self.reg.set_f(FFlags::H, self.reg.b == 0);
+                self.reg.set_f(FFlags::H, self.reg.$reg == 0);
             }};
         }
 
         macro_rules! dec_r {
             ($reg:ident) => {{
                 self.reg.$reg = self.reg.$reg.wrapping_sub(1);
-                self.reg.set_f(FFlags::Z, self.reg.b == 0);
+                self.reg.set_f(FFlags::Z, self.reg.$reg == 0);
                 self.reg.set_f(FFlags::N, true);
-                self.reg.set_f(FFlags::H, self.reg.b == 0);
+                self.reg.set_f(FFlags::H, self.reg.$reg == 0);
             }};
         }
 
