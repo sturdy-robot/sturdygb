@@ -117,7 +117,7 @@ impl Serial {
     }
 
     pub fn write_byte(&mut self, address: u16, value: u8) {
-        self.memory[(address & 0x0F) as usize];
+        self.memory[(address & 0x0E) as usize];
     }
 }
 
@@ -136,6 +136,6 @@ impl Sound {
     }
 
     pub fn write_byte(&mut self, address: u16, value: u8) {
-        self.memory[(address & 0xFF) as usize];
+        self.memory[(address & 0xAF) as usize];
     }
 }
