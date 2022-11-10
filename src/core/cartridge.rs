@@ -281,14 +281,14 @@ mod test {
 
     #[test]
     fn test_checksum1() {
-        let mut cartridge = get_cartridge();
+        let cartridge = get_cartridge();
         let result = cartridge.checksum();
         assert_eq!(result, true);
     }
 
     #[test]
     fn test_checksum2() {
-        let mut cartridge = get_cartridge2();
+        let cartridge = get_cartridge2();
         let result = cartridge.checksum();
         assert_eq!(result, true);
     }

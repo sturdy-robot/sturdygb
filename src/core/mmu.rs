@@ -68,14 +68,14 @@ impl Mmu {
             0x0000..=0x7FFF => self.write_rom(address, value),
             0x8000..=0x9FFF => {
                 self.ppu.vram[(address & 0x1FFF) as usize] = value;
-                self.ppu.update_tile(address, value);
+                // self.ppu.update_tile(address, value);
             },
             0xA000..=0xBFFF => self.eram[(address & 0x1FFF) as usize] = value,
             0xC000..=0xCFFF | 0xE000..=0xEFFF => self.wram[(address & 0x1FFF) as usize] = value,
             0xD000..=0xDFFF | 0xF000..=0xFDFF => self.wram[(address & 0x1FFF) as usize] = value, // switchable banks later
             0xFE00..=0xFE9F => self.oam[(address & 0x1FFF) as usize] = value,
             0xFF00..=0xFF7F => self.io.write_byte(address, value),
-            0xFF80..=0xFFFE => self.hram[(address & 0x1FFF) as usize] = value,
+            0xFF80..=0xFFFE => self.hram[(address & 0x007F) as usize] = value,
             0xFFFF => self.ieflag = value,
             _ => println!("Attempted to write to invalid memory address!"),
         };
