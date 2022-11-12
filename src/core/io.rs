@@ -49,8 +49,7 @@ impl Joypad {
     }
 
     pub fn read_byte(&mut self, address: u16) -> u8 {
-        // TODO: IMPLEMENT THIS
-        0x00
+        self.memory
     }
 
     pub fn write_byte(&mut self, value: u8) {
@@ -112,12 +111,12 @@ impl Serial {
     }
 
     pub fn read_byte(&mut self, address: u16) -> u8 {
-        // TODO: IMPLEMENT THIS
-        0x00
+        self.memory[(address & 0x0E) as usize]
     }
 
     pub fn write_byte(&mut self, address: u16, value: u8) {
         self.memory[(address & 0x0E) as usize];
+        println!("{:?}", &self.memory);
     }
 }
 
@@ -131,8 +130,7 @@ impl Sound {
     }
 
     pub fn read_byte(&mut self, address: u16) -> u8 {
-        // TODO: IMPLEMENT THIS
-        0x00
+        self.memory[(address & 0xAF) as usize]
     }
 
     pub fn write_byte(&mut self, address: u16, value: u8) {
