@@ -65,6 +65,16 @@ impl<'a> Opcode<'a> {
                 self.reg.set_f(FFlags::C, did_overflow);
                 self.reg.a = value;
             }};
+            ($hl:expr) => {{
+                let hl: u8 = $hl;
+                let (value, did_overflow) = self.reg.a.overflowing_add(hl);
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg
+                    .set_f(FFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+                self.reg.set_f(FFlags::C, did_overflow);
+                self.reg.a = value;
+            }};
         }
 
         macro_rules! adc {
@@ -80,11 +90,34 @@ impl<'a> Opcode<'a> {
                 self.reg.set_f(FFlags::C, did_overflow);
                 self.reg.a = value;
             }};
+            ($hl:expr) => {{
+                let hl = $hl;
+                let (value, did_overflow) = self
+                    .reg
+                    .a
+                    .overflowing_add(hl.wrapping_add(FFlags::C as u8));
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg
+                    .set_f(FFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+                self.reg.set_f(FFlags::C, did_overflow);
+                self.reg.a = value;
+            }};
         }
 
         macro_rules! sub {
             ($reg:ident) => {{
                 let (value, did_overflow) = self.reg.a.overflowing_sub(self.reg.$reg);
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, true);
+                self.reg
+                    .set_f(FFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+                self.reg.set_f(FFlags::C, did_overflow);
+                self.reg.a = value;
+            }};
+            ($hl:expr) => {{
+                let hl = $hl;
+                let (value, did_overflow) = self.reg.a.overflowing_sub(hl);
                 self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, true);
                 self.reg
@@ -107,11 +140,32 @@ impl<'a> Opcode<'a> {
                 self.reg.set_f(FFlags::C, did_overflow);
                 self.reg.a = value;
             }};
+            ($hl:expr) => {{
+                let hl = $hl;
+                let (value, did_overflow) = self
+                    .reg
+                    .a
+                    .overflowing_sub(hl.wrapping_sub(FFlags::C as u8));
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, true);
+                self.reg
+                    .set_f(FFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+                self.reg.set_f(FFlags::C, did_overflow);
+                self.reg.a = value;
+            }};
         }
 
         macro_rules! and {
             ($reg:ident) => {{
                 let value = self.reg.a & self.reg.$reg;
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, true);
+                self.reg.set_f(FFlags::C, false);
+                self.reg.a = value;
+            }};
+            ($hl:expr) => {{
+                let value = self.reg.a & $hl;
                 self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, false);
                 self.reg.set_f(FFlags::H, true);
@@ -129,11 +183,27 @@ impl<'a> Opcode<'a> {
                 self.reg.set_f(FFlags::C, false);
                 self.reg.a = value;
             }};
+            ($hl:expr) => {{
+                let value = self.reg.a ^ $hl;
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, false);
+                self.reg.set_f(FFlags::C, false);
+                self.reg.a = value;
+            }};
         }
 
         macro_rules! or {
             ($reg:ident) => {{
                 let value = self.reg.a | self.reg.$reg;
+                self.reg.set_f(FFlags::Z, value == 0);
+                self.reg.set_f(FFlags::N, false);
+                self.reg.set_f(FFlags::H, false);
+                self.reg.set_f(FFlags::C, false);
+                self.reg.a = value;
+            }};
+            ($hl:expr) => {{
+                let value = self.reg.a | $hl;
                 self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, false);
                 self.reg.set_f(FFlags::H, false);
@@ -149,6 +219,14 @@ impl<'a> Opcode<'a> {
                 self.reg.set_f(FFlags::N, true);
                 self.reg.set_f(FFlags::H, value > self.reg.a);
                 self.reg.set_f(FFlags::C, self.reg.a < self.reg.$reg);
+            }};
+            ($hl:expr) => {{
+                let hl = $hl;
+                let value = self.reg.a.wrapping_sub(hl);
+                self.reg.set_f(FFlags::Z, self.reg.a == hl);
+                self.reg.set_f(FFlags::N, true);
+                self.reg.set_f(FFlags::H, value > self.reg.a);
+                self.reg.set_f(FFlags::C, self.reg.a < hl);
             }};
         }
 
@@ -603,10 +681,7 @@ impl<'a> Opcode<'a> {
             // ADD A, L
             0x85 => add!(l),
             // ADD A, (HL)
-            0x86 => {
-                let value = self.mmu.read_byte(self.reg.hl());
-                self.alu_add(value);
-            }
+            0x86 => add!(self.mmu.read_byte(self.reg.hl())),
             // ADD A, A
             0x87 => add!(a),
             // ADC A, B
@@ -622,10 +697,7 @@ impl<'a> Opcode<'a> {
             // ADC A, L
             0x8D => adc!(l),
             // ADC A, (HL)
-            0x8E => {
-                let value = self.mmu.read_byte(self.reg.hl());
-                self.alu_adc(value);
-            }
+            0x8E => adc!(self.mmu.read_byte(self.reg.hl())),
             // ADC A, A
             0x8F => adc!(a),
             // SUB A, B
@@ -641,10 +713,7 @@ impl<'a> Opcode<'a> {
             // SUB A, L
             0x95 => sub!(l),
             // SUB A, (HL)
-            0x96 => {
-                let value = self.mmu.read_byte(self.reg.hl());
-                self.alu_sub(value);
-            }
+            0x96 => sub!(self.mmu.read_byte(self.reg.hl())),
             // SUB A, A
             0x97 => sub!(a),
             // SBC A, B
@@ -660,30 +729,24 @@ impl<'a> Opcode<'a> {
             // SBC A, L
             0x9D => sbc!(l),
             // SBC A, (HL)
-            0x9E => {
-                let value = self.mmu.read_byte(self.reg.hl());
-                self.alu_sbc(value);
-            }
+            0x9E => sub!(self.mmu.read_byte(self.reg.hl())),
             // SBC A, A
             0x9F => sbc!(a),
-            // OR B
+            // AND B
             0xA0 => and!(b),
-            // OR C
+            // AND C
             0xA1 => and!(c),
-            // OR D
+            // AND D
             0xA2 => and!(d),
-            // OR E
+            // AND E
             0xA3 => and!(e),
-            // OR H
+            // AND H
             0xA4 => and!(h),
-            // OR L
+            // AND L
             0xA5 => and!(l),
-            // OR (HL)
-            0xA6 => {
-                let value = self.mmu.read_byte(self.reg.hl());
-                self.alu_and(value);
-            }
-            // OR A
+            // AND (HL)
+            0xA6 => and!(self.mmu.read_byte(self.reg.hl())),
+            // AND A
             0xA7 => and!(a),
             // XOR B
             0xA8 => xor!(b),
@@ -698,10 +761,7 @@ impl<'a> Opcode<'a> {
             // XOR L
             0xAD => xor!(l),
             // XOR (HL)
-            0xAE => {
-                let value = self.mmu.read_byte(self.reg.hl());
-                self.alu_xor(value);
-            }
+            0xAE => xor!(self.mmu.read_byte(self.reg.hl())),
             // XOR A
             0xAF => xor!(a),
             // OR B
@@ -717,10 +777,7 @@ impl<'a> Opcode<'a> {
             // OR L
             0xB5 => or!(l),
             // OR (HL)
-            0xB6 => {
-                let value = self.mmu.read_byte(self.reg.hl());
-                or!(b);
-            }
+            0xB6 => or!(self.mmu.read_byte(self.reg.hl())),
             // OR A
             0xB7 => or!(a),
             // CP B
@@ -736,10 +793,7 @@ impl<'a> Opcode<'a> {
             // CP L
             0xBD => cp!(l),
             // CP (HL)
-            0xBE => {
-                let value = self.mmu.read_byte(self.reg.hl());
-                self.alu_cp(value);
-            }
+            0xBE => cp!(self.mmu.read_byte(self.reg.hl())),
             // CP A
             0xBF => cp!(a),
             // RET NZ
@@ -777,10 +831,7 @@ impl<'a> Opcode<'a> {
                 self.push_stack(self.reg.bc());
             }
             // ADD A, u8
-            0xC6 => {
-                let value = self.mmu.read_byte(self.reg.pc);
-                self.alu_add(value);
-            }
+            0xC6 => add!(self.mmu.read_byte(self.reg.pc)),
             // RST 0x00
             0xC7 => self.rst(0x00),
             // RET Z
@@ -816,9 +867,8 @@ impl<'a> Opcode<'a> {
             }
             // ADC A, u8
             0xCE => {
-                let value = self.mmu.read_byte(self.reg.pc);
+                adc!(self.mmu.read_byte(self.reg.pc));
                 self.reg.pc = self.reg.pc.wrapping_add(1);
-                self.alu_adc(value);
             }
             // RST 08h
             0xCF => self.rst(0x08),
@@ -853,10 +903,7 @@ impl<'a> Opcode<'a> {
                 self.push_stack(self.reg.de());
             }
             // SUB A, u8
-            0xD6 => {
-                let value = self.mmu.read_byte(self.reg.pc);
-                self.alu_sub(value);
-            }
+            0xD6 => sub!(self.mmu.read_byte(self.reg.pc)),
             // RST 10h
             0xD7 => self.rst(0x10),
             // RET C
@@ -887,9 +934,8 @@ impl<'a> Opcode<'a> {
             }
             // SBC A, u16
             0xDE => {
-                let value = self.mmu.read_byte(self.reg.pc);
+                sbc!(self.mmu.read_byte(self.reg.pc));
                 self.reg.pc = self.reg.pc.wrapping_add(2);
-                self.alu_sbc(value);
             }
             // RST 18h
             0xDF => self.rst(0x18),
@@ -913,10 +959,7 @@ impl<'a> Opcode<'a> {
                 self.push_stack(self.reg.hl());
             }
             // AND A, u8
-            0xE6 => {
-                let value = self.mmu.read_byte(self.reg.pc);
-                self.alu_and(value);
-            }
+            0xE6 => and!(self.mmu.read_byte(self.reg.pc)),
             // RST 20h
             0xE7 => self.rst(0x20),
             // ADD SP, u8
@@ -946,10 +989,7 @@ impl<'a> Opcode<'a> {
                 self.mmu.write_byte(value, self.reg.a);
             }
             // XOR u8
-            0xEE => {
-                let value = self.mmu.read_byte(self.reg.pc);
-                self.alu_xor(value);
-            }
+            0xEE => xor!(self.mmu.read_byte(self.reg.pc)),
             // RST 28h
             0xEF => self.rst(0x28),
             // LD A, u8
@@ -980,10 +1020,7 @@ impl<'a> Opcode<'a> {
                 self.push_stack(self.reg.af());
             }
             // OR A, u8
-            0xF6 => {
-                let value = self.mmu.read_byte(self.reg.pc);
-                self.alu_or(value);
-            }
+            0xF6 => or!(self.mmu.read_byte(self.reg.pc)),
             // RST 30h
             0xF7 => self.rst(0x30),
             // LD HL, SP + u8
@@ -1013,14 +1050,9 @@ impl<'a> Opcode<'a> {
                 self.reg.pc = self.reg.pc.wrapping_add(1);
             }
             // EI
-            0xFB => {
-                self.reg.ime = true;
-            }
+            0xFB => self.reg.ime = true,
             // CP u8
-            0xFE => {
-                let value = self.mmu.read_byte(self.reg.pc);
-                self.alu_cp(value);
-            }
+            0xFE => cp!(self.mmu.read_byte(self.reg.pc)),
             // RST 38h
             0xFF => self.rst(0x38),
             _ => self.not_supported_instruction(),
@@ -1055,87 +1087,6 @@ impl<'a> Opcode<'a> {
                 self.reg.pc = self.reg.pc.wrapping_sub(1);  // HALT BUG
             }
         }   
-    }
-
-    fn alu_add(&mut self, reg: u8) {
-        let (value, did_overflow) = self.reg.a.overflowing_add(reg);
-        self.reg.set_f(FFlags::Z, value == 0);
-        self.reg.set_f(FFlags::N, false);
-        self.reg
-            .set_f(FFlags::H, (value & 0xF) < (self.reg.a & 0xF));
-        self.reg.set_f(FFlags::C, did_overflow);
-        self.reg.a = value;
-    }
-
-    fn alu_adc(&mut self, reg: u8) {
-        let (value, did_overflow) = self
-            .reg
-            .a
-            .overflowing_add(reg.wrapping_add(FFlags::C as u8));
-        self.reg.set_f(FFlags::Z, value == 0);
-        self.reg.set_f(FFlags::N, false);
-        self.reg
-            .set_f(FFlags::H, (value & 0xF) < (self.reg.a & 0xF));
-        self.reg.set_f(FFlags::C, did_overflow);
-        self.reg.a = value;
-    }
-
-    fn alu_sub(&mut self, reg: u8) {
-        let (value, did_overflow) = self.reg.a.overflowing_sub(reg);
-        self.reg.set_f(FFlags::Z, value == 0);
-        self.reg.set_f(FFlags::N, true);
-        self.reg
-            .set_f(FFlags::H, (self.reg.a & 0xF) > (value & 0xF));
-        self.reg.set_f(FFlags::C, did_overflow);
-        self.reg.a = value;
-    }
-
-    fn alu_sbc(&mut self, reg: u8) {
-        let (value, did_overflow) = self
-            .reg
-            .a
-            .overflowing_sub(reg.wrapping_sub(FFlags::C as u8));
-        self.reg.set_f(FFlags::Z, value == 0);
-        self.reg.set_f(FFlags::N, true);
-        self.reg
-            .set_f(FFlags::H, (self.reg.a & 0xF) > (value & 0xF));
-        self.reg.set_f(FFlags::C, did_overflow);
-        self.reg.a = value;
-    }
-
-    fn alu_and(&mut self, reg: u8) {
-        let value = self.reg.a & reg;
-        self.reg.set_f(FFlags::Z, value == 0);
-        self.reg.set_f(FFlags::N, false);
-        self.reg.set_f(FFlags::H, true);
-        self.reg.set_f(FFlags::C, false);
-        self.reg.a = value;
-    }
-
-    fn alu_xor(&mut self, reg: u8) {
-        let value = self.reg.a ^ reg;
-        self.reg.set_f(FFlags::Z, value == 0);
-        self.reg.set_f(FFlags::N, false);
-        self.reg.set_f(FFlags::H, false);
-        self.reg.set_f(FFlags::C, false);
-        self.reg.a = value;
-    }
-
-    fn alu_or(&mut self, reg: u8) {
-        let value = self.reg.a | reg;
-        self.reg.set_f(FFlags::Z, value == 0);
-        self.reg.set_f(FFlags::N, false);
-        self.reg.set_f(FFlags::H, false);
-        self.reg.set_f(FFlags::C, false);
-        self.reg.a = value;
-    }
-
-    fn alu_cp(&mut self, reg: u8) {
-        let value = self.reg.a.wrapping_sub(reg);
-        self.reg.set_f(FFlags::Z, self.reg.a == reg);
-        self.reg.set_f(FFlags::N, true);
-        self.reg.set_f(FFlags::H, value > self.reg.a);
-        self.reg.set_f(FFlags::C, self.reg.a < reg);
     }
 
     fn daa(&mut self) {
