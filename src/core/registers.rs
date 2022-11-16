@@ -1,5 +1,3 @@
-#[allow(dead_code)]
-#[allow(unused_variables)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Registers {
     pub a: u8,
@@ -92,11 +90,15 @@ impl Registers {
         }
         self.f &= 0xF0;
     }
+
+    pub fn get_flag(&self, flag: FFlags) -> u8 {
+        match self.f & (flag as u8) > 0 {
+            true => 1,
+            false => 0,
+        }
+    }
 }
 
-#[allow(dead_code)]
-#[allow(unused_variables)]
-#[allow(unused_imports)]
 #[derive(Copy, Clone)]
 pub enum FFlags {
     C = 0x10,

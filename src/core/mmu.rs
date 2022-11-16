@@ -132,37 +132,37 @@ impl Mmu {
 
     pub fn write_rom(&mut self, address: u16, value: u8) {
         match self.mbc.header.rom_type {
-            MBCTypes::Romonly => 0,
+            MBCTypes::Romonly => (),
             // TODO: IMPLEMENT THESE
-            MBCTypes::Mbc1 => 0xFF,
-            MBCTypes::Mbc2 => 0xFF,
-            MBCTypes::Mm01 => 0xFF,
-            MBCTypes::Mbc3 => 0xFF,
-            MBCTypes::Mbc5 => 0xFF,
-            MBCTypes::Mbc6 => 0xFF,
-            MBCTypes::Mbc7 => 0xFF,
-            MBCTypes::Tama5 => 0xFF,
-            MBCTypes::Huc1 => 0xFF,
-            MBCTypes::Huc3 => 0xFF,
-            MBCTypes::Unknown => 0xFF,
+            MBCTypes::Mbc1 => (),
+            MBCTypes::Mbc2 => (),
+            MBCTypes::Mm01 => (),
+            MBCTypes::Mbc3 => (),
+            MBCTypes::Mbc5 => (),
+            MBCTypes::Mbc6 => (),
+            MBCTypes::Mbc7 => (),
+            MBCTypes::Tama5 => (),
+            MBCTypes::Huc1 => (),
+            MBCTypes::Huc3 => (),
+            MBCTypes::Unknown => (),
         };
     }
 
     pub fn write_ram(&mut self, address: u16, value: u8) {
         match self.mbc.header.rom_type {
-            MBCTypes::Romonly => 0,
+            MBCTypes::Romonly => (),
             // TODO: IMPLEMENT THESE
-            MBCTypes::Mbc1 => 0xFF,
-            MBCTypes::Mbc2 => 0xFF,
-            MBCTypes::Mm01 => 0xFF,
-            MBCTypes::Mbc3 => 0xFF,
-            MBCTypes::Mbc5 => 0xFF,
-            MBCTypes::Mbc6 => 0xFF,
-            MBCTypes::Mbc7 => 0xFF,
-            MBCTypes::Tama5 => 0xFF,
-            MBCTypes::Huc1 => 0xFF,
-            MBCTypes::Huc3 => 0xFF,
-            MBCTypes::Unknown => 0xFF,
+            MBCTypes::Mbc1 => (),
+            MBCTypes::Mbc2 => (),
+            MBCTypes::Mm01 => (),
+            MBCTypes::Mbc3 => (),
+            MBCTypes::Mbc5 => (),
+            MBCTypes::Mbc6 => (),
+            MBCTypes::Mbc7 => (),
+            MBCTypes::Tama5 => (),
+            MBCTypes::Huc1 => (),
+            MBCTypes::Huc3 => (),
+            MBCTypes::Unknown => (),
         };
     }
 }

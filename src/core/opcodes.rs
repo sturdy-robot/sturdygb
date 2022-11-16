@@ -30,7 +30,7 @@ impl<'a> Opcode<'a> {
                 self.reg.$reg = self.reg.$reg.wrapping_add(1);
                 self.reg.set_f(FFlags::Z, self.reg.$reg == 0);
                 self.reg.set_f(FFlags::N, false);
-                self.reg.set_f(FFlags::H, self.reg.$reg == 0);
+                self.reg.set_f(FFlags::H, (self.reg.$reg & 0xF)  == 0);
             }};
         }
 
@@ -39,7 +39,7 @@ impl<'a> Opcode<'a> {
                 self.reg.$reg = self.reg.$reg.wrapping_sub(1);
                 self.reg.set_f(FFlags::Z, self.reg.$reg == 0);
                 self.reg.set_f(FFlags::N, true);
-                self.reg.set_f(FFlags::H, self.reg.$reg == 0);
+                self.reg.set_f(FFlags::H, (self.reg.$reg & 0xF) == 0);
             }};
         }
 
@@ -60,8 +60,7 @@ impl<'a> Opcode<'a> {
                 let (value, did_overflow) = self.reg.a.overflowing_add(self.reg.$reg);
                 self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, false);
-                self.reg
-                    .set_f(FFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+                self.reg.set_f(FFlags::H, (value & 0xF) < (self.reg.a & 0xF));
                 self.reg.set_f(FFlags::C, did_overflow);
                 self.reg.a = value;
             }};
@@ -70,8 +69,7 @@ impl<'a> Opcode<'a> {
                 let (value, did_overflow) = self.reg.a.overflowing_add(hl);
                 self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, false);
-                self.reg
-                    .set_f(FFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+                self.reg.set_f(FFlags::H, (value & 0xF) < (self.reg.a & 0xF));
                 self.reg.set_f(FFlags::C, did_overflow);
                 self.reg.a = value;
             }};
@@ -79,27 +77,31 @@ impl<'a> Opcode<'a> {
 
         macro_rules! adc {
             ($reg:ident) => {{
-                let (value, did_overflow) = self
-                    .reg
-                    .a
-                    .overflowing_add(self.reg.$reg.wrapping_add(FFlags::C as u8));
+                let flag: u8 = self.reg.get_flag(FFlags::C);
+                let (mut value, mut did_overflow) = self.reg.$reg.overflowing_add(flag);
+                if did_overflow {
+                    value = self.reg.a.wrapping_add(value);
+                } else {
+                    (value, did_overflow) = self.reg.a.overflowing_add(value);
+                }
                 self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, false);
-                self.reg
-                    .set_f(FFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+                self.reg.set_f(FFlags::H, ((self.reg.a & 0xF) + (self.reg.$reg & 0xF) + flag) > 0xF);
                 self.reg.set_f(FFlags::C, did_overflow);
                 self.reg.a = value;
             }};
             ($hl:expr) => {{
+                let flag = self.reg.get_flag(FFlags::C);
                 let hl = $hl;
-                let (value, did_overflow) = self
-                    .reg
-                    .a
-                    .overflowing_add(hl.wrapping_add(FFlags::C as u8));
+                let (mut value, mut did_overflow) = hl.overflowing_add(flag);
+                if did_overflow {
+                    value = self.reg.a.wrapping_add(value);
+                } else {
+                    (value, did_overflow) = self.reg.a.overflowing_add(value);
+                }
                 self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, false);
-                self.reg
-                    .set_f(FFlags::H, (value & 0xF) < (self.reg.a & 0xF));
+                self.reg.set_f(FFlags::H, ((self.reg.a & 0xF) + (hl & 0xF) + flag) > 0xF);
                 self.reg.set_f(FFlags::C, did_overflow);
                 self.reg.a = value;
             }};
@@ -110,8 +112,7 @@ impl<'a> Opcode<'a> {
                 let (value, did_overflow) = self.reg.a.overflowing_sub(self.reg.$reg);
                 self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, true);
-                self.reg
-                    .set_f(FFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+                self.reg.set_f(FFlags::H, (self.reg.a & 0xF) < (value & 0xF));
                 self.reg.set_f(FFlags::C, did_overflow);
                 self.reg.a = value;
             }};
@@ -120,8 +121,7 @@ impl<'a> Opcode<'a> {
                 let (value, did_overflow) = self.reg.a.overflowing_sub(hl);
                 self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, true);
-                self.reg
-                    .set_f(FFlags::H, (self.reg.a & 0xF) > (value & 0xF));
+                self.reg.set_f(FFlags::H, (self.reg.a & 0xF) < (value & 0xF));
                 self.reg.set_f(FFlags::C, did_overflow);
                 self.reg.a = value;
             }};
@@ -129,28 +129,22 @@ impl<'a> Opcode<'a> {
 
         macro_rules! sbc {
             ($reg:ident) => {{
-                let (value, did_overflow) = self
-                    .reg
-                    .a
-                    .overflowing_sub(self.reg.$reg.wrapping_sub(FFlags::C as u8));
+                let flag = self.reg.get_flag(FFlags::C);
+                let value = self.reg.a.wrapping_sub(self.reg.$reg).wrapping_sub(flag);
                 self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, true);
-                self.reg
-                    .set_f(FFlags::H, (self.reg.a & 0xF) > (value & 0xF));
-                self.reg.set_f(FFlags::C, did_overflow);
+                self.reg.set_f(FFlags::H, (self.reg.a & 0xF) < (self.reg.$reg & 0xF) + flag);
+                self.reg.set_f(FFlags::C, (self.reg.a as u16) < ((self.reg.$reg + flag) as u16));
                 self.reg.a = value;
             }};
             ($hl:expr) => {{
+                let flag = self.reg.get_flag(FFlags::C);
                 let hl = $hl;
-                let (value, did_overflow) = self
-                    .reg
-                    .a
-                    .overflowing_sub(hl.wrapping_sub(FFlags::C as u8));
+                let value = self.reg.a.wrapping_sub(hl).wrapping_sub(flag);
                 self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, true);
-                self.reg
-                    .set_f(FFlags::H, (self.reg.a & 0xF) > (value & 0xF));
-                self.reg.set_f(FFlags::C, did_overflow);
+                self.reg.set_f(FFlags::H, (self.reg.a & 0xF) < (hl & 0xF) + flag);
+                self.reg.set_f(FFlags::C, (self.reg.a as u16) < ((hl + flag) as u16));
                 self.reg.a = value;
             }};
         }
@@ -462,17 +456,19 @@ impl<'a> Opcode<'a> {
             }
             // INC (HL)
             0x34 => {
-                self.reg.set_hl(self.reg.hl().wrapping_add(1));
-                self.reg.set_f(FFlags::Z, self.reg.hl() == 0);
+                let value = self.mmu.read_byte(self.reg.hl()).wrapping_add(1);
+                self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, false);
-                self.reg.set_f(FFlags::H, self.reg.hl() == 0);
+                self.reg.set_f(FFlags::H, (value & 0xF) == 0);
+                self.mmu.write_byte(self.reg.hl(), value);
             }
             // DEC (HL)
             0x35 => {
-                self.reg.set_hl(self.reg.hl().wrapping_sub(1));
+                let value = self.mmu.read_byte(self.reg.hl().wrapping_add(1));
                 self.reg.set_f(FFlags::Z, self.reg.hl() == 0);
                 self.reg.set_f(FFlags::N, true);
                 self.reg.set_f(FFlags::H, self.reg.hl() == 0);
+                self.mmu.write_byte(self.reg.hl(), value);
             }
             // LDD HL, u8
             0x36 => {
@@ -729,7 +725,7 @@ impl<'a> Opcode<'a> {
             // SBC A, L
             0x9D => sbc!(l),
             // SBC A, (HL)
-            0x9E => sub!(self.mmu.read_byte(self.reg.hl())),
+            0x9E => sbc!(self.mmu.read_byte(self.reg.hl())),
             // SBC A, A
             0x9F => sbc!(a),
             // AND B
@@ -1973,5 +1969,159 @@ impl<'a> Opcode<'a> {
 
     fn not_supported_instruction(&mut self) {
         println!("Instruction not supported, {:x}", self.opcode);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::core::cpu::Cpu;
+    use crate::core::cartridge::Cartridge;
+    use crate::core::opcodes::Opcode;
+
+    fn set_up() -> Cpu {
+        let cartridge = Cartridge::new("roms/gb-test-roms/cpu_instrs/cpu_instrs.gb");
+        let is_cgb = cartridge.is_cgb_only();
+        Cpu::new(cartridge, is_cgb)
+    }
+
+    #[test]
+    fn test_add_instructions() {
+        let mut cpu = set_up();
+        let opcodes: [u8; 9] = [0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0xC6];
+        let expected_reg_a: [u8; 9] = [0x01, 0x14, 0x14, 0xEC, 0xED, 0x3A, 0x75, 0xEA, 0xEA];
+        let expected_reg_f: [u8; 9] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x30, 0x20, 0x00, 0x00];
+        for i in 0..opcodes.len() {
+            let mut opcode = Opcode::new(opcodes[i], &mut cpu.reg, &mut cpu.mmu);
+            opcode.decode();
+            assert_eq!(cpu.reg.a, expected_reg_a[i]);
+            assert_eq!(cpu.reg.f, expected_reg_f[i]);
+        }
+    }
+
+    #[test]
+    fn test_adc_instructions() {
+        let mut cpu = set_up();
+        let opcodes: [u8; 9] = [0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0x8F, 0xCE];
+        let expected_reg_a: [u8; 9] = [0x02, 0x15, 0x15, 0xED, 0xEE, 0x3B, 0x77, 0xEE, 0xEE];
+        let expected_reg_f: [u8; 9] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x30, 0x20, 0x00, 0x00];
+        for i in 0..opcodes.len() {
+            let mut opcode = Opcode::new(opcodes[i], &mut cpu.reg, &mut cpu.mmu);
+            opcode.decode();
+            assert_eq!(cpu.reg.a, expected_reg_a[i]);
+            assert_eq!(cpu.reg.f, expected_reg_f[i]);
+        }
+    }
+
+    #[test]
+    fn test_sub_instructions() {
+        let mut cpu = set_up();
+        let opcodes: [u8; 9] = [0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0xD6];
+        let expected_reg_a: [u8; 9] = [0x01, 0xEE, 0xEE, 0x16, 0x15, 0xC8, 0x8D, 0x00, 0x00];
+        let expected_reg_f: [u8; 9] = [0x40, 0x70, 0x40, 0x40, 0x40, 0x70, 0x60, 0xC0, 0xC0];
+        for i in 0..opcodes.len() {
+            let mut opcode = Opcode::new(opcodes[i], &mut cpu.reg, &mut cpu.mmu);
+            opcode.decode();
+            assert_eq!(cpu.reg.a, expected_reg_a[i]);
+            assert_eq!(cpu.reg.f, expected_reg_f[i]);
+        }
+    }
+
+    #[test]
+    fn test_sbc_instructions() {
+        let mut cpu = set_up();
+        let opcodes: [u8; 8] = [0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0x9E, 0x9F];
+        let expected_reg_a: [u8; 8] = [0x00, 0xED, 0xEC, 0x14, 0x13, 0xC6, 0x8A, 0x00];
+        let expected_reg_f: [u8; 8] = [0xC0, 0x70, 0x40, 0x40, 0x40, 0x70, 0x60, 0xC0];
+        for i in 0..opcodes.len() {
+            let mut opcode = Opcode::new(opcodes[i], &mut cpu.reg, &mut cpu.mmu);
+            opcode.decode();
+            assert_eq!(cpu.reg.a, expected_reg_a[i]);
+            assert_eq!(cpu.reg.f, expected_reg_f[i]);
+        }
+    }
+
+    #[test]
+    fn test_or_instructions() {
+        let mut cpu = set_up();
+        let opcodes: [u8; 9] = [0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xF6];
+        let expected_reg_a: [u8; 9] = [0x01, 0x13, 0x13, 0xDB, 0xDB, 0xDF, 0xFF, 0xFF, 0xFF];
+        let expected_reg_f: [u8; 9] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+        for i in 0..opcodes.len() {
+            let mut opcode = Opcode::new(opcodes[i], &mut cpu.reg, &mut cpu.mmu);
+            opcode.decode();
+            assert_eq!(cpu.reg.a, expected_reg_a[i]);
+            assert_eq!(cpu.reg.f, expected_reg_f[i]);
+        }
+    }
+
+    #[test]
+    fn test_xor_instructions() {
+        let mut cpu = set_up();
+        let opcodes: [u8; 9] = [0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xEE];
+        let expected_reg_a: [u8; 9] = [0x01, 0x12, 0x12, 0xCA, 0xCB, 0x86, 0xBD, 0x00, 0x00];
+        let expected_reg_f: [u8; 9] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x80];
+        for i in 0..opcodes.len() {
+            let mut opcode = Opcode::new(opcodes[i], &mut cpu.reg, &mut cpu.mmu);
+            opcode.decode();
+            assert_eq!(cpu.reg.a, expected_reg_a[i]);
+            assert_eq!(cpu.reg.f, expected_reg_f[i]);
+        }
+    }
+
+    #[test]
+    fn test_and_instructions() {
+        let mut cpu = set_up();
+        let opcodes: [u8; 9] = [0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xE6];
+        let expected_reg_a: [u8; 9] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+        let expected_reg_f: [u8; 9] = [0xA0, 0xA0, 0xA0, 0xA0, 0xA0, 0xA0, 0xA0, 0xA0, 0xA0];
+        for i in 0..opcodes.len() {
+            let mut opcode = Opcode::new(opcodes[i], &mut cpu.reg, &mut cpu.mmu);
+            opcode.decode();
+            assert_eq!(cpu.reg.a, expected_reg_a[i]);
+            assert_eq!(cpu.reg.f, expected_reg_f[i]);
+        }
+    }
+
+    fn test_cp_instructions() {
+        let mut cpu = set_up();
+        let opcodes: [u8; 9] = [0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF, 0xFE];
+        let expected_reg_a: [u8; 9] = [0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01];
+        let expected_reg_f: [u8; 9] = [0x40, 0x70, 0x40, 0x70, 0xC0, 0x70, 0x70, 0xC0, 0x40];
+        for i in 0..opcodes.len() {
+            let mut opcode = Opcode::new(opcodes[i], &mut cpu.reg, &mut cpu.mmu);
+            opcode.decode();
+            assert_eq!(cpu.reg.a, expected_reg_a[i]);
+            assert_eq!(cpu.reg.f, expected_reg_f[i]);
+        }
+    }
+
+    #[test]
+    fn test_inc_instructions() {
+        let mut cpu = set_up();
+        let opcodes: [u8; 8] = [0x3C, 0x04, 0x0C, 0x14, 0x1C, 0x24, 0x2C, 0x34];
+        let mut opcode = Opcode::new(0x3C, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.a, 0x02);
+        opcode = Opcode::new(0x04, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.b, 0x01);
+        opcode = Opcode::new(0x0C, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.c, 0x14);
+        opcode = Opcode::new(0x14, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.d, 0x01);
+        opcode = Opcode::new(0x1C, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.e, 0xD9);
+        opcode = Opcode::new(0x24, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.h, 0x02);
+        opcode = Opcode::new(0x2C, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.l, 0x4E);
+        opcode = Opcode::new(0x34, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.hl(), 0x024E);
     }
 }
