@@ -45,13 +45,14 @@ impl<'a> Opcode<'a> {
 
         macro_rules! ld_hl_r {
             ($reg:ident) => {{
-                self.mmu.write_byte(self.reg.hl(), self.reg.$reg);
+                self.reg.$reg = self.mmu.read_byte(self.reg.hl());
+
             }};
         }
 
         macro_rules! ld_r_hl {
             ($reg:ident) => {{
-                self.reg.$reg = self.mmu.read_byte(self.reg.hl());
+                self.mmu.write_byte(self.reg.hl(), self.reg.$reg);
             }};
         }
 
@@ -385,8 +386,8 @@ impl<'a> Opcode<'a> {
             }
             // LDI HL, A
             0x22 => {
-                self.reg.set_hl(self.reg.hl().wrapping_add(1));
                 ld_hl_r!(a);
+                self.reg.set_hl(self.reg.hl().wrapping_add(1));
             }
             // INC HL
             0x23 => {
@@ -413,8 +414,8 @@ impl<'a> Opcode<'a> {
             }
             // LDI A, HL
             0x2A => {
-                self.reg.set_hl(self.reg.hl().wrapping_add(1));
                 ld_r_hl!(a);
+                self.reg.set_hl(self.reg.hl().wrapping_add(1));
             }
             // DEC HL
             0x2B => {
@@ -447,8 +448,8 @@ impl<'a> Opcode<'a> {
             }
             // LDD HL, A
             0x32 => {
-                self.reg.set_hl(self.reg.hl().wrapping_sub(1));
                 ld_hl_r!(a);
+                self.reg.set_hl(self.reg.hl().wrapping_sub(1));
             }
             // INC SP
             0x33 => {
@@ -464,10 +465,10 @@ impl<'a> Opcode<'a> {
             }
             // DEC (HL)
             0x35 => {
-                let value = self.mmu.read_byte(self.reg.hl().wrapping_add(1));
-                self.reg.set_f(FFlags::Z, self.reg.hl() == 0);
+                let value = self.mmu.read_byte(self.reg.hl().wrapping_sub(1));
+                self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, true);
-                self.reg.set_f(FFlags::H, self.reg.hl() == 0);
+                self.reg.set_f(FFlags::H, (value & 0xF) == 0);
                 self.mmu.write_byte(self.reg.hl(), value);
             }
             // LDD HL, u8
@@ -496,8 +497,8 @@ impl<'a> Opcode<'a> {
             }
             // LDD A, HL
             0x3A => {
-                self.reg.set_hl(self.reg.hl().wrapping_sub(1));
                 ld_r_hl!(a);
+                self.reg.set_hl(self.reg.hl().wrapping_sub(1));
             },
             // DEC SP
             0x3B => {
@@ -2082,6 +2083,7 @@ mod test {
         }
     }
 
+    #[test]
     fn test_cp_instructions() {
         let mut cpu = set_up();
         let opcodes: [u8; 9] = [0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF, 0xFE];
@@ -2098,30 +2100,82 @@ mod test {
     #[test]
     fn test_inc_instructions() {
         let mut cpu = set_up();
-        let opcodes: [u8; 8] = [0x3C, 0x04, 0x0C, 0x14, 0x1C, 0x24, 0x2C, 0x34];
         let mut opcode = Opcode::new(0x3C, &mut cpu.reg, &mut cpu.mmu);
         opcode.decode();
         assert_eq!(cpu.reg.a, 0x02);
+        assert_eq!(cpu.reg.f, 0x10);
         opcode = Opcode::new(0x04, &mut cpu.reg, &mut cpu.mmu);
         opcode.decode();
         assert_eq!(cpu.reg.b, 0x01);
+        assert_eq!(cpu.reg.f, 0x10);
         opcode = Opcode::new(0x0C, &mut cpu.reg, &mut cpu.mmu);
         opcode.decode();
         assert_eq!(cpu.reg.c, 0x14);
+        assert_eq!(cpu.reg.f, 0x10);
         opcode = Opcode::new(0x14, &mut cpu.reg, &mut cpu.mmu);
         opcode.decode();
         assert_eq!(cpu.reg.d, 0x01);
+        assert_eq!(cpu.reg.f, 0x10);
         opcode = Opcode::new(0x1C, &mut cpu.reg, &mut cpu.mmu);
         opcode.decode();
         assert_eq!(cpu.reg.e, 0xD9);
+        assert_eq!(cpu.reg.f, 0x10);
         opcode = Opcode::new(0x24, &mut cpu.reg, &mut cpu.mmu);
         opcode.decode();
         assert_eq!(cpu.reg.h, 0x02);
+        assert_eq!(cpu.reg.f, 0x10);
         opcode = Opcode::new(0x2C, &mut cpu.reg, &mut cpu.mmu);
         opcode.decode();
         assert_eq!(cpu.reg.l, 0x4E);
+        assert_eq!(cpu.reg.f, 0x10);
         opcode = Opcode::new(0x34, &mut cpu.reg, &mut cpu.mmu);
         opcode.decode();
         assert_eq!(cpu.reg.hl(), 0x024E);
+        assert_eq!(cpu.reg.f, 0x10);
+    }
+
+    #[test]
+    fn test_dec_instructions() {
+        let mut cpu = set_up();
+        let mut opcode = Opcode::new(0x3D, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.a, 0x00);
+        assert_eq!(cpu.reg.f, 0xF0);
+        opcode = Opcode::new(0x05, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.b, 0xFF);
+        assert_eq!(cpu.reg.f, 0x50);
+        opcode = Opcode::new(0x0D, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.c, 0x12);
+        assert_eq!(cpu.reg.f, 0x50);
+        opcode = Opcode::new(0x15, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.d, 0xFF);
+        assert_eq!(cpu.reg.f, 0x50);
+        opcode = Opcode::new(0x1D, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.e, 0xD7);
+        assert_eq!(cpu.reg.f, 0x50);
+        opcode = Opcode::new(0x25, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.h, 0x00);
+        assert_eq!(cpu.reg.f, 0xF0);
+        opcode = Opcode::new(0x2D, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.l, 0x4C);
+        assert_eq!(cpu.reg.f, 0x50);
+        opcode = Opcode::new(0x35, &mut cpu.reg, &mut cpu.mmu);
+        opcode.decode();
+        assert_eq!(cpu.reg.hl(), 0x4C);
+        assert_eq!(cpu.reg.f, 0xF0);
+    }
+
+    #[test]
+    fn test_16_bit_add_instructions() {
+        let mut cpu = set_up();
+        // ADD HL, BC
+        let mut opcode = Opcode::new(0x09, &mut cpu.reg, &mut cpu.mmu);
+
     }
 }
