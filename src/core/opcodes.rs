@@ -1,21 +1,81 @@
 use crate::core::mmu::Mmu;
 use crate::core::registers::{FFlags, Registers};
 
+
+pub const CYCLES: [u8; 256] = [
+    4, 12, 8, 8, 4, 4, 8, 4, 20, 8, 8, 8, 4, 4, 8, 4,
+    4, 12, 8, 8, 4, 4, 8, 4, 12, 8, 8, 8, 4, 4, 8, 4,
+    12, 12, 8, 8, 4, 4, 8, 4, 12, 8, 8, 8, 4, 4, 8, 4,
+    12, 12, 8, 8, 12, 12, 12, 4, 12, 8, 8, 8, 4, 4, 8, 4,
+    4, 4, 4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 4, 8, 4,
+    4, 4, 4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 4, 8, 4,
+    4, 4, 4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 4, 8, 4,
+    4, 4, 4, 4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 8, 4,
+    4, 4, 4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 4, 8, 4,
+    4, 4, 4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 4, 8, 4,
+    4, 4, 4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 4, 8, 4,
+    4, 4, 4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 4, 8, 4,
+    20, 12, 16, 16, 24, 16, 8, 16, 20, 16, 16, 4, 24, 24, 8, 16,
+    20, 12, 16, 0, 24, 16, 8, 16, 20, 16, 16, 0, 24,0, 8, 16,
+    12, 12, 8, 0, 0, 16, 8, 16, 16, 4, 16, 0, 0, 0, 8, 16,
+    12, 12, 8, 4, 0, 16, 8, 16, 12, 8, 16, 4, 0, 0, 8, 16,
+];
+
+pub const CB_CYCLES: [u8; 256] = [
+    8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8,
+    8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8,
+    8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8,
+    8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8,
+    8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8,
+    8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8,
+    8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8,
+    8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8,
+    8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8,
+    8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8,
+    8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8,
+    8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8,
+    8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8,
+    8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8,
+    8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8,
+    8, 8, 8, 8, 8, 8, 16, 8, 8, 8, 8, 8, 8, 8, 16, 8,
+];
+
 pub struct Opcode<'a> {
     opcode: u8,
     reg: &'a mut Registers,
     mmu: &'a mut Mmu,
+    cb_inst: u8,
+    is_cb: bool,
     pub is_halted: bool,
 }
 
 impl<'a> Opcode<'a> {
     pub fn new(opcode: u8, reg: &'a mut Registers, mmu: &'a mut Mmu) -> Self {
+        let mut is_cb: bool = false;
+        if opcode == 0xCB {
+            is_cb = true;
+        }
+        
         Self {
             opcode,
             reg,
             mmu,
+            cb_inst: 0,
+            is_cb,
             is_halted: false,
         }
+    }
+
+    pub fn update_cycles(&mut self, cycle_count: u32) -> u32 {
+        let mut cycles: u32 = 0;
+        
+        if self.is_cb {
+            cycles = cycle_count + (CB_CYCLES[self.cb_inst as usize] as u32);
+        } else {
+            cycles = cycle_count + (CYCLES[self.opcode as usize] as u32);
+        }
+
+        cycles
     }
 
     pub fn decode(&mut self) {
@@ -1966,6 +2026,7 @@ impl<'a> Opcode<'a> {
             // SET 7,A
             0xFF => setn!(7, a),
         };
+        self.cb_inst = instruction;
     }
 
     fn not_supported_instruction(&mut self) {
@@ -2169,13 +2230,5 @@ mod test {
         opcode.decode();
         assert_eq!(cpu.reg.hl(), 0x4C);
         assert_eq!(cpu.reg.f, 0xF0);
-    }
-
-    #[test]
-    fn test_16_bit_add_instructions() {
-        let mut cpu = set_up();
-        // ADD HL, BC
-        let mut opcode = Opcode::new(0x09, &mut cpu.reg, &mut cpu.mmu);
-
     }
 }
