@@ -10,7 +10,6 @@ pub struct Mmu {
     pub ieflag: u8,
     eram: [u8; 0x8000],
     wram: [u8; 0x8000],
-    oam: [u8; 0xA0],
     hram: [u8; 0x7F],
 }
 
@@ -24,7 +23,6 @@ impl Mmu {
             ieflag: 0,
             eram: [0; 0x8000],
             wram: [0; 0x8000],
-            oam: [0; 0xA0],
             hram: [0; 0x7F],
         }
     }
@@ -51,12 +49,15 @@ impl Mmu {
     pub fn read_byte(&mut self, address: u16) -> u8 {
         match address {
             0x0000..=0x7FFF => self.read_rom(address),
-            0x8000..=0x9FFF => self.ppu.vram[(address & 0x1FFF) as usize],
+            0x8000..=0x9FFF => self.ppu.read_byte(address),
             0xA000..=0xBFFF => self.eram[(address & 0x1FFF) as usize],
             0xC000..=0xCFFF | 0xE000..=0xEFFF => self.wram[(address & 0x1FFF) as usize],
             0xD000..=0xDFFF | 0xF000..=0xFDFF => self.wram[(address & 0x1FFF) as usize], // switchable banks later
-            0xFE00..=0xFE9F => self.oam[(address & 0x1FFF) as usize],
-            0xFF00..=0xFF7F => self.io.read_byte(address),
+            0xFE00..=0xFE9F => self.ppu.read_byte(address),
+            0xFF00..=0xFF26 => self.io.read_byte(address),
+            0xFF40..=0xFF4F => self.ppu.read_byte(address),
+            0xFF51..=0xFF55 => self.ppu.read_byte(address),
+            0xFF68..=0xFF69 => self.ppu.read_byte(address),
             0xFF80..=0xFFFE => self.hram[(address & 0x007F) as usize],
             0xFFFF => self.ieflag,
             _ => 0xFF,
@@ -73,8 +74,8 @@ impl Mmu {
             0xA000..=0xBFFF => self.eram[(address & 0x1FFF) as usize] = value,
             0xC000..=0xCFFF | 0xE000..=0xEFFF => self.wram[(address & 0x1FFF) as usize] = value,
             0xD000..=0xDFFF | 0xF000..=0xFDFF => self.wram[(address & 0x1FFF) as usize] = value, // switchable banks later
-            0xFE00..=0xFE9F => self.oam[(address & 0x1FFF) as usize] = value,
-            0xFF00..=0xFF7F => self.io.write_byte(address, value),
+            0xFE00..=0xFE9F => self.ppu.write_byte(address, value),
+            0xFF00..=0xFF26 => self.io.write_byte(address, value),
             0xFF80..=0xFFFE => self.hram[(address & 0x007F) as usize] = value,
             0xFFFF => self.ieflag = value,
             _ => println!("Attempted to write to invalid memory address!"),

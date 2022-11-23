@@ -49,19 +49,20 @@ impl Cpu {
     }
 
     fn check_interrupt(&mut self) -> bool {
-        let ifflag = self.mmu.read_byte(0xFF0F);
-        let ieflag = self.mmu.read_byte(0xFFFF);
-        ifflag & ieflag != 0
+        if self.reg.ime {
+            let ifflag = self.mmu.read_byte(0xFF0F);
+            let ieflag = self.mmu.read_byte(0xFFFF);
+            ifflag & ieflag != 0
+        } else {
+            false
+        }
     }
 
     fn update_interrupts(&mut self) {
         if self.check_interrupt() {
             self.reg.sp = self.mmu.push_stack(self.reg.sp, self.reg.pc);
-            if self.reg.ime {
-                self.reg.ime = false;
-                let interrupt = self.get_interrupt();
-                self.handle_interrupt(interrupt);
-            }
+            let interrupt = self.get_interrupt();
+            self.handle_interrupt(interrupt);
         }
     }
 
@@ -94,6 +95,8 @@ impl Cpu {
 
             }
         };
+
+        self.reg.ime = false;
     }
 }
 

@@ -62,6 +62,8 @@ pub struct Timer {
     tma: u8,
     tac: u8,
     div: u8,
+    clock: u32,
+
 }
 
 impl Timer {
@@ -71,6 +73,7 @@ impl Timer {
             tma: 0,
             tac: 0,
             div: 0,
+            clock: 0,
         }
     }
 
@@ -92,6 +95,13 @@ impl Timer {
             0xFF07 => self.tac = value,
             _ => unreachable!(),
         };
+    }
+}
+
+impl Timer {
+    pub fn execute(&mut self) {
+        self.tima += 1;
+        
     }
 }
 

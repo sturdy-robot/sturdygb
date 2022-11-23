@@ -6,6 +6,7 @@ const GB_HEIGHT: u8 = 144;
 
 pub(crate) struct Ppu {
     pub(crate) vram: [u8; 0x2000],
+    pub(crate) oam: [u8; 0xA0],
     lcdc: u8,
     stat: u8,
     scy: u8,
@@ -18,16 +19,24 @@ pub(crate) struct Ppu {
     obp1: u8,
     wy: u8,
     wx: u8,
+    hdma1: u8,
+    hdma2: u8,
+    hdma3: u8,
+    hdma4: u8,
+    hdma5: u8,
     bcps: u8,
     bcpd: u8,
     ocps: u8,
     ocpd: u8,
+    clock: u32,
+    line: u8,
 }
 
 impl Ppu {
     pub(crate) fn new() -> Self {
         Self {
             vram: [0; 0x2000],
+            oam: [0; 0xA0],
             lcdc: 0x91,
             stat: 0x81,
             scy: 0x00,
@@ -40,15 +49,24 @@ impl Ppu {
             obp1: 0x00,
             wy: 0x00,
             wx: 0x00,
+            hdma1: 0xFF,
+            hdma2: 0xFF,
+            hdma3: 0xFF,
+            hdma4: 0xFF,
+            hdma5: 0xFF,
             bcps: 0xFF,
             bcpd: 0xFF,
             ocps: 0xFF,
             ocpd: 0xFF,
+            clock: 0,
+            line: 0,
         }
     }
 
     pub(crate) fn read_byte(&mut self, address: u16) -> u8 {
         match address {
+            0x8000..=0x9FFF => self.vram[(address & 0x1FFF) as usize],
+            0xFE00..=0xFE9F => self.oam[(address & 0x1FFF) as usize],
             0xFF40 => self.lcdc,
             0xFF41 => self.stat,
             0xFF42 => self.scy,
@@ -60,6 +78,11 @@ impl Ppu {
             0xFF48 => self.obp1,
             0xFF49 => self.wy,
             0xFF4A => self.wx,
+            0xFF51 => self.hdma1,
+            0xFF52 => self.hdma2,
+            0xFF53 => self.hdma3,
+            0xFF54 => self.hdma4,
+            0xFF55 => self.hdma5,
             0xFF68 => self.bcps,
             0xFF69 => self.bcpd,
             0xFF6A => self.ocps,
@@ -70,6 +93,7 @@ impl Ppu {
 
     pub(crate) fn write_byte(&mut self, address: u16, value: u8) {
         match address {
+            0xFE00 ..=0xFE9F => self.oam[(address & 0x1FFF) as usize] = value,
             0xFF40 => self.lcdc = value,
             0xFF41 => self.stat = value,
             0xFF42 => self.scy = value,
@@ -81,6 +105,11 @@ impl Ppu {
             0xFF49 => self.obp1 = value,
             0xFF4A => self.wy = value,
             0xFF4B => self.wx = value,
+            0xFF51 => self.hdma1 = value,
+            0xFF52 => self.hdma2 = value,
+            0xFF53 => self.hdma3 = value,
+            0xFF54 => self.hdma4 = value,
+            0xFF55 => self.hdma5 = value,
             0xFF68 => self.bcps = value,
             0xFF69 => self.bcpd = value,
             0xFF6A => self.ocps = value,
@@ -88,8 +117,81 @@ impl Ppu {
             _ => panic!("Invalid memory address!"),
         };
     }
+    
+    pub(crate) fn get_mode(&mut self) -> u8 {
+        match self.stat & 0x03 {
+            0 => 0,
+            1 => 1,
+            2 => 2,
+            3 => 3,
+            _ => unreachable!(),
+        }
+    }
+
+    fn set_mode(&mut self, mode: u8) {
+        match mode {
+            0 => self.stat = self.stat & 0x7C,
+            1 => self.stat = self.stat & 0x7D,
+            2 => self.stat = self.stat & 0x7E,
+            3 => self.stat = self.stat & 0x7F,
+            _ => unreachable!(),
+        };
+    }
 }
 
+
+impl Ppu {
+    pub(crate) fn execute(&mut self, oam: &mut [u8; 0xA0]) {
+        match self.get_mode() {
+            0 => {
+                if self.clock >= 204 {
+                    self.clock = 0;
+                    self.line += 1;
+
+                    if self.line == 143 {
+                        self.set_mode(1);
+
+                        // self.put_image_data()
+
+                    } else {
+                        self.set_mode(2);
+                    }
+                    
+                }
+            },
+            1 => {
+                if self.clock >= 456 {
+                    self.clock = 0;
+                    self.line += 1;
+
+                    if self.line > 153 {
+                        self.set_mode(2);
+                        self.line = 0;
+                    }
+                }
+
+            },
+            2 => {
+                if self.clock >= 80 {
+                    self.clock = 0;
+                    self.set_mode(3);
+                }
+            },
+            3 => {
+                if self.clock >= 172 {
+                    self.clock = 0;
+                    self.set_mode(0);
+                    self.render_scan_line();
+                }
+            },
+            _ => unreachable!(),
+        }
+    }
+
+    fn render_scan_line(&mut self) {
+
+    }
+}
 
 #[cfg(test)]
 mod tests {

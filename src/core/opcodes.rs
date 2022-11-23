@@ -1069,9 +1069,7 @@ impl<'a> Opcode<'a> {
                 self.reg.a = self.mmu.read_byte(0xFF00 | self.reg.c as u16);
             }
             // DI
-            0xF3 => {
-                self.reg.ime = false;
-            }
+            0xF3 => self.reg.ime = false,
             // PUSH AF
             0xF5 => {
                 self.push_stack(self.reg.af());
