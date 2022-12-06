@@ -7,7 +7,7 @@ edition = "2021"
 
 
 [dependencies]
-wgpu = "0.14.0"
+glium = "0.32.1"
 gilrs = "0.10.0"
 winit = "0.27.5"
 env_logger = "0.9.3"

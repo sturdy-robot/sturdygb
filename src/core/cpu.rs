@@ -1,6 +1,6 @@
 use crate::core::cartridge::Cartridge;
 use crate::core::mmu::Mmu;
-use crate::core::opcodes::{ Opcode, CYCLES, CB_CYCLES };
+use crate::core::opcodes::Opcode;
 use crate::core::registers::Registers;
 
 pub struct Cpu {
@@ -46,12 +46,13 @@ impl Cpu {
         if opcode.is_halted {
             self.is_halted = true;
         }
+        self.cycles += opcode.get_cycles();
     }
 
     fn check_interrupt(&mut self) -> bool {
         if self.reg.ime {
-            let ifflag = self.mmu.read_byte(0xFF0F);
-            let ieflag = self.mmu.read_byte(0xFFFF);
+            let ifflag = self.mmu.io.ifflag;
+            let ieflag = self.mmu.ieflag;
             ifflag & ieflag != 0
         } else {
             false

@@ -66,25 +66,26 @@ impl<'a> Opcode<'a> {
         }
     }
 
-    pub fn update_cycles(&mut self, cycle_count: u32) -> u32 {
-        let mut cycles: u32 = 0;
-        
+    pub fn get_cycles(&mut self) -> u32 {
         if self.is_cb {
-            cycles = cycle_count + (CB_CYCLES[self.cb_inst as usize] as u32);
+            CB_CYCLES[self.cb_inst as usize] as u32
         } else {
-            cycles = cycle_count + (CYCLES[self.opcode as usize] as u32);
+            CYCLES[self.opcode as usize] as u32
         }
-
-        cycles
     }
 
     pub fn decode(&mut self) {
+        // MACROS FOR OPCODES
+
+        // LD r, r
         macro_rules! ld_r_r {
             ($reg:ident, $reg2:ident) => {{
                 self.reg.$reg = self.reg.$reg2;
             }};
         }
 
+
+        // INC r
         macro_rules! inc_r {
             ($reg:ident) => {{
                 self.reg.$reg = self.reg.$reg.wrapping_add(1);
@@ -94,6 +95,7 @@ impl<'a> Opcode<'a> {
             }};
         }
 
+        // DEC r
         macro_rules! dec_r {
             ($reg:ident) => {{
                 self.reg.$reg = self.reg.$reg.wrapping_sub(1);
@@ -103,6 +105,7 @@ impl<'a> Opcode<'a> {
             }};
         }
 
+        // LD (HL), r
         macro_rules! ld_hl_r {
             ($reg:ident) => {{
                 self.reg.$reg = self.mmu.read_byte(self.reg.hl());
@@ -110,12 +113,14 @@ impl<'a> Opcode<'a> {
             }};
         }
 
+        // LD r, (HL)
         macro_rules! ld_r_hl {
             ($reg:ident) => {{
                 self.mmu.write_byte(self.reg.hl(), self.reg.$reg);
             }};
         }
 
+        // ADD r
         macro_rules! add {
             ($reg:ident) => {{
                 let (value, did_overflow) = self.reg.a.overflowing_add(self.reg.$reg);
@@ -136,6 +141,7 @@ impl<'a> Opcode<'a> {
             }};
         }
 
+        // ADC r
         macro_rules! adc {
             ($reg:ident) => {{
                 let flag: u8 = self.reg.get_flag(FFlags::C);
@@ -167,7 +173,8 @@ impl<'a> Opcode<'a> {
                 self.reg.a = value;
             }};
         }
-
+        
+        // SUB r
         macro_rules! sub {
             ($reg:ident) => {{
                 let (value, did_overflow) = self.reg.a.overflowing_sub(self.reg.$reg);
@@ -188,6 +195,7 @@ impl<'a> Opcode<'a> {
             }};
         }
 
+        // SBC r
         macro_rules! sbc {
             ($reg:ident) => {{
                 let flag = self.reg.get_flag(FFlags::C);
@@ -210,6 +218,7 @@ impl<'a> Opcode<'a> {
             }};
         }
 
+        // AND r
         macro_rules! and {
             ($reg:ident) => {{
                 let value = self.reg.a & self.reg.$reg;
@@ -229,6 +238,7 @@ impl<'a> Opcode<'a> {
             }};
         }
 
+        // XOR r
         macro_rules! xor {
             ($reg:ident) => {{
                 let value = self.reg.a ^ self.reg.$reg;
@@ -248,6 +258,7 @@ impl<'a> Opcode<'a> {
             }};
         }
 
+        // OR r
         macro_rules! or {
             ($reg:ident) => {{
                 let value = self.reg.a | self.reg.$reg;
@@ -267,6 +278,7 @@ impl<'a> Opcode<'a> {
             }};
         }
 
+        // CP r
         macro_rules! cp {
             ($reg:ident) => {{
                 let value = self.reg.a.wrapping_sub(self.reg.$reg);
@@ -284,7 +296,8 @@ impl<'a> Opcode<'a> {
                 self.reg.set_f(FFlags::C, self.reg.a < hl);
             }};
         }
-
+        
+        // DECODING OPCODES
         match self.opcode {
             // NOP
             0x00 => {
