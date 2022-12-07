@@ -8,11 +8,18 @@ The plan is to be a fully compatible GameBoy emulator that runs GB and GBC games
 
 Checklist of (not yet) implemented features:
 
-- [ ] CPU
+- [x] CPU
 - [ ] GPU
 - [ ] Timer
-- [ ] Cartridge
-- [ ] MMU/Memory
+- [x] Cartridge
+    - [x] ROMONLY
+    - [ ] MBC1
+    - [ ] MM01
+    - [ ] MBC2
+    - [ ] MBC3
+    - [ ] MBC5
+    - [ ] MBC7
+- [x] MMU/Memory
 - [ ] Audio
 - [ ] Joystick and input
 - [ ] Load/Save

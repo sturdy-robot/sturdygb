@@ -6,3 +6,5 @@ mod mmu;
 pub mod opcodes;
 mod ppu;
 mod registers;
+mod interrupts;
+mod debugger;

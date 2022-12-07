@@ -41,11 +41,11 @@ pub const CB_CYCLES: [u8; 256] = [
 ];
 
 pub struct Opcode<'a> {
-    opcode: u8,
-    reg: &'a mut Registers,
-    mmu: &'a mut Mmu,
-    cb_inst: u8,
-    is_cb: bool,
+    pub opcode: u8,
+    pub reg: &'a mut Registers,
+    pub mmu: &'a mut Mmu,
+    pub cb_inst: u8,
+    pub is_cb: bool,
     pub is_halted: bool,
 }
 
@@ -76,14 +76,15 @@ impl<'a> Opcode<'a> {
 
     pub fn decode(&mut self) {
         // MACROS FOR OPCODES
-
+        if self.opcode != 0 {
+            self.debug_registers();
+        }
         // LD r, r
         macro_rules! ld_r_r {
             ($reg:ident, $reg2:ident) => {{
                 self.reg.$reg = self.reg.$reg2;
             }};
         }
-
 
         // INC r
         macro_rules! inc_r {
@@ -109,7 +110,6 @@ impl<'a> Opcode<'a> {
         macro_rules! ld_hl_r {
             ($reg:ident) => {{
                 self.reg.$reg = self.mmu.read_byte(self.reg.hl());
-
             }};
         }
 
@@ -464,7 +464,7 @@ impl<'a> Opcode<'a> {
             }
             // INC HL
             0x23 => {
-                self.reg.set_hl(self.reg.hl().wrapping_sub(1));
+                self.reg.set_hl(self.reg.hl().wrapping_add(1));
             }
             // INC H
             0x24 => inc_r!(h),
@@ -1059,7 +1059,10 @@ impl<'a> Opcode<'a> {
                 self.mmu.write_byte(value, self.reg.a);
             }
             // XOR u8
-            0xEE => xor!(self.mmu.read_byte(self.reg.pc)),
+            0xEE => {
+                xor!(self.mmu.read_byte(self.reg.pc));
+                self.reg.pc = self.reg.pc.wrapping_add(1);
+            },
             // RST 28h
             0xEF => self.rst(0x28),
             // LD A, u8
@@ -1125,10 +1128,6 @@ impl<'a> Opcode<'a> {
             0xFF => self.rst(0x38),
             _ => self.not_supported_instruction(),
         };
-        
-        if self.opcode != 0 {
-            println!("Instruction: {:X}", self.opcode);
-        }
     }
 
     fn push_stack(&mut self, address: u16) {
@@ -1142,6 +1141,7 @@ impl<'a> Opcode<'a> {
     }
 
     fn stop(&mut self) {
+        self.mmu.write_byte(0xFF04, 0); // Resets DIV register
         self.reg.pc = self.reg.pc.wrapping_add(1); // stop instruction skips a byte
     }
 

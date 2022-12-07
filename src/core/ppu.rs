@@ -4,9 +4,9 @@ const FRAME_HEIGHT: u16 = 256;
 const GB_WIDTH: u8 = 160;
 const GB_HEIGHT: u8 = 144;
 
-pub(crate) struct Ppu {
-    pub(crate) vram: [u8; 0x2000],
-    pub(crate) oam: [u8; 0xA0],
+pub struct Ppu {
+    pub vram: [u8; 0x2000],
+    pub oam: [u8; 0xA0],
     lcdc: u8,
     stat: u8,
     scy: u8,
@@ -19,6 +19,7 @@ pub(crate) struct Ppu {
     obp1: u8,
     wy: u8,
     wx: u8,
+    vbk: usize,
     hdma1: u8,
     hdma2: u8,
     hdma3: u8,
@@ -33,7 +34,7 @@ pub(crate) struct Ppu {
 }
 
 impl Ppu {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             vram: [0; 0x2000],
             oam: [0; 0xA0],
@@ -49,6 +50,7 @@ impl Ppu {
             obp1: 0x00,
             wy: 0x00,
             wx: 0x00,
+            vbk: 0x00,
             hdma1: 0xFF,
             hdma2: 0xFF,
             hdma3: 0xFF,
@@ -63,10 +65,10 @@ impl Ppu {
         }
     }
 
-    pub(crate) fn read_byte(&mut self, address: u16) -> u8 {
+    pub fn read_byte(&mut self, address: u16) -> u8 {
         match address {
             0x8000..=0x9FFF => self.vram[(address & 0x1FFF) as usize],
-            0xFE00..=0xFE9F => self.oam[(address & 0x1FFF) as usize],
+            0xFE00..=0xFE9F => self.oam[(address - 0xFE00) as usize],
             0xFF40 => self.lcdc,
             0xFF41 => self.stat,
             0xFF42 => self.scy,
@@ -78,6 +80,7 @@ impl Ppu {
             0xFF48 => self.obp1,
             0xFF49 => self.wy,
             0xFF4A => self.wx,
+            0xFF4F => self.vbk as u8,
             0xFF51 => self.hdma1,
             0xFF52 => self.hdma2,
             0xFF53 => self.hdma3,
@@ -87,13 +90,16 @@ impl Ppu {
             0xFF69 => self.bcpd,
             0xFF6A => self.ocps,
             0xFF6B => self.ocpd,
-            _ => panic!("Invalid memory address!"),
+            _ => {
+                println!("Invalid memory address: {address:04X}");
+                0
+            },
         }
     }
 
-    pub(crate) fn write_byte(&mut self, address: u16, value: u8) {
+    pub fn write_byte(&mut self, address: u16, value: u8) {
         match address {
-            0xFE00 ..=0xFE9F => self.oam[(address & 0x1FFF) as usize] = value,
+            0xFE00 ..=0xFE9F => self.oam[(address - 0xFE00) as usize] = value,
             0xFF40 => self.lcdc = value,
             0xFF41 => self.stat = value,
             0xFF42 => self.scy = value,
@@ -105,6 +111,7 @@ impl Ppu {
             0xFF49 => self.obp1 = value,
             0xFF4A => self.wy = value,
             0xFF4B => self.wx = value,
+            0xFF4F => self.vbk = value as usize,
             0xFF51 => self.hdma1 = value,
             0xFF52 => self.hdma2 = value,
             0xFF53 => self.hdma3 = value,
@@ -114,11 +121,13 @@ impl Ppu {
             0xFF69 => self.bcpd = value,
             0xFF6A => self.ocps = value,
             0xFF6B => self.ocpd = value,
-            _ => panic!("Invalid memory address!"),
+            _ => {
+                println!("Invalid memory address: {address:04X}");
+            },
         };
     }
     
-    pub(crate) fn get_mode(&mut self) -> u8 {
+    pub fn get_mode(&mut self) -> u8 {
         match self.stat & 0x03 {
             0 => 0,
             1 => 1,
@@ -141,7 +150,7 @@ impl Ppu {
 
 
 impl Ppu {
-    pub(crate) fn execute(&mut self, oam: &mut [u8; 0xA0]) {
+    pub fn execute(&mut self, oam: &mut [u8; 0xA0]) {
         match self.get_mode() {
             0 => {
                 if self.clock >= 204 {

@@ -2,6 +2,7 @@ use crate::core::cartridge::Cartridge;
 use crate::core::mmu::Mmu;
 use crate::core::opcodes::Opcode;
 use crate::core::registers::Registers;
+use crate::core::interrupts::Interrupt;
 
 pub struct Cpu {
     pub reg: Registers,
@@ -9,14 +10,7 @@ pub struct Cpu {
     pub is_halted: bool,
     pub cycles: u32,
     pub is_cgb: bool,
-}
-
-enum Interrupt {
-    Vblank,
-    Lcdc,
-    Serial,
-    Timer,
-    Hitolo,
+    pub is_paused: bool,
 }
 
 
@@ -28,11 +22,12 @@ impl Cpu {
             is_halted: false,
             cycles: 0,
             is_cgb,
+            is_paused: false,
         }
     }
 
     pub fn execute(&mut self) {
-        while !self.is_halted && self.reg.pc < 0x8000 {
+        while !self.is_paused {
             self.update_interrupts();
             self.decode();
         }
@@ -61,6 +56,9 @@ impl Cpu {
 
     fn update_interrupts(&mut self) {
         if self.check_interrupt() {
+            if self.is_halted {
+                self.is_halted = false;
+            }
             self.reg.sp = self.mmu.push_stack(self.reg.sp, self.reg.pc);
             let interrupt = self.get_interrupt();
             self.handle_interrupt(interrupt);
@@ -79,21 +77,22 @@ impl Cpu {
     }
 
     fn handle_interrupt(&mut self, interrupt: Interrupt) {
+        self.cycles += 8;
         match interrupt {
             Interrupt::Vblank => {
-
+                self.reg.pc = 0x40;
             }
             Interrupt::Serial => {
-
+                self.reg.pc = 0x58;
             }
             Interrupt::Hitolo => {
-
+                self.reg.pc = 0x60;
             }
             Interrupt::Lcdc => {
-
+                self.reg.pc = 0x48;
             }
             Interrupt::Timer => {
-
+                self.reg.pc = 0x50;
             }
         };
 
