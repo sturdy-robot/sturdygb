@@ -8,3 +8,5 @@ mod ppu;
 mod registers;
 mod interrupts;
 mod debugger;
+mod timer;
+mod serial;
