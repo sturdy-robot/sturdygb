@@ -36,6 +36,7 @@ impl<'a> Opcode<'a> {
         print!("  A: 0x{:02X} F: 0x{:02X}, B: 0x{:02X} C: 0x{:02X} D: 0x{:02X} E: 0x{:02X} H: 0x{:02X} L: 0x{:02X}", self.reg.a, self.reg.f, self.reg.b, self.reg.c, self.reg.d, self.reg.e, self.reg.h, self.reg.l);
         print!("  AF: 0x{:04X} BC: 0x{:04X} DE: 0x{:04X} HL: 0x{:04X}", self.reg.af(), self.reg.bc(), self.reg.de(), self.reg.hl());
         print!("  Flags: {}", self.get_flags());
+        print!("  SP: {:04X}", self.reg.sp);
         print!("\n");
     }
 }

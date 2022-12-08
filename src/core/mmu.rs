@@ -34,7 +34,7 @@ impl Mmu {
     }
 
     pub fn push_stack(&mut self, sp: u16, address: u16) -> u16 {
-        let new_sp = sp.wrapping_sub(2);
+        let new_sp = sp.wrapping_sub(2).clone();
         self.write_word(new_sp, address);
         new_sp
     }

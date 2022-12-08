@@ -556,9 +556,7 @@ impl<'a> Opcode<'a> {
                 self.reg.set_f(FFlags::C, true);
             }
             // JR C, r8
-            0x38 => {
-                self.jr_if(FFlags::C as u8);
-            }
+            0x38 => self.jr_if(FFlags::C as u8),
             // ADD HL, SP
             0x39 => {
                 let (value, did_overflow) = self.reg.hl().overflowing_add(self.reg.sp);
@@ -893,7 +891,7 @@ impl<'a> Opcode<'a> {
             0xC4 => {
                 if (self.reg.f & FFlags::Z as u8) != 0x80 {
                     self.push_stack(self.reg.pc.wrapping_add(2));
-                    self.reg.pc = self.mmu.read_word(self.reg.pc).wrapping_add(2);
+                    self.reg.pc = self.mmu.read_word(self.reg.pc);
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
@@ -930,7 +928,7 @@ impl<'a> Opcode<'a> {
             0xCC => {
                 if (self.reg.f & FFlags::Z as u8) == 0x80 {
                     self.push_stack(self.reg.pc.wrapping_add(2));
-                    self.reg.pc = self.mmu.read_word(self.reg.pc).wrapping_add(2);
+                    self.reg.pc = self.mmu.read_word(self.reg.pc);
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
@@ -938,7 +936,7 @@ impl<'a> Opcode<'a> {
             // CALL u16
             0xCD => {
                 self.push_stack(self.reg.pc.wrapping_add(2));
-                self.reg.pc = self.mmu.read_word(self.reg.pc).wrapping_add(2);
+                self.reg.pc = self.mmu.read_word(self.reg.pc);
             }
             // ADC A, u8
             0xCE => {
@@ -962,13 +960,15 @@ impl<'a> Opcode<'a> {
             0xD2 => {
                 if (self.reg.f & FFlags::C as u8) != 0x10 {
                     self.reg.pc = self.jp();
+                } else {
+                    self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
             }
             // CALL NC, u16
             0xD4 => {
                 if self.reg.f & FFlags::C as u8 != 0x10 {
                     self.push_stack(self.reg.pc.wrapping_add(2));
-                    self.reg.pc = self.mmu.read_word(self.reg.pc).wrapping_add(2);
+                    self.reg.pc = self.mmu.read_word(self.reg.pc);
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
@@ -1007,7 +1007,7 @@ impl<'a> Opcode<'a> {
             0xDC => {
                 if self.reg.f & FFlags::C as u8 == 0x10 {
                     self.push_stack(self.reg.pc.wrapping_add(2));
-                    self.reg.pc = self.mmu.read_word(self.reg.pc).wrapping_add(2);
+                    self.reg.pc = self.mmu.read_word(self.reg.pc);
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
@@ -1134,7 +1134,7 @@ impl<'a> Opcode<'a> {
             // LD A, u8
             0xFA => {
                 self.reg.a = self.mmu.read_byte(self.reg.pc);
-                self.reg.pc = self.reg.pc.wrapping_add(1);
+                self.reg.pc = self.reg.pc.wrapping_add(2);
             }
             // EI
             0xFB => self.reg.ime = true,
