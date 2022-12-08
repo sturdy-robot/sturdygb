@@ -76,9 +76,9 @@ impl<'a> Opcode<'a> {
 
     pub fn decode(&mut self) {
         // MACROS FOR OPCODES
-        if self.opcode != 0 {
-             self.debug_registers();
-        }
+        // if self.opcode != 0 {
+        //      self.debug_registers();
+        // }
         // LD r, r
         macro_rules! ld_r_r {
             ($reg:ident, $reg2:ident) => {{
