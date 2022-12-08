@@ -881,6 +881,8 @@ impl<'a> Opcode<'a> {
             0xC2 => {
                 if (self.reg.f & FFlags::Z as u8) != 0x80 {
                     self.reg.pc = self.jp();
+                } else {
+                    self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
             }
             // JP u16
@@ -898,8 +900,7 @@ impl<'a> Opcode<'a> {
             }
             // PUSH BC
             0xC5 => {
-                self.push_stack(self.reg.bc());
-                
+                self.push_stack(self.reg.bc());             
             }
             // ADD A, u8
             0xC6 => {
@@ -915,13 +916,13 @@ impl<'a> Opcode<'a> {
                 }
             }
             // RET
-            0xC9 => {
-                self.ret();
-            }
+            0xC9 => self.ret(),
             // JP Z, u16
             0xCA => {
                 if (self.reg.f & FFlags::Z as u8) == 0x80 {
                     self.reg.pc = self.jp();
+                } else {
+                    self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
             }
             0xCB => self.decode_cb(),
@@ -929,7 +930,7 @@ impl<'a> Opcode<'a> {
             0xCC => {
                 if (self.reg.f & FFlags::Z as u8) == 0x80 {
                     self.push_stack(self.reg.pc.wrapping_add(2));
-                    self.reg.pc = self.mmu.read_word(self.reg.pc);
+                    self.reg.pc = self.mmu.read_word(self.reg.pc).wrapping_add(2);
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
@@ -937,7 +938,7 @@ impl<'a> Opcode<'a> {
             // CALL u16
             0xCD => {
                 self.push_stack(self.reg.pc.wrapping_add(2));
-                self.reg.pc = self.mmu.read_word(self.reg.pc);
+                self.reg.pc = self.mmu.read_word(self.reg.pc).wrapping_add(2);
             }
             // ADC A, u8
             0xCE => {
@@ -998,6 +999,8 @@ impl<'a> Opcode<'a> {
             0xDA => {
                 if (self.reg.f & FFlags::C as u8) == 0x10 {
                     self.reg.pc = self.jp();
+                } else {
+                    self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
             }
             // CALL C, u16
