@@ -47,6 +47,16 @@ impl IO {
             _ => println!("Writing to invalid memory!"), // TODO: implement this
         };
     }
+
+    pub fn is_there_serial_data(&mut self) -> bool {
+        !self.serial.serial_data.is_empty() && (self.serial.sc & 0x80 == 0) 
+    }
+
+    pub fn get_serial_data(&mut self) -> Vec<u8> {
+        let serial_data = self.serial.serial_data.to_owned();
+        self.serial.serial_data = Vec::new();
+        return serial_data;
+    }
 }
 
 pub struct Joypad {

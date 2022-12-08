@@ -4,6 +4,8 @@ use crate::core::opcodes::Opcode;
 use crate::core::registers::Registers;
 use crate::core::interrupts::Interrupt;
 
+use super::serial;
+
 pub struct Cpu {
     pub reg: Registers,
     pub mmu: Mmu,
@@ -42,6 +44,11 @@ impl Cpu {
             self.is_halted = true;
         }
         self.cycles += opcode.get_cycles();
+        if self.mmu.io.is_there_serial_data() {
+            let serial_data = self.mmu.io.get_serial_data();
+            let serial_string = String::from_utf8(serial_data);
+            println!("{serial_string:?}");
+        }
     }
 
     fn check_interrupt(&mut self) -> bool {

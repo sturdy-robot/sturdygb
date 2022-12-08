@@ -91,7 +91,7 @@ impl Ppu {
             0xFF6A => self.ocps,
             0xFF6B => self.ocpd,
             _ => {
-                println!("Invalid memory address: {address:04X}");
+                //println!("Read from invalid memory address: {address:04X}");
                 0
             },
         }
@@ -122,7 +122,7 @@ impl Ppu {
             0xFF6A => self.ocps = value,
             0xFF6B => self.ocpd = value,
             _ => {
-                println!("Invalid memory address: {address:04X}");
+                //println!("Write to invalid memory address: {address:04X}");
             },
         };
     }

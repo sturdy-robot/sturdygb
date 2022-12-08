@@ -1,6 +1,7 @@
 pub struct Serial {
     sb: u8,
-    sc: u8,
+    pub sc: u8,
+    pub serial_data: Vec<u8>
 }
 
 impl Serial {
@@ -8,6 +9,7 @@ impl Serial {
         Self {
             sb: 0,
             sc: 0,
+            serial_data: Vec::new(),
         }
     }
 
@@ -21,10 +23,14 @@ impl Serial {
 
     pub fn write_byte(&mut self, address: u16, value: u8) {
         match address {
-            0xFF01 => self.sb = value,
+            0xFF01 => {
+                if self.sc & 0x80 == 1 {
+                    self.serial_data.push(value);
+                }
+                self.sb = value;
+            }
             0xFF02 => {
                 self.sc = value;
-                println!("{}", self.sc);
             },
             _ => unreachable!(),
         };

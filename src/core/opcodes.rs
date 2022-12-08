@@ -77,7 +77,7 @@ impl<'a> Opcode<'a> {
     pub fn decode(&mut self) {
         // MACROS FOR OPCODES
         if self.opcode != 0 {
-            self.debug_registers();
+             self.debug_registers();
         }
         // LD r, r
         macro_rules! ld_r_r {
@@ -899,9 +899,13 @@ impl<'a> Opcode<'a> {
             // PUSH BC
             0xC5 => {
                 self.push_stack(self.reg.bc());
+                
             }
             // ADD A, u8
-            0xC6 => add!(self.mmu.read_byte(self.reg.pc)),
+            0xC6 => {
+                add!(self.mmu.read_byte(self.reg.pc));
+                self.reg.pc = self.reg.pc.wrapping_add(1);
+            },
             // RST 0x00
             0xC7 => self.rst(0x00),
             // RET Z
@@ -973,7 +977,10 @@ impl<'a> Opcode<'a> {
                 self.push_stack(self.reg.de());
             }
             // SUB A, u8
-            0xD6 => sub!(self.mmu.read_byte(self.reg.pc)),
+            0xD6 => {
+                sub!(self.mmu.read_byte(self.reg.pc));
+                self.reg.pc = self.reg.pc.wrapping_add(1);
+            },
             // RST 10h
             0xD7 => self.rst(0x10),
             // RET C
@@ -1002,10 +1009,10 @@ impl<'a> Opcode<'a> {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
                 }
             }
-            // SBC A, u16
+            // SBC A, u8
             0xDE => {
                 sbc!(self.mmu.read_byte(self.reg.pc));
-                self.reg.pc = self.reg.pc.wrapping_add(2);
+                self.reg.pc = self.reg.pc.wrapping_add(1);
             }
             // RST 18h
             0xDF => self.rst(0x18),
@@ -1029,7 +1036,10 @@ impl<'a> Opcode<'a> {
                 self.push_stack(self.reg.hl());
             }
             // AND A, u8
-            0xE6 => and!(self.mmu.read_byte(self.reg.pc)),
+            0xE6 => {
+                and!(self.mmu.read_byte(self.reg.pc));
+                self.reg.pc = self.reg.pc.wrapping_add(1);
+            }
             // RST 20h
             0xE7 => self.rst(0x20),
             // ADD SP, u8
@@ -1091,7 +1101,10 @@ impl<'a> Opcode<'a> {
                 self.push_stack(self.reg.af());
             }
             // OR A, u8
-            0xF6 => or!(self.mmu.read_byte(self.reg.pc)),
+            0xF6 => {
+                or!(self.mmu.read_byte(self.reg.pc));
+                self.reg.pc = self.reg.pc.wrapping_add(1);
+            }
             // RST 30h
             0xF7 => self.rst(0x30),
             // LD HL, SP + u8
@@ -1123,7 +1136,10 @@ impl<'a> Opcode<'a> {
             // EI
             0xFB => self.reg.ime = true,
             // CP u8
-            0xFE => cp!(self.mmu.read_byte(self.reg.pc)),
+            0xFE => {
+                cp!(self.mmu.read_byte(self.reg.pc));
+                self.reg.pc = self.reg.pc.wrapping_add(1);
+            }
             // RST 38h
             0xFF => self.rst(0x38),
             _ => self.not_supported_instruction(),
@@ -2041,7 +2057,7 @@ impl<'a> Opcode<'a> {
     }
 
     fn not_supported_instruction(&mut self) {
-        println!("Instruction not supported, {:x}", self.opcode);
+        panic!("Instruction not supported, 0x{:02X}", self.opcode);
     }
 }
 
