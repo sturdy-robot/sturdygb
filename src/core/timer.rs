@@ -38,17 +38,17 @@ impl Timer {
 }
 
 impl Timer {
-    pub fn execute(&mut self) -> bool {
+    pub fn execute(&mut self) {
         let prev_div: u16 = self.div;
 
         self.div = self.div.wrapping_add(1);
 
         let mut timer_update: bool = false;
         match self.tac & 0x03 {
-            0x00 => timer_update = self.check_div(prev_div & 0x200) && !self.check_div(self.div & (1 << 9)),
-            0x01 => timer_update = self.check_div(prev_div & 0x008) && !self.check_div(self.div & (1 << 3)),
-            0x02 => timer_update = self.check_div(prev_div & 0x020) && !self.check_div(self.div & (1 << 5)),
-            0x03 => timer_update = self.check_div(prev_div & 0x080) && !self.check_div(self.div & (1 << 7)),
+            0x00 => timer_update = self.check_div(prev_div & 0x200) && !self.check_div(self.div & 0x200),
+            0x01 => timer_update = self.check_div(prev_div & 0x008) && !self.check_div(self.div & 0x008),
+            0x02 => timer_update = self.check_div(prev_div & 0x020) && !self.check_div(self.div & 0x020),
+            0x03 => timer_update = self.check_div(prev_div & 0x080) && !self.check_div(self.div & 0x080),
             _ => unreachable!(),
         }
 
@@ -59,8 +59,6 @@ impl Timer {
                 self.tima = self.tma;
             }
         }
-
-        false
     }
 
     fn check_div(&mut self, prev_div: u16) -> bool {

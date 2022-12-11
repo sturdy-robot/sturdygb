@@ -30,7 +30,6 @@ pub struct Ppu {
     ocps: u8,
     ocpd: u8,
     clock: u32,
-    line: u8,
 }
 
 impl Ppu {
@@ -61,13 +60,12 @@ impl Ppu {
             ocps: 0xFF,
             ocpd: 0xFF,
             clock: 0,
-            line: 0,
         }
     }
 
     pub fn read_byte(&mut self, address: u16) -> u8 {
         match address {
-            0x8000..=0x9FFF => self.vram[(address & 0x1FFF) as usize],
+            0x8000..=0x9FFF => self.vram[(address - 0x8000) as usize],
             0xFE00..=0xFE9F => self.oam[(address - 0xFE00) as usize],
             0xFF40 => self.lcdc,
             0xFF41 => self.stat,
@@ -104,7 +102,6 @@ impl Ppu {
             0xFF41 => self.stat = value,
             0xFF42 => self.scy = value,
             0xFF43 => self.scx = value,
-            0xFF44 => self.ly = value,
             0xFF45 => self.lyc = value,
             0xFF47 => self.bgp = value,
             0xFF48 => self.obp0 = value,
@@ -150,14 +147,14 @@ impl Ppu {
 
 
 impl Ppu {
-    pub fn execute(&mut self, oam: &mut [u8; 0xA0]) {
+    pub fn execute(&mut self) {
         match self.get_mode() {
             0 => {
                 if self.clock >= 204 {
                     self.clock = 0;
-                    self.line += 1;
+                    self.ly += 1;
 
-                    if self.line == 143 {
+                    if self.ly == 143 {
                         self.set_mode(1);
 
                         // self.put_image_data()
@@ -171,11 +168,11 @@ impl Ppu {
             1 => {
                 if self.clock >= 456 {
                     self.clock = 0;
-                    self.line += 1;
+                    self.ly += 1;
 
-                    if self.line > 153 {
+                    if self.ly > 153 {
                         self.set_mode(2);
-                        self.line = 0;
+                        self.ly = 0;
                     }
                 }
 

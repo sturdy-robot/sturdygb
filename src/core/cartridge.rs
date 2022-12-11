@@ -20,7 +20,7 @@ pub enum MBCTypes {
 pub struct CartridgeHeader {
     pub entry: [u8; 4],
     pub logo: [u8; 0x30],
-    pub title: [u8; 16],
+    pub title: String,
     pub cgb_flag: u8,
     pub sgb_flag: u8,
     pub rom_type: MBCTypes,
@@ -28,6 +28,12 @@ pub struct CartridgeHeader {
     pub ram_size: u32,
     pub dest_code: u8,
     pub checksum: u8,
+}
+
+pub struct CartridgeRegisters {
+    bank1: u8,
+    bank2: u8,
+    bank_mode: u8,
 }
 
 impl CartridgeHeader {
@@ -46,17 +52,16 @@ impl CartridgeHeader {
         let rom_size = 32 * (1 << rom_data[0x0148]);
         let ram_size: u32 = match rom_data[0x149] {
             0x00 => 0,
-            0x01 => 2048,
-            0x02 => 8192,
-            0x03 => 32768,
-            0x04 => 131072,
-            0x05 => 65536,
+            0x02 => 0x2000,
+            0x03 => 0x8000,
+            0x04 => 0x200000,
+            0x05 => 0x10000,
             _ => 0,
         };
         Self {
             entry: rom_data[0x100..=0x103].try_into().unwrap(),
             logo: rom_data[0x104..=0x133].try_into().unwrap(),
-            title: rom_data[0x134..=0x143].try_into().unwrap(),
+            title: rom_data[0x134..=0x143].escape_ascii().to_string(),
             cgb_flag: rom_data[0x143],
             sgb_flag: rom_data[0x146],
             rom_type,
@@ -68,11 +73,59 @@ impl CartridgeHeader {
     }
 }
 
+fn get_eram(header: &CartridgeHeader) -> Vec<u8> {
+    let eram_size: usize = header.ram_size as usize;
+    let eram: Vec<u8>;
+    if eram_size != 0 {
+        eram = Vec::with_capacity(eram_size);
+    } else {
+        eram = Vec::with_capacity(0);
+    }
+
+    eram
+}
+
+
+fn get_rom_banks(value: u8) -> u16 {
+    match value {
+        0x00 => 0,
+        0x01 => 4,
+        0x02 => 8,
+        0x03 => 15,
+        0x04 => 32,
+        0x05 => 64,
+        0x06 => 128,
+        0x07 => 256,
+        0x08 => 512,
+        0x52 => 72,
+        0x53 => 80,
+        0x54 => 96,
+        _ => 0,
+    }
+}
+
+fn get_ram_banks(value: u8) -> u8 {
+    match  value {
+        0x02 => 1,
+        0x03 => 4,
+        0x04 => 16,
+        0x05 => 8,
+        _ => 0,
+    }
+}
+
 #[derive(PartialEq, Eq)]
 pub struct Cartridge {
     pub header: CartridgeHeader,
     pub rom_data: Vec<u8>,
-    pub ram: Vec<u8>,
+    pub has_ram: bool,
+    pub rom_banks: u16,
+    pub ram_banks: u8,
+    pub current_rom_bank: u8,
+    pub eram: Vec<u8>,
+    pub eram_bank: u8,
+    pub ram_enabled: bool,
+    pub banking_mode: bool,
 }
 
 pub fn load_file(filename: String) -> Vec<u8> {
@@ -85,10 +138,27 @@ impl Cartridge {
     pub fn new(filename: &str) -> Self {
         let rom_data = load_file(filename.to_string());
 
+        let has_ram = rom_data[0x147];
+        let ram = match has_ram {
+            0x02 | 0x03 | 0x08 | 0x09 | 0x0C | 0x0D | 0x10 | 0x12 | 0x13 | 0x1A | 0x1B | 0x1D | 0x1E | 0x22 | 0xFF => true,
+            _ => false,
+        };
+        let header = CartridgeHeader::new(&rom_data);
+        let rom_banks: u16 = get_rom_banks(rom_data[0x148]);
+        let ram_banks = get_ram_banks(rom_data[0x149]);
+        let eram = get_eram(&header);
+        
         Self {
-            header: CartridgeHeader::new(&rom_data),
+            header, 
             rom_data,
-            ram: Vec::new(),
+            has_ram: ram,
+            rom_banks,
+            ram_banks,
+            current_rom_bank: 0,
+            eram,
+            eram_bank: 0,
+            ram_enabled: false,
+            banking_mode: true,
         }
     }
 
@@ -123,6 +193,8 @@ pub fn get_logo() -> [u8; 48] {
 #[cfg(test)]
 mod test {
     use super::{get_logo, load_file, Cartridge};
+
+    // TODO: clean up tests and test actual CartridgeHeader and Cartridge structs
 
     fn get_file() -> Vec<u8> {
         let cartridge_data = load_file("roms/cgb-acid2.gbc".to_string());
@@ -164,7 +236,7 @@ mod test {
             rom_data[0x0102],
             rom_data[0x0103],
         ];
-        assert_eq!(entry, [0, 195, 80, 1]);
+        assert_eq!(entry, [0, 0xC3, 0x50, 0x01]);
     }
 
     #[test]
@@ -176,7 +248,7 @@ mod test {
             rom_data[0x0102],
             rom_data[0x0103],
         ];
-        assert_eq!(entry, [0, 195, 80, 1]);
+        assert_eq!(entry, [0, 0xC3, 0x50, 0x01]);
     }
 
     #[test]
@@ -193,6 +265,15 @@ mod test {
         let rom_data = get_file2();
         let logo_data = &rom_data[0x0104..0x0134];
         assert_eq!(logo, logo_data);
+    }
+
+    #[test]
+    fn test_title1() {
+        let rom_data = get_file();
+        let title = rom_data[0x134..=0x143].escape_ascii().to_string();
+        // TODO: clean up string
+        let title_string = "CGB-ACID2\\x00\\x00\\x00\\x00\\x00\\x00\\xc0".to_string();
+        assert_eq!(title, title_string);
     }
 
     #[test]

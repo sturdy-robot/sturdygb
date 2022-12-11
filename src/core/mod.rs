@@ -10,3 +10,4 @@ mod interrupts;
 mod debugger;
 mod timer;
 mod serial;
+mod mbc;

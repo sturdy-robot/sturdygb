@@ -24,10 +24,8 @@ impl Serial {
     pub fn write_byte(&mut self, address: u16, value: u8) {
         match address {
             0xFF01 => {
-                if self.sc & 0x80 == 1 {
-                    self.serial_data.push(value);
-                }
                 self.sb = value;
+                self.serial_data.push(value);
             }
             0xFF02 => {
                 self.sc = value;

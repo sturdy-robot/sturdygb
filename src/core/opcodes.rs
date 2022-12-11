@@ -76,9 +76,7 @@ impl<'a> Opcode<'a> {
 
     pub fn decode(&mut self) {
         // MACROS FOR OPCODES
-        // if self.opcode != 0 {
-        //      self.debug_registers();
-        // }
+        self.debug_registers();
         // LD r, r
         macro_rules! ld_r_r {
             ($reg:ident, $reg2:ident) => {{
@@ -109,14 +107,14 @@ impl<'a> Opcode<'a> {
         // LD (HL), r
         macro_rules! ld_hl_r {
             ($reg:ident) => {{
-                self.reg.$reg = self.mmu.read_byte(self.reg.hl());
+                self.mmu.write_byte(self.reg.hl(), self.reg.$reg);
             }};
         }
 
         // LD r, (HL)
         macro_rules! ld_r_hl {
             ($reg:ident) => {{
-                self.mmu.write_byte(self.reg.hl(), self.reg.$reg);
+                self.reg.$reg = self.mmu.read_byte(self.reg.hl());
             }};
         }
 

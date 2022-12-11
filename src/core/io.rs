@@ -21,9 +21,7 @@ impl IO {
     }
     
     pub fn execute_timer(&mut self) {
-        if self.timer.execute() {
-
-        }
+        self.timer.execute();
     }
 
     pub fn read_byte(&mut self, address: u16) -> u8 {
@@ -49,12 +47,11 @@ impl IO {
     }
 
     pub fn is_there_serial_data(&mut self) -> bool {
-        !self.serial.serial_data.is_empty() && (self.serial.sc & 0x80 == 0) 
+        !self.serial.serial_data.is_empty()
     }
 
     pub fn get_serial_data(&mut self) -> Vec<u8> {
         let serial_data = self.serial.serial_data.to_owned();
-        self.serial.serial_data = Vec::new();
         return serial_data;
     }
 }
