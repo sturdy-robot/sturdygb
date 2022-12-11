@@ -1,11 +1,13 @@
 use std::fs;
 
+use super::mbc;
+
 #[derive(PartialEq, Eq)]
 pub enum MBCTypes {
     Romonly,
     Mbc1,
     Mbc2,
-    Mm01,
+    Mmm01,
     Mbc3,
     Mbc5,
     Mbc6,
@@ -30,10 +32,29 @@ pub struct CartridgeHeader {
     pub checksum: u8,
 }
 
+#[derive(PartialEq, Eq)]
 pub struct CartridgeRegisters {
-    bank1: u8,
-    bank2: u8,
-    bank_mode: u8,
+    pub rom_bank_lower_bits: u8,
+    pub rom_bank_upper_bits: u8,
+    pub ram_bank_enable: u8,
+    pub bank_mode: u8,
+    pub is_rtc: bool,
+}
+
+fn get_rtc(rom_data: u8) -> bool {
+    return rom_data == 0x0F || rom_data == 0x10
+}
+
+impl CartridgeRegisters {
+    pub fn new(is_rtc: bool) -> Self {
+        Self {
+            rom_bank_lower_bits: 0,
+            rom_bank_upper_bits: 0,
+            ram_bank_enable: 0,
+            bank_mode: 0,
+            is_rtc,
+        }
+    }
 }
 
 impl CartridgeHeader {
@@ -42,7 +63,7 @@ impl CartridgeHeader {
             0x00 => MBCTypes::Romonly,
             0x01..=0x03 => MBCTypes::Mbc1,
             0x05..=0x06 => MBCTypes::Mbc2,
-            0x0B..=0x0D => MBCTypes::Mm01,
+            0x0B..=0x0D => MBCTypes::Mmm01,
             0x0F..=0x13 => MBCTypes::Mbc3,
             0x19..=0x1E => MBCTypes::Mbc5,
             0x20 => MBCTypes::Mbc6,
@@ -118,6 +139,7 @@ fn get_ram_banks(value: u8) -> u8 {
 pub struct Cartridge {
     pub header: CartridgeHeader,
     pub rom_data: Vec<u8>,
+    pub registers: CartridgeRegisters,
     pub has_ram: bool,
     pub rom_banks: u16,
     pub ram_banks: u8,
@@ -138,8 +160,8 @@ impl Cartridge {
     pub fn new(filename: &str) -> Self {
         let rom_data = load_file(filename.to_string());
 
-        let has_ram = rom_data[0x147];
-        let ram = match has_ram {
+        let ram = rom_data[0x147];
+        let has_ram = match ram{
             0x02 | 0x03 | 0x08 | 0x09 | 0x0C | 0x0D | 0x10 | 0x12 | 0x13 | 0x1A | 0x1B | 0x1D | 0x1E | 0x22 | 0xFF => true,
             _ => false,
         };
@@ -147,11 +169,13 @@ impl Cartridge {
         let rom_banks: u16 = get_rom_banks(rom_data[0x148]);
         let ram_banks = get_ram_banks(rom_data[0x149]);
         let eram = get_eram(&header);
-        
+        let is_rtc = get_rtc(rom_data[0x147]);
+
         Self {
             header, 
             rom_data,
-            has_ram: ram,
+            registers: CartridgeRegisters::new(is_rtc),
+            has_ram,
             rom_banks,
             ram_banks,
             current_rom_bank: 0,
