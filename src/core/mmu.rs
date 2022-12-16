@@ -1,9 +1,9 @@
-use super::cartridge::{Cartridge, MBCTypes};
 use super::io::IO;
+use super::mbc::Mbc;
 use super::ppu::Ppu;
 
 pub struct Mmu {
-    pub mbc: Cartridge,
+    pub mbc: Box<dyn Mbc>,
     pub ppu: Ppu,
     pub io: IO,
     pub ieflag: u8,
@@ -12,7 +12,7 @@ pub struct Mmu {
 }
 
 impl Mmu {
-    pub fn new(cartridge: Cartridge) -> Self {
+    pub fn new(cartridge: Box<dyn Mbc>) -> Self {
         Self {
             mbc: cartridge,
             ppu: Ppu::new(),
@@ -63,10 +63,7 @@ impl Mmu {
     pub fn write_byte(&mut self, address: u16, value: u8) {
         match address {
             0x0000..=0x7FFF => self.mbc.write_rom(address, value),
-            0x8000..=0x9FFF => {
-                self.ppu.vram[(address & 0x1FFF) as usize] = value;
-                // self.ppu.update_tile(address, value);
-            },
+            0x8000..=0x9FFF => self.ppu.write_byte(address, value),
             0xA000..=0xBFFF => self.mbc.write_ram(address, value),
             0xC000..=0xCFFF | 0xE000..=0xEFFF => self.wram[(address & 0x1FFF) as usize] = value,
             0xD000..=0xDFFF | 0xF000..=0xFDFF => self.wram[(address & 0x1FFF) as usize] = value, // switchable banks later

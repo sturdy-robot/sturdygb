@@ -75,8 +75,9 @@ impl<'a> Opcode<'a> {
     }
 
     pub fn decode(&mut self) {
-        // MACROS FOR OPCODES
         self.debug_registers();
+        // MACROS FOR OPCODES
+        
         // LD r, r
         macro_rules! ld_r_r {
             ($reg:ident, $reg2:ident) => {{
@@ -2065,13 +2066,19 @@ impl<'a> Opcode<'a> {
 #[cfg(test)]
 mod test {
     use crate::core::cpu::Cpu;
-    use crate::core::cartridge::Cartridge;
+    use crate::core::mmu::Mmu;
+    use crate::core::cartridge::{load_cartridge};
     use crate::core::opcodes::Opcode;
+    use crate::core::registers::Registers;
 
     fn set_up() -> Cpu {
-        let cartridge = Cartridge::new("roms/gb-test-roms/cpu_instrs/cpu_instrs.gb");
-        let is_cgb = cartridge.is_cgb_only();
-        Cpu::new(cartridge, is_cgb)
+        match load_cartridge("roms/cpu_instrs.gb") {
+            Ok(cartridge) => {
+                let mmu = Mmu::new(cartridge);
+                Cpu::new(Registers::new(0x01, 0x00, 0xFF, 0x13, 0x00, 0xC1, 0x84, 0x03), mmu)
+            },
+            Err(_) => panic!("Failed to load roms/cpu_instrs.gb"),
+        }   
     }
 
     #[test]

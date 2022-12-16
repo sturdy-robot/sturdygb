@@ -14,36 +14,8 @@ pub struct Registers {
 }
 
 impl Registers {
-    pub fn new(is_cgb: &bool) -> Self {
-        if *is_cgb {
-            return Self {
-                a: 0x11,
-                b: 0x00,
-                c: 0x00,
-                d: 0xFF,
-                e: 0x56,
-                f: 0x80,
-                h: 0x00,
-                l: 0x0D,
-                pc: 0x0100,
-                sp: 0xFFFE,
-                ime: true,
-            };
-        }
-
-        Self {
-            a: 0x01,
-            b: 0x00,
-            c: 0x13,
-            d: 0x00,
-            e: 0xD8,
-            f: 0xB0,
-            h: 0x01,
-            l: 0x4D,
-            pc: 0x0100,
-            sp: 0xFFFE,
-            ime: true,
-        }
+    pub fn new(a: u8, f: u8, b: u8, c: u8, d: u8, e: u8, h: u8, l: u8) -> Self {
+        Self { a, f, b, c, d, e, h, l, sp: 0xFFFE, pc: 0x0100, ime: true }
     }
 
     pub fn af(&self) -> u16 {
@@ -112,9 +84,14 @@ mod test {
     use super::FFlags;
     use super::Registers;
 
+    fn get_registers() -> Registers {
+        Registers::new(0x01, 0x00, 0xFF, 0x13, 0x00, 0xC1, 0x84, 0x03)
+    }
+
+
     #[test]
     fn test_new_registers() {
-        let r: Registers = Registers::new(&false);
+        let r: Registers = get_registers();
         assert_eq!(r.a, 0x01);
         assert_eq!(r.b, 0x00);
         assert_eq!(r.c, 0x13);
@@ -129,7 +106,7 @@ mod test {
 
     #[test]
     fn test_set_registers() {
-        let mut r: Registers = Registers::new(&false);
+        let mut r = get_registers();
         r.a = 0xAA;
         r.b = 0xBB;
         r.c = 0x33;
@@ -157,9 +134,10 @@ mod test {
         assert_eq!(r.hl(), 0x1314);
     }
 
+
     #[test]
     fn test_set_wide_registers() {
-        let mut r: Registers = Registers::new(&false);
+        let mut r: Registers = get_registers();
         r.set_af(0x1111);
         r.set_bc(0x2222);
         r.set_de(0x3333);
@@ -172,7 +150,7 @@ mod test {
 
     #[test]
     fn test_cpu_flags() {
-        let mut r: Registers = Registers::new(&false);
+        let mut r: Registers = get_registers();
         r.set_f(FFlags::C, true);
         assert_eq!(r.f, 0xB0);
         r.set_f(FFlags::H, true);

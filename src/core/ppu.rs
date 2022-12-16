@@ -5,8 +5,8 @@ const GB_WIDTH: u8 = 160;
 const GB_HEIGHT: u8 = 144;
 
 pub struct Ppu {
-    pub vram: [u8; 0x2000],
-    pub oam: [u8; 0xA0],
+    vram: [u8; 0x2000],
+    oam: [u8; 0xA0],
     lcdc: u8,
     stat: u8,
     scy: u8,
@@ -88,16 +88,14 @@ impl Ppu {
             0xFF69 => self.bcpd,
             0xFF6A => self.ocps,
             0xFF6B => self.ocpd,
-            _ => {
-                //println!("Read from invalid memory address: {address:04X}");
-                0
-            },
+            _ => 0
         }
     }
 
     pub fn write_byte(&mut self, address: u16, value: u8) {
         match address {
-            0xFE00 ..=0xFE9F => self.oam[(address - 0xFE00) as usize] = value,
+            0x8000..=0x9FFF => self.vram[(address - 0x8000) as usize] = value,
+            0xFE00..=0xFE9F => self.oam[(address - 0xFE00) as usize] = value,
             0xFF40 => self.lcdc = value,
             0xFF41 => self.stat = value,
             0xFF42 => self.scy = value,

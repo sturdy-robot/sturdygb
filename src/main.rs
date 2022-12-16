@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
-use crate::core::cartridge::Cartridge;
-use crate::core::gb::GB;
+use crate::core::gb::{GB, GbType};
+use crate::core::cartridge::*;
+
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
@@ -21,18 +22,13 @@ fn get_window() {
     });
 }
 
-fn init_gb(cartridge: Cartridge) -> GB {
-    let is_cgb = cartridge.is_cgb_only();
-    GB::new(cartridge, is_cgb)
-}
-
-fn load_cartridge(filename: String) -> Cartridge {
-    Cartridge::new(&filename)
-}
-
 fn main() {
-    let cartridge: Cartridge =
-        load_cartridge("roms/gb-test-roms/cpu_instrs/cpu_instrs.gb".to_string());
-    let mut gb: GB = init_gb(cartridge);
-    gb.run();
+    let mut gb: GB;
+    match load_cartridge("roms/cpu_instrs.gb") {
+        Ok(mbc) => {
+            gb = GB::new(mbc, GbType::Dmg0);
+            gb.run()
+        },
+        Err(e) => println!("{}", e),
+    }
 }

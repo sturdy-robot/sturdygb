@@ -1,4 +1,3 @@
-use crate::core::cartridge::Cartridge;
 use crate::core::mmu::Mmu;
 use crate::core::opcodes::Opcode;
 use crate::core::registers::Registers;
@@ -9,19 +8,16 @@ pub struct Cpu {
     pub mmu: Mmu,
     pub is_halted: bool,
     pub cycles: u32,
-    pub is_cgb: bool,
     pub is_paused: bool,
 }
 
-
 impl Cpu {
-    pub fn new(cartridge: Cartridge, is_cgb: bool) -> Self {
+    pub fn new(registers: Registers, mmu: Mmu) -> Self {
         Self {
-            reg: Registers::new(&is_cgb),
-            mmu: Mmu::new(cartridge),
+            reg: registers,
+            mmu: mmu,
             is_halted: false,
             cycles: 0,
-            is_cgb,
             is_paused: false,
         }
     }
