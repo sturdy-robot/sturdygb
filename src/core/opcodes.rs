@@ -1104,12 +1104,11 @@ impl<'a> Opcode<'a> {
             // LD HL, SP + u8
             0xF8 => {
                 let value = self.mmu.read_byte(self.reg.pc) as i8 as i16 as u16;
-                self.reg.pc = self.reg.pc.wrapping_add(1);
                 self.reg.set_f(FFlags::Z, false);
                 self.reg.set_f(FFlags::N, false);
                 self.reg.set_f(
                     FFlags::H,
-                    (self.reg.pc & 0x000F).wrapping_add(value & 0x000F) > 0x000F,
+                    (self.reg.sp & 0x000F).wrapping_add(value & 0x000F) > 0x000F,
                 );
                 self.reg.set_f(
                     FFlags::C,
@@ -1117,6 +1116,7 @@ impl<'a> Opcode<'a> {
                 );
                 let sum_value = self.reg.sp.wrapping_add(value);
                 self.reg.set_hl(sum_value);
+                self.reg.pc = self.reg.pc.wrapping_add(1);
             }
             // LD SP, HL
             0xF9 => {
