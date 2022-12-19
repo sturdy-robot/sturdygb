@@ -89,7 +89,6 @@ pub enum FFlags {
 
 #[cfg(test)]
 mod test {
-    use super::FFlags;
     use super::Registers;
 
     fn get_registers() -> Registers {
@@ -156,16 +155,4 @@ mod test {
         assert_eq!(r.hl(), 0x4444);
     }
 
-    #[test]
-    fn test_cpu_flags() {
-        let mut r: Registers = get_registers();
-        r.set_f(FFlags::C, true);
-        assert_eq!(r.f, 0xB0);
-        r.set_f(FFlags::H, true);
-        assert_eq!(r.f, 0xB0);
-        r.set_f(FFlags::N, false);
-        assert_eq!(r.f, 0xB0);
-        r.set_f(FFlags::Z, false);
-        assert_eq!(r.f, 0x30);
-    }
 }

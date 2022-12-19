@@ -104,6 +104,9 @@ impl<'a> Opcode<'a> {
             // NOP
             0x00 => { }
 
+            // LD nn, SP
+            0x08 => self.mmu.write_word(self.reg.pc, self.reg.sp),
+
             // LD INSTRUCTIONS
             // LD r, n
             0x06 => self.reg.b = self.mmu.read_byte(self.reg.pc),
@@ -190,9 +193,6 @@ impl<'a> Opcode<'a> {
             0x21 => self.reg.set_hl(self.mmu.read_word(self.reg.pc)),
             0x31 => self.reg.sp = self.mmu.read_word(self.reg.pc),
             
-            // LD nn, SP
-            0x08 => self.mmu.write_word(self.reg.pc, self.reg.sp),
-            
             // LD A, (C)
             0xF2 => self.reg.a = self.mmu.read_byte(0xFF00_u16.wrapping_add(self.reg.c as u16)),
             // LD (C), A
@@ -221,6 +221,18 @@ impl<'a> Opcode<'a> {
             0xF0 => { let value = self.mmu.read_byte(self.reg.pc); self.reg.a = self.mmu.read_byte(0xFF00_u16.wrapping_add(value as u16)); }
             // LD SP, HL
             0xF9 => self.reg.sp = self.reg.hl(),
+
+            // PUSH rr
+            0xF5 => { self.mmu.write_word(self.reg.sp, self.reg.af()); self.reg.sp = self.reg.sp.wrapping_sub(2); }
+            0xC5 => { self.mmu.write_word(self.reg.sp, self.reg.bc()); self.reg.sp = self.reg.sp.wrapping_sub(2); }
+            0xD5 => { self.mmu.write_word(self.reg.sp, self.reg.de()); self.reg.sp = self.reg.sp.wrapping_sub(2); }
+            0xE5 => { self.mmu.write_word(self.reg.sp, self.reg.hl()); self.reg.sp = self.reg.sp.wrapping_sub(2); }
+            
+            // POP rr
+            0xF1 => { let value = self.mmu.read_word(self.reg.sp); self.reg.set_af(value); self.reg.sp = self.reg.sp.wrapping_add(2); }
+            0xC1 => { let value = self.mmu.read_word(self.reg.sp); self.reg.set_bc(value); self.reg.sp = self.reg.sp.wrapping_add(2); }
+            0xD1 => { let value = self.mmu.read_word(self.reg.sp); self.reg.set_de(value); self.reg.sp = self.reg.sp.wrapping_add(2); }
+            0xE1 => { let value = self.mmu.read_word(self.reg.sp); self.reg.set_hl(value); self.reg.sp = self.reg.sp.wrapping_add(2); }
             _ => println!("Not implemented!"),
         }
     }
