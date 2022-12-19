@@ -908,7 +908,7 @@ impl<'a> Opcode<'a> {
             0xC7 => self.rst(0x00),
             // RET Z
             0xC8 => {
-                if (self.reg.f & FFlags::Z as u8) == 0x80 {
+                if (self.reg.f & FFlags::Z as u8) == FFlags::Z as u8 {
                     self.ret();
                 }
             }
@@ -916,7 +916,7 @@ impl<'a> Opcode<'a> {
             0xC9 => self.ret(),
             // JP Z, u16
             0xCA => {
-                if (self.reg.f & FFlags::Z as u8) == 0x80 {
+                if (self.reg.f & FFlags::Z as u8) == FFlags::Z as u8 {
                     self.reg.pc = self.jp();
                 } else {
                     self.reg.pc = self.reg.pc.wrapping_add(2);
@@ -925,7 +925,7 @@ impl<'a> Opcode<'a> {
             0xCB => self.decode_cb(),
             // CALL Z, u16
             0xCC => {
-                if (self.reg.f & FFlags::Z as u8) == 0x80 {
+                if (self.reg.f & FFlags::Z as u8) == FFlags::Z as u8 {
                     self.push_stack(self.reg.pc.wrapping_add(2));
                     self.reg.pc = self.mmu.read_word(self.reg.pc);
                 } else {
@@ -1044,9 +1044,9 @@ impl<'a> Opcode<'a> {
             }
             // RST 20h
             0xE7 => self.rst(0x20),
-            // ADD SP, u8
+            // ADD SP, i8
             0xE8 => {
-                let value = self.mmu.read_byte(self.reg.pc) as u16;
+                let value = self.mmu.read_byte(self.reg.pc) as i8 as i16 as u16;
                 self.reg.pc = self.reg.pc.wrapping_add(1);
                 self.reg.set_f(FFlags::Z, false);
                 self.reg.set_f(FFlags::N, false);
@@ -1111,7 +1111,7 @@ impl<'a> Opcode<'a> {
             0xF7 => self.rst(0x30),
             // LD HL, SP + u8
             0xF8 => {
-                let value = self.mmu.read_byte(self.reg.pc) as u16;
+                let value = self.mmu.read_byte(self.reg.pc) as i8 as i16 as u16;
                 self.reg.pc = self.reg.pc.wrapping_add(1);
                 self.reg.set_f(FFlags::Z, false);
                 self.reg.set_f(FFlags::N, false);
@@ -1196,9 +1196,9 @@ impl<'a> Opcode<'a> {
     }
 
     fn jr(&mut self) {
-        let value: u8;
-        (value, self.reg.pc) = self.mmu.fetch_instruction(&mut self.reg.pc);
-        self.reg.pc = self.reg.pc.wrapping_add(value as u16);
+        let value = self.mmu.read_byte(self.reg.pc) as i8;
+        self.reg.pc = self.reg.pc.wrapping_add(1);
+        self.reg.pc = ((self.reg.pc as i32) + (value as i32)) as u16 ;
     }
 
     fn jr_if(&mut self, flag: u8) {
