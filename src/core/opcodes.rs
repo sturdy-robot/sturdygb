@@ -212,7 +212,7 @@ impl<'a> Opcode<'a> {
                 self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, true);
                 self.reg.set_f(FFlags::H, (self.reg.a & 0xF) < (hl & 0xF) + flag);
-                self.reg.set_f(FFlags::C, (self.reg.a as u16) < ((hl + flag) as u16));
+                self.reg.set_f(FFlags::C, (self.reg.a as u16) < (hl as u16) + (flag as u16));
                 self.reg.a = value;
             }};
         }
@@ -896,9 +896,7 @@ impl<'a> Opcode<'a> {
                 }
             }
             // PUSH BC
-            0xC5 => {
-                self.push_stack(self.reg.bc());             
-            }
+            0xC5 => self.push_stack(self.reg.bc()),
             // ADD A, u8
             0xC6 => {
                 add!(self.mmu.read_byte(self.reg.pc));
@@ -1030,13 +1028,9 @@ impl<'a> Opcode<'a> {
                 self.reg.set_hl(sp);
             }
             // LD (C), A
-            0xE2 => {
-                self.mmu.write_byte(0xFF00 | self.reg.c as u16, self.reg.a);
-            }
+            0xE2 => self.mmu.write_byte(0xFF00 | self.reg.c as u16, self.reg.a),
             // PUSH HL
-            0xE5 => {
-                self.push_stack(self.reg.hl());
-            }
+            0xE5 => self.push_stack(self.reg.hl()),
             // AND A, u8
             0xE6 => {
                 and!(self.mmu.read_byte(self.reg.pc));
@@ -1061,9 +1055,7 @@ impl<'a> Opcode<'a> {
                 self.reg.sp = self.reg.sp.wrapping_add(value);
             }
             // JP (HL)
-            0xE9 => {
-                self.reg.pc = self.reg.hl();
-            }
+            0xE9 => self.reg.pc = self.reg.hl(),
             // LD u16, A
             0xEA => {
                 let value = self.mmu.read_word(self.reg.pc);

@@ -11,6 +11,7 @@ use winit::{
 
 
 mod core;
+use std::env;
 
 fn get_window() {
     env_logger::init();
@@ -24,11 +25,20 @@ fn get_window() {
 
 fn main() {
     let mut gb: GB;
-    match load_cartridge("roms/cpu_instrs.gb") {
+    let args: Vec<String> = env::args().collect();
+    let filename: &str;
+    if args.len() == 1 {
+        filename = "roms/cpu_instrs.gb"
+    } else {
+        filename = &args[1];
+    }
+
+    match load_cartridge(filename) {
         Ok(mbc) => {
             gb = GB::new(mbc, GbType::Dmg0);
             gb.run()
         },
         Err(e) => println!("{}", e),
     }
+    
 }
