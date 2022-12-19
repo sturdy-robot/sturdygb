@@ -46,9 +46,7 @@ impl Cpu {
         opcode.decode();
         if opcode.is_halted {
             self.is_halted = true;
-        }
-        self.cycles += opcode.get_cycles();
-        
+        }     
     }
 }
 

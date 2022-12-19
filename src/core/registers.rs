@@ -54,13 +54,21 @@ impl Registers {
         self.l = (value & 0x00FF) as u8;
     }
 
-    pub fn set_f(&mut self, flag: FFlags, condition: bool) {
-        let value: u8 = flag as u8;
-        match condition {
-            true => self.f |= value,
-            false => self.f &= !value,
+    pub fn set_f(&mut self, mut c: u8, mut h: u8, mut n: u8, mut z: u8) {
+        if c == 2 {
+            c = self.f & FFlags::C as u8;
         }
-        self.f &= 0xF0;
+        if h == 2 {
+            h = self.f & FFlags::H as u8;
+        }
+        if n == 2 {
+            n = self.f & FFlags::N as u8;
+        }
+        if z == 2 {
+            z = self.f & FFlags::Z as u8;
+        }
+        let value: u8 = ((z << 8) | (n << 7) | (h << 6) | (c << 5)) & 0xF0;
+
     }
 
     pub fn get_flag(&self, flag: FFlags) -> u8 {
