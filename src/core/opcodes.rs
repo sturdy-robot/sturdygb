@@ -1077,12 +1077,8 @@ impl<'a> Opcode<'a> {
             }
             // POP AF
             0xF1 => {
-                let sp = self.pop_stack();
+                let sp = self.pop_stack() & 0xFF00;
                 self.reg.set_af(sp);
-                self.reg.set_f(FFlags::Z, sp > 0x7F);
-                self.reg.set_f(FFlags::N, (sp & 0x40) == 0x40);
-                self.reg.set_f(FFlags::H, (sp & 0x20) == 0x20);
-                self.reg.set_f(FFlags::C, (sp & 0x10) == 0x10);
             }
             // LD A, (C)
             0xF2 => {
