@@ -2,9 +2,9 @@ use crate::core::mmu::Mmu;
 use crate::core::registers::{FFlags, Registers};
 
 
-const opcode_names: [&str; 256] = [
+const OPCODE_NAMES: [&str; 256] = [
     "NOP",         "LD BC, d16", "LD (BC), A",  "INC BC",     "INC B",        "DEC B",      "LD B, d8",    "RLCA",       "LD (a16), SP",   "ADD HL, BC", "LD A, (BC)",  "DEC BC",    "INC C",       "DEC C",    "LD C, d8",    "RRCA",
-    "STOP 0",      "LD DE, d16", "LD (DE), A",  "INC DE",     "INC D",        "DEC D",      "LD D, d8",    "RLA",        "JR r8",          "ADD HL, DE", "LD A, (DE)",  "DEC DE",    "INC E",       "DEC E",    "LD E, d8",    "RRA",
+    "STOP",        "LD DE, d16", "LD (DE), A",  "INC DE",     "INC D",        "DEC D",      "LD D, d8",    "RLA",        "JR r8",          "ADD HL, DE", "LD A, (DE)",  "DEC DE",    "INC E",       "DEC E",    "LD E, d8",    "RRA",
     "JR NZ, r8",   "LD HL, d16", "LD (HL+), A", "INC HL",     "INC H",        "DEC H",      "LD H, d8",    "DAA",        "JR Z, r8",       "ADD HL, HL", "LD A, (HL+)", "DEC HL",    "INC L",       "DEC L",    "LD L, d8",    "CPL",
     "JR NC, r8",   "LD SP, d16", "LD (HL-), A", "INC SP",     "INC (HL)",     "DEC (HL)",   "LD (HL), d8", "SCF",        "JR C, r8",       "ADD HL, SP", "LD A, (HL-)", "DEC SP",    "INC A",       "DEC A",    "LD A, d8",    "CCF",
     "LD B, B",     "LD B, C",    "LD B, D",     "LD B, E",    "LD B, H",      "LD B, L",    "LD B, (HL)",  "LD B, A",    "LD C, B",        "LD C, C",    "LD C, D",     "LD C, E",   "LD C, H",     "LD C, L",  "LD C, (HL)",  "LD C, A",
@@ -21,7 +21,7 @@ const opcode_names: [&str; 256] = [
     "LDH A, (a8)", "POP AF",     "LD A, (C)",   "DI",         "NULL",         "PUSH AF",    "OR d8",       "RST 30H",    "LD HL, SP + r8", "LD SP, HL",  "JP M, a16",   "EI",        "NULL",        "NULL",     "CP d8",       "RST 38H"
 ];
 
-const opcodes_size: [u16; 256] = [
+const OPCODES_SIZE: [u16; 256] = [
 //  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
     1, 3, 1, 1, 1, 1, 2, 1, 3, 1, 1, 1, 1, 1, 2, 1,
     2, 3, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1,
@@ -35,13 +35,13 @@ const opcodes_size: [u16; 256] = [
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 3, 3, 3, 1, 2, 1, 1, 1, 3, 1, 3, 3, 2, 1,
+    1, 1, 3, 3, 3, 1, 2, 1, 1, 1, 3, 2, 3, 3, 2, 1,
     1, 1, 3, 0, 3, 1, 2, 1, 1, 1, 3, 0, 3, 0, 2, 1,
     2, 1, 1, 0, 0, 1, 2, 1, 2, 1, 3, 0, 0, 0, 2, 1,
     2, 1, 1, 1, 0, 1, 2, 1, 2, 1, 3, 1, 0, 0, 2, 1,
 ];
 
-const opcodes_cycles: [usize; 256] = [
+const OPCODES_CYCLES: [usize; 256] = [
 //  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
     1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1,
     0, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1,
@@ -71,17 +71,20 @@ pub struct Opcode<'a> {
     pub cb_inst: u8,
     pub is_cb: bool,
     pub is_halted: bool,
+    pub trigger_ime: u8,
 }
 
 impl<'a> Opcode<'a> {
     pub fn new(opcode: u8, reg: &'a mut Registers, mmu: &'a mut Mmu) -> Self {
+        let mut cb_inst: u8 = 0x00;
         let mut is_cb: bool = false;
         if opcode == 0xCB {
             is_cb = true;
+            cb_inst = mmu.read_byte(reg.pc.wrapping_add(1));
         }
-        let name = opcode_names[opcode as usize];
-        let size = opcodes_size[opcode as usize];
-        let cycles = opcodes_cycles[opcode as usize];
+        let name = OPCODE_NAMES[opcode as usize];
+        let size = OPCODES_SIZE[opcode as usize];
+        let cycles = OPCODES_CYCLES[opcode as usize];
 
         Self {
             opcode,
@@ -90,12 +93,16 @@ impl<'a> Opcode<'a> {
             cycles,
             reg,
             mmu,
-            cb_inst: 0,
+            cb_inst,
             is_cb,
             is_halted: false,
+            trigger_ime: 0,
         }
     }
 
+    pub fn advance_pc(&mut self) {
+        self.reg.pc = self.reg.pc.wrapping_add(self.size);
+    }
 
     pub fn decode(&mut self) {
         self.debug_registers();
@@ -171,7 +178,7 @@ impl<'a> Opcode<'a> {
             0x73 => self.mmu.write_byte(self.reg.hl(), self.reg.e),
             0x74 => self.mmu.write_byte(self.reg.hl(), self.reg.h),
             0x75 => self.mmu.write_byte(self.reg.hl(), self.reg.l),
-            0x76 => self.mmu.write_byte(self.reg.hl(), self.reg.a),
+            0x77 => self.mmu.write_byte(self.reg.hl(), self.reg.a),
             0x7F => { }, // LD A, A
             0x78 => self.reg.a = self.reg.b,
             0x79 => self.reg.a = self.reg.c,
@@ -362,15 +369,840 @@ impl<'a> Opcode<'a> {
             0x3B => self.reg.sp = self.reg.sp.wrapping_sub(1),
 
             // DAA
-
+            0x27 => self.daa(),
             // CPL
-            0x2F => self.cpl(),
+            0x2F => { self.reg.a = !self.reg.a; self.reg.set_f(2, 1, 1, 2); },
+            // CCF
+            0x3F => { if self.reg.get_flag(FFlags::C) == 1 { self.reg.set_f(0, 0, 0, 2); } else { self.reg.set_f(1, 0, 0, 2); } }
+            // SCF
+            0x37 => self.reg.set_f(1, 0, 0, 2),
+
+            // HALT
+            0x76 => self.halt(),
+
+            // STOP
+            0x10 => self.stop(),
+
+            // ENABLE/DISABLE IME
+            0xF3 => self.trigger_ime = 2, // DI
+            0xFB => self.trigger_ime = 1, // EI
+
+            // PREFIX CB
+            0xCB => self.decode_cb_prefix(),
+
+            // RST
+            0xC7 => self.rst(0x00),
+            0xD7 => self.rst(0x10),
+            0xE7 => self.rst(0x20),
+            0xF7 => self.rst(0x30),
+            0xCF => self.rst(0x08),
+            0xDF => self.rst(0x18),
+            0xEF => self.rst(0x28),
+            0xFF => self.rst(0x38),
             _ => println!("Not implemented!"),
         }
     }
 
-    fn decode_cb(&mut self) {
+    fn decode_cb_prefix(&mut self) {
+        // Macros for decoding CB instructions
+        
+        // BIT
+        macro_rules! bitn {
+            ($n:expr, $reg:ident) => {{
+                let bit: u8 = match $n {
+                    0 => 0x01,
+                    1 => 0x02,
+                    2 => 0x04,
+                    3 => 0x08,
+                    4 => 0x10,
+                    5 => 0x20,
+                    6 => 0x40,
+                    7 => 0x80,
+                    _ => 0x01,
+                };
+                let z: u8 = if (self.reg.$reg & bit) == 0 { 1 } else { 0 };
+                self.reg.set_f(2, 1, 0, z);
+            }};
+            ($hl:expr, $n:expr) => {{
+                let byte_hl = $hl;
+                let bit: u8 = match $n {
+                    0 => 0x01,
+                    1 => 0x02,
+                    2 => 0x04,
+                    3 => 0x08,
+                    4 => 0x10,
+                    5 => 0x20,
+                    6 => 0x40,
+                    7 => 0x80,
+                    _ => 0x01,
+                };
+                let z: u8 = if (byte_hl & bit) == 0 { 1 } else { 0 };
+                self.reg.set_f(2, 1, 0, z);
+            }};
+        }
 
+        // SWAP
+        macro_rules! swapn {
+            ($reg:ident) => {{
+                let value = ((self.reg.$reg & 0xF) << 4) | (self.reg.$reg >> 4);
+                let z: u8 = if (value) == 0 { 1 } else { 0 };
+                self.reg.set_f(0, 0, 0, z);
+                self.reg.$reg = value;
+            }};
+            ($hl:expr) => {{
+                let byte_hl = $hl;
+                let value = ((byte_hl & 0xF) << 4) | (byte_hl >> 4);
+                let z: u8 = if (value) == 0 { 1 } else { 0 };
+                self.reg.set_f(0, 0, 0, z);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }};
+        }
+
+        // RL
+        macro_rules! rln {
+            ($reg:ident) => {{
+                let flag = match self.reg.$reg > 0x7F {
+                    true => 1,
+                    false => 0,
+                };
+                let value = (self.reg.$reg << 1) | flag;
+                let z: u8 = if (value) == 0 { 1 } else { 0 };
+                let c: u8 = if (self.reg.$reg & 0x7F) > 0x7F { 1 } else { 0 };
+                self.reg.set_f(c, 0, 0, z);
+                self.reg.$reg = value;
+            }};
+            ($hl:expr) => {{
+                let byte_hl = $hl;
+                let flag = match byte_hl > 0x7F {
+                    true => 1,
+                    false => 0,
+                };
+                let value = (byte_hl << 1) | flag;
+                let z: u8 = if (value) == 0 { 1 } else { 0 };
+                let c: u8 = if (byte_hl & 0x7F) > 0x7F { 1 } else { 0 };
+                self.reg.set_f(c, 0, 0, z);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }};
+        }
+
+
+        // RR
+        macro_rules! rrn {
+            ($reg:ident) => {{
+                let flag = match (self.reg.$reg & 1) == 1 {
+                    true => 0x80,
+                    false => 0,
+                };
+                let value = flag | (self.reg.$reg >> 1);
+                let z: u8 = if (value) == 0 { 1 } else { 0 };
+                let c: u8 = if (self.reg.$reg & 1) == 1 { 1 } else { 0 };
+                self.reg.set_f(c, 0, 0, z);
+                self.reg.$reg = value;
+            }};
+            ($hl:expr) => {{
+                let byte_hl = $hl;
+                let flag = match (byte_hl & 1) == 1 {
+                    true => 0x80,
+                    false => 0,
+                };
+                let value = flag | (byte_hl >> 1);
+                let z: u8 = if (value) == 0 { 1 } else { 0 };
+                let c: u8 = if (byte_hl & 1) == 1 { 1 } else { 0 };
+                self.reg.set_f(c, 0, 0, z);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }};
+        }
+
+        // RLC
+        macro_rules! rlcn {
+            ($reg:ident) => {{
+                let flag: u8 = match self.reg.f & FFlags::C as u8 == FFlags::C as u8 {
+                    true => 1,
+                    false => 0,
+                };
+                let value = ((self.reg.$reg << 1) & 0xFF) | flag;
+                let z: u8 = if (value) == 0 { 1 } else { 0 };
+                let c: u8 = if value > 0x7F { 1 } else { 0 };
+                self.reg.set_f(c, 0, 0, z);
+                self.reg.$reg = value;
+            }};
+            ($hl:expr) => {{
+                let byte_hl = $hl;
+                let flag: u8 = match self.reg.f & FFlags::C as u8 == FFlags::C as u8 {
+                    true => 1,
+                    false => 0,
+                };
+                let value = ((byte_hl << 1) & 0xFF) | flag;
+                let z: u8 = if (value) == 0 { 1 } else { 0 };
+                let c: u8 = if value > 0x7F { 1 } else { 0 };
+                self.reg.set_f(c, 0, 0, z);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }};
+        }
+
+        // RRC
+        macro_rules! rrcn {
+            ($reg:ident) => {{
+                let flag: u8 = match self.reg.f & FFlags::C as u8 == FFlags::C as u8 {
+                    true => 0x80,
+                    false => 0,
+                };
+                let value = flag | (self.reg.$reg >> 1);
+                let z: u8 = if (value) == 0 { 1 } else { 0 };
+                let c: u8 = if (value & 1) == 1 { 1 } else { 0 };
+                self.reg.set_f(c, 0, 0, z);
+                self.reg.$reg = value;
+            }};
+            ($hl:expr) => {{
+                let byte_hl = $hl;
+                let flag: u8 = match self.reg.f & FFlags::C as u8 == FFlags::C as u8 {
+                    true => 0x80,
+                    false => 0,
+                };
+                let value = flag | (byte_hl >> 1);
+                let z: u8 = if (value) == 0 { 1 } else { 0 };
+                let c: u8 = if (value & 1) == 1 { 1 } else { 0 };
+                self.reg.set_f(c, 0, 0, z);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }};
+        }
+
+        // RES
+        macro_rules! resn {
+            ($n:expr, $reg:ident) => {{
+                let bit: u8 = match $n {
+                    0 => 0xFE,
+                    1 => 0xFD,
+                    2 => 0xFB,
+                    3 => 0xF7,
+                    4 => 0xEF,
+                    5 => 0xDF,
+                    6 => 0xBF,
+                    7 => 0x7F,
+                    _ => 0xFE,
+                };
+                self.reg.$reg &= bit;
+            }};
+            ($n:expr, $hl:expr) => {{
+                let byte_hl = $hl;
+                let bit: u8 = match $n {
+                    0 => 0xFE,
+                    1 => 0xFD,
+                    2 => 0xFB,
+                    3 => 0xF7,
+                    4 => 0xEF,
+                    5 => 0xDF,
+                    6 => 0xBF,
+                    7 => 0x7F,
+                    _ => 0xFE,
+                };
+                self.mmu.write_byte(self.reg.hl(), byte_hl & bit);
+            }};
+        }
+
+        // SET
+        macro_rules! setn {
+            ($n:expr, $reg:ident) => {{
+                let bit: u8 = match $n {
+                    0 => 0x01,
+                    1 => 0x02,
+                    2 => 0x04,
+                    3 => 0x08,
+                    4 => 0x10,
+                    5 => 0x20,
+                    6 => 0x40,
+                    7 => 0x80,
+                    _ => 0x01,
+                };
+                self.reg.$reg |= bit;
+            }};
+            ($n:expr, $hl:expr) => {{
+                let byte_hl = $hl;
+                let bit: u8 = match $n {
+                    0 => 0x01,
+                    1 => 0x02,
+                    2 => 0x04,
+                    3 => 0x08,
+                    4 => 0x10,
+                    5 => 0x20,
+                    6 => 0x40,
+                    7 => 0x80,
+                    _ => 0x01,
+                };
+                self.mmu.write_byte(self.reg.hl(), byte_hl | bit);
+            }};
+        }
+
+        // SLA
+        macro_rules! slan {
+            ($reg:ident) => {{
+                let value = self.reg.$reg << 1;
+                let z: u8 = if value == 0 { 1 } else { 0 };
+                let c: u8 = if value > 0x7F { 1 } else { 0 };
+                self.reg.set_f(c, 0, 0, z);
+                self.reg.$reg = value;
+            }};
+            ($hl:expr) => {{
+                let byte_hl = $hl;
+                let value = byte_hl << 1;
+                let z: u8 = if value == 0 { 1 } else { 0 };
+                let c: u8 = if value > 0x7F { 1 } else { 0 };
+                self.reg.set_f(c, 0, 0, z);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }};
+        }
+
+        // SRA
+        macro_rules! sran {
+            ($reg:ident) => {{
+                let value = (self.reg.$reg & 0x80) | (self.reg.$reg >> 1);
+                let z: u8 = if value == 0 { 1 } else { 0 };
+                let c: u8 = if (value & 1) == 1 { 1 } else { 0 };
+                self.reg.set_f(c, 0, 0, z);
+                self.reg.$reg = value;
+            }};
+            ($hl:expr) => {{
+                let byte_hl = $hl;
+                let value = (byte_hl & 0x80) | (byte_hl >> 1);
+                let z: u8 = if value == 0 { 1 } else { 0 };
+                let c: u8 = if (value & 1) == 1 { 1 } else { 0 };
+                self.reg.set_f(c, 0, 0, z);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }};
+        }
+        
+        // SRL
+        macro_rules! srln {
+            ($reg:ident) => {{
+                let value = self.reg.$reg >> 1;
+                let z: u8 = if value == 0 { 1 } else { 0 };
+                let c: u8 = if (value & 1) == 1 { 1 } else { 0 };
+                self.reg.set_f(c, 0, 0, z);
+                self.reg.$reg = value;
+            }};
+            ($hl:expr) => {{
+                let byte_hl = $hl;
+                let value = byte_hl >> 1;
+                let z: u8 = if value == 0 { 1 } else { 0 };
+                let c: u8 = if (value & 1) == 1 { 1 } else { 0 };
+                self.reg.set_f(c, 0, 0, z);
+                self.mmu.write_byte(self.reg.hl(), value);
+            }};
+        }
+        match self.cb_inst {
+            // RLC B
+            0x00 => rlcn!(b),
+            // RLC C
+            0x01 => rlcn!(c),
+            // RLC D
+            0x02 => rlcn!(d),
+            // RLC E
+            0x03 => rlcn!(e),
+            // RLC H
+            0x04 => rlcn!(h),
+            // RLC L
+            0x05 => rlcn!(l),
+            // RLC (HL)
+            0x06 => rlcn!(self.mmu.read_byte(self.reg.hl())),
+            // RLC A
+            0x07 => rlcn!(a),
+            // RRC B
+            0x08 => rrcn!(b),
+            // RRC C
+            0x09 => rrcn!(c),
+            // RRC D
+            0x0A => rrcn!(d),
+            // RRC E
+            0x0B => rrcn!(e),
+            // RRC H
+            0x0C => rrcn!(h),
+            // RRC L
+            0x0D => rrcn!(l),
+            // RRC (HL)
+            0x0E => rrcn!(self.mmu.read_byte(self.reg.hl())),
+            // RRC A
+            0x0F => rrcn!(a),
+            // RL B
+            0x10 => rln!(b),
+            // RL C
+            0x11 => rln!(c),
+            // RL D
+            0x12 => rln!(d),
+            // RL E
+            0x13 => rln!(e),
+            // RL H
+            0x14 => rln!(h),
+            // RL L
+            0x15 => rln!(l),
+            // RL (HL)
+            0x16 => rln!(self.mmu.read_byte(self.reg.hl())),
+            // RL A
+            0x17 => rln!(a),
+            // RR B
+            0x18 => rrn!(b),
+            // RR C
+            0x19 => rrn!(c),
+            // RR D
+            0x1A => rrn!(d),
+            // RR E
+            0x1B => rrn!(e),
+            // RR H
+            0x1C => rrn!(h),
+            // RR L
+            0x1D => rrn!(l),
+            // RR (HL)
+            0x1E => rrn!(self.mmu.read_byte(self.reg.hl())),
+            // RR A
+            0x1F => rrn!(a),
+            // SLA B
+            0x20 => slan!(b),
+            // SLA C
+            0x21 => slan!(c),
+            // SLA D
+            0x22 => slan!(d),
+            // SLA E
+            0x23 => slan!(e),
+            // SLA H
+            0x24 => slan!(h),
+            // SLA L
+            0x25 => slan!(l),
+            // SLA (HL)
+            0x26 => slan!(self.mmu.read_byte(self.reg.hl())),
+            // SLA A
+            0x27 => slan!(a),
+            // SRA B
+            0x28 => sran!(b),
+            // SRA C
+            0x29 => sran!(c),
+            // SRA D
+            0x2A => sran!(d),
+            // SRA E
+            0x2B => sran!(e),
+            // SRA H
+            0x2C => sran!(h),
+            // SRA L
+            0x2D => sran!(l),
+            // SRA (HL)
+            0x2E => sran!(self.mmu.read_byte(self.reg.hl())),
+            // SRA A
+            0x2F => sran!(a),
+            // SWAP B
+            0x30 => swapn!(b),
+            // SWAP C
+            0x31 => swapn!(c),
+            // SWAP D
+            0x32 => swapn!(d),
+            // SWAP E
+            0x33 => swapn!(e),
+            // SWAP H
+            0x34 => swapn!(h),
+            // SWAP L
+            0x35 => swapn!(l),
+            // SWAP (HL)
+            0x36 => swapn!(self.mmu.read_byte(self.reg.hl())),
+            // SWAP A
+            0x37 => swapn!(a),
+            // SRL B
+            0x38 => srln!(b),
+            // SRL C
+            0x39 => srln!(c),
+            // SRL D
+            0x3A => srln!(d),
+            // SRL E
+            0x3B => srln!(e),
+            // SRL H
+            0x3C => srln!(h),
+            // SRL L
+            0x3D => srln!(l),
+            // SRL (HL)
+            0x3E => srln!(self.mmu.read_byte(self.reg.hl())),
+            // SRL A
+            0x3F => srln!(a),
+            // BIT 0,B
+            0x40 => bitn!(0, b),
+            // BIT 0,C
+            0x41 => bitn!(0, c),
+            // BIT 0,D
+            0x42 => bitn!(0, d),
+            // BIT 0,E
+            0x43 => bitn!(0, e),
+            // BIT 0,H
+            0x44 => bitn!(0, h),
+            // BIT 0,L
+            0x45 => bitn!(0, l),
+            // BIT 0,(HL)
+            0x46 => bitn!(self.mmu.read_byte(self.reg.hl()), 0),
+            // BIT 0,A
+            0x47 => bitn!(0, a),
+            // BIT 1,B
+            0x48 => bitn!(1, b),
+            // BIT 1,C
+            0x49 => bitn!(1, c),
+            // BIT 1,D
+            0x4A => bitn!(1, d),
+            // BIT 1,E
+            0x4B => bitn!(1, e),
+            // BIT 1,H
+            0x4C => bitn!(1, h),
+            // BIT 1,L
+            0x4D => bitn!(1, l),
+            // BIT 1,(HL)
+            0x4E => bitn!(self.mmu.read_byte(self.reg.hl()), 1),
+            // BIT 1,A
+            0x4F => bitn!(1, a),
+            // BIT 2,B
+            0x50 => bitn!(2, b),
+            // BIT 2,C
+            0x51 => bitn!(2, c),
+            // BIT 2,D
+            0x52 => bitn!(2, d),
+            // BIT 2,E
+            0x53 => bitn!(2, e),
+            // BIT 2,H
+            0x54 => bitn!(2, h),
+            // BIT 2,L
+            0x55 => bitn!(2, l),
+            // BIT 2,(HL)
+            0x56 => bitn!(self.mmu.read_byte(self.reg.hl()), 2),
+            // BIT 2,A
+            0x57 => bitn!(2, a),
+            // BIT 3,B
+            0x58 => bitn!(3, b),
+            // BIT 3,C
+            0x59 => bitn!(3, c),
+            // BIT 3,D
+            0x5A => bitn!(3, d),
+            // BIT 3,E
+            0x5B => bitn!(3, e),
+            // BIT 3,H
+            0x5C => bitn!(3, h),
+            // BIT 3,L
+            0x5D => bitn!(3, l),
+            // BIT 3,(HL)
+            0x5E => bitn!(self.mmu.read_byte(self.reg.hl()), 3),
+            // BIT 3,A
+            0x5F => bitn!(3, a),
+            // BIT 4,B
+            0x60 => bitn!(4, b),
+            // BIT 4,C
+            0x61 => bitn!(4, c),
+            // BIT 4,D
+            0x62 => bitn!(4, d),
+            // BIT 4,E
+            0x63 => bitn!(4, e),
+            // BIT 4,H
+            0x64 => bitn!(4, h),
+            // BIT 4,L
+            0x65 => bitn!(4, l),
+            // BIT 4,(HL)
+            0x66 => bitn!(self.mmu.read_byte(self.reg.hl()), 4),
+            // BIT 4,A
+            0x67 => bitn!(4, a),
+            // BIT 5,B
+            0x68 => bitn!(5, b),
+            // BIT 5,C
+            0x69 => bitn!(5, c),
+            // BIT 5,D
+            0x6A => bitn!(5, d),
+            // BIT 5,E
+            0x6B => bitn!(5, e),
+            // BIT 5,H
+            0x6C => bitn!(5, h),
+            // BIT 5,L
+            0x6D => bitn!(5, l),
+            // BIT 5,(HL)
+            0x6E => bitn!(self.mmu.read_byte(self.reg.hl()), 5),
+            // BIT 5,A
+            0x6F => bitn!(5, a),
+            // BIT 6,B
+            0x70 => bitn!(6, b),
+            // BIT 6,C
+            0x71 => bitn!(6, c),
+            // BIT 6,D
+            0x72 => bitn!(6, d),
+            // BIT 6,E
+            0x73 => bitn!(6, e),
+            // BIT 6,H
+            0x74 => bitn!(6, h),
+            // BIT 6,L
+            0x75 => bitn!(6, l),
+            // BIT 6,(HL)
+            0x76 => bitn!(self.mmu.read_byte(self.reg.hl()), 6),
+            // BIT 6,A
+            0x77 => bitn!(6, a),
+            // BIT 7,B
+            0x78 => bitn!(7, b),
+            // BIT 7,C
+            0x79 => bitn!(7, c),
+            // BIT 7,D
+            0x7A => bitn!(7, d),
+            // BIT 7,E
+            0x7B => bitn!(7, e),
+            // BIT 7,H
+            0x7C => bitn!(7, h),
+            // BIT 7,L
+            0x7D => bitn!(7, l),
+            // BIT 7,(HL)
+            0x7E => bitn!(self.mmu.read_byte(self.reg.hl()), 7),
+            // BIT 7,A
+            0x7F => bitn!(7, a),
+            // RES 0,B
+            0x80 => resn!(0, b),
+            // RES 0,C
+            0x81 => resn!(0, c),
+            // RES 0,D
+            0x82 => resn!(0, d),
+            // RES 0,E
+            0x83 => resn!(0, e),
+            // RES 0,H
+            0x84 => resn!(0, h),
+            // RES 0,L
+            0x85 => resn!(0, l),
+            // RES 0,(HL)
+            0x86 => resn!(0, self.mmu.read_byte(self.reg.hl())), 
+            // RES 0,A
+            0x87 => resn!(0, a),
+            // RES 1,B
+            0x88 => resn!(1, b),
+            // RES 1,C
+            0x89 => resn!(1, c),
+            // RES 1,D
+            0x8A => resn!(1, d),
+            // RES 1,E
+            0x8B => resn!(1, e),
+            // RES 1,H
+            0x8C => resn!(1, h),
+            // RES 1,L
+            0x8D => resn!(1, l),
+            // RES 1,(HL)
+            0x8E => resn!(1, self.mmu.read_byte(self.reg.hl())),
+            // RES 1,A
+            0x8F => resn!(1, a),
+            // RES 2,B
+            0x90 => resn!(2, b),
+            // RES 2,C
+            0x91 => resn!(2, c),
+            // RES 2,D
+            0x92 => resn!(2, d),
+            // RES 2,E
+            0x93 => resn!(2, e),
+            // RES 2,H
+            0x94 => resn!(2, h),
+            // RES 2,L
+            0x95 => resn!(2, l),
+            // RES 2,(HL)
+            0x96 => resn!(2, self.mmu.read_byte(self.reg.hl())),
+            // RES 2,A
+            0x97 => resn!(2, a),
+            // RES 3,B
+            0x98 => resn!(3, b),
+            // RES 3,C
+            0x99 => resn!(3, c),
+            // RES 3,D
+            0x9A => resn!(3, d),
+            // RES 3,E
+            0x9B => resn!(3, e),
+            // RES 3,H
+            0x9C => resn!(3, h),
+            // RES 3,L
+            0x9D => resn!(3, l),
+            // RES 3,(HL)
+            0x9E => resn!(3, self.mmu.read_byte(self.reg.hl())),
+            // RES 3,A
+            0x9F => resn!(3, a),
+            // RES 4,B
+            0xA0 => resn!(4, b),
+            // RES 4,C
+            0xA1 => resn!(4, c),
+            // RES 4,D
+            0xA2 => resn!(4, d),
+            // RES 4,E
+            0xA3 => resn!(4, e),
+            // RES 4,H
+            0xA4 => resn!(4, h),
+            // RES 4,L
+            0xA5 => resn!(4, l),
+            // RES 4,(HL)
+            0xA6 => resn!(4, self.mmu.read_byte(self.reg.hl())),
+            // RES 4,A
+            0xA7 => resn!(4, a),
+            // RES 5,B
+            0xA8 => resn!(5, b),
+            // RES 5,C
+            0xA9 => resn!(5, c),
+            // RES 5,D
+            0xAA => resn!(5, d),
+            // RES 5,E
+            0xAB => resn!(5, e),
+            // RES 5,H
+            0xAC => resn!(5, h),
+            // RES 5,L
+            0xAD => resn!(5, l),
+            // RES 5,(HL)
+            0xAE => resn!(5, self.mmu.read_byte(self.reg.hl())),
+            // RES 5,A
+            0xAF => resn!(5, a),
+            // RES 6,B
+            0xB0 => resn!(6, b),
+            // RES 6,C
+            0xB1 => resn!(6, c),
+            // RES 6,D
+            0xB2 => resn!(6, d),
+            // RES 6,E
+            0xB3 => resn!(6, e),
+            // RES 6,H
+            0xB4 => resn!(6, h),
+            // RES 6,L
+            0xB5 => resn!(6, l),
+            // RES 6,(HL)
+            0xB6 => resn!(6, self.mmu.read_byte(self.reg.hl())),
+            // RES 6,A
+            0xB7 => resn!(6, a),
+            // RES 7,B
+            0xB8 => resn!(7, b),
+            // RES 7,C
+            0xB9 => resn!(7, c),
+            // RES 7,D
+            0xBA => resn!(7, d),
+            // RES 7,E
+            0xBB => resn!(7, e),
+            // RES 7,H
+            0xBC => resn!(7, h),
+            // RES 7,L
+            0xBD => resn!(7, l),
+            // RES 7,(HL)
+            0xBE => resn!(7, self.mmu.read_byte(self.reg.hl())),
+            // RES 7,A
+            0xBF => resn!(7, a),
+            // SET 0,B
+            0xC0 => setn!(0, b),
+            // SET 0,C
+            0xC1 => setn!(0, c),
+            // SET 0,D
+            0xC2 => setn!(0, d),
+            // SET 0,E
+            0xC3 => setn!(0, e),
+            // SET 0,H
+            0xC4 => setn!(0, h),
+            // SET 0,L
+            0xC5 => setn!(0, l),
+            // SET 0,(HL)
+            0xC6 => setn!(0, self.mmu.read_byte(self.reg.hl())),
+            // SET 0,A
+            0xC7 => setn!(0, a),
+            // SET 1,B
+            0xC8 => setn!(1, b),
+            // SET 1,C
+            0xC9 => setn!(1, c),
+            // SET 1,D
+            0xCA => setn!(1, d),
+            // SET 1,E
+            0xCB => setn!(1, e),
+            // SET 1,H
+            0xCC => setn!(1, h),
+            // SET 1,L
+            0xCD => setn!(1, l),
+            // SET 1,(HL)
+            0xCE => setn!(1, self.mmu.read_byte(self.reg.hl())),
+            // SET 1,A
+            0xCF => setn!(1, a),
+            // SET 2,B
+            0xD0 => setn!(2, b),
+            // SET 2,C
+            0xD1 => setn!(2, c),
+            // SET 2,D
+            0xD2 => setn!(2, d),
+            // SET 2,E
+            0xD3 => setn!(2, e),
+            // SET 2,H
+            0xD4 => setn!(2, h),
+            // SET 2,L
+            0xD5 => setn!(2, l),
+            // SET 2,(HL)
+            0xD6 => setn!(2, self.mmu.read_byte(self.reg.hl())),
+            // SET 2,A
+            0xD7 => setn!(2, a),
+            // SET 3,B
+            0xD8 => setn!(3, b),
+            // SET 3,C
+            0xD9 => setn!(3, c),
+            // SET 3,D
+            0xDA => setn!(3, d),
+            // SET 3,E
+            0xDB => setn!(3, e),
+            // SET 3,H
+            0xDC => setn!(3, h),
+            // SET 3,L
+            0xDD => setn!(3, l),
+            // SET 3,(HL)
+            0xDE => setn!(3, self.mmu.read_byte(self.reg.hl())),
+            // SET 3,A
+            0xDF => setn!(3, a),
+            // SET 4,B
+            0xE0 => setn!(4, b),
+            // SET 4,C
+            0xE1 => setn!(4, c),
+            // SET 4,D
+            0xE2 => setn!(4, d),
+            // SET 4,E
+            0xE3 => setn!(4, e),
+            // SET 4,H
+            0xE4 => setn!(4, h),
+            // SET 4,L
+            0xE5 => setn!(4, l),
+            // SET 4,(HL)
+            0xE6 => setn!(4, self.mmu.read_byte(self.reg.hl())),
+            // SET 4,A
+            0xE7 => setn!(4, a),
+            // SET 5,B
+            0xE8 => setn!(5, b),
+            // SET 5,C
+            0xE9 => setn!(5, c),
+            // SET 5,D
+            0xEA => setn!(5, d),
+            // SET 5,E
+            0xEB => setn!(5, e),
+            // SET 5,H
+            0xEC => setn!(5, h),
+            // SET 5,L
+            0xED => setn!(5, l),
+            // SET 5,(HL)
+            0xEE => setn!(5, self.mmu.read_byte(self.reg.hl())),
+            // SET 5,A
+            0xEF => setn!(5, a),
+            // SET 6,B
+            0xF0 => setn!(6, b),
+            // SET 6,C
+            0xF1 => setn!(6, c),
+            // SET 6,D
+            0xF2 => setn!(6, d),
+            // SET 6,E
+            0xF3 => setn!(6, e),
+            // SET 6,H
+            0xF4 => setn!(6, h),
+            // SET 6,L
+            0xF5 => setn!(6, l),
+            // SET 6,(HL)
+            0xF6 => setn!(6, self.mmu.read_byte(self.reg.hl())),
+            // SET 6,A
+            0xF7 => setn!(6, a),
+            // SET 7,B
+            0xF8 => setn!(7, b),
+            // SET 7,C
+            0xF9 => setn!(7, c),
+            // SET 7,D
+            0xFA => setn!(7, d),
+            // SET 7,E
+            0xFB => setn!(7, e),
+            // SET 7,H
+            0xFC => setn!(7, h),
+            // SET 7,L
+            0xFD => setn!(7, l),
+            // SET 7,(HL)
+            0xFE => setn!(7, self.mmu.read_byte(self.reg.hl())),
+            // SET 7,A
+            0xFF => setn!(7, a),
+        };
     }
 
     fn ld_hl_r(&mut self, r: u8) {
@@ -501,31 +1333,23 @@ impl<'a> Opcode<'a> {
         self.reg.set_f(c, h, n, z);
     }
 
-    fn cpl(&mut self) {
-        self.reg.a = !self.reg.a;
-        self.reg.set_f(2, 1, 1, 2);
+    fn daa(&mut self) {
+        let mut a: u8 = if (self.reg.get_flag(FFlags::C)) == 1 { 0x60 } else { 0 };
+        if (self.reg.get_flag(FFlags::H)) == 1 { a |= 0x06; };
+        if (self.reg.get_flag(FFlags::N)) == 1 { self.reg.a = self.reg.a.wrapping_sub(a); }
+        else { if self.reg.a & 0x0F > 0x09 { a |= 0x06; }; if self.reg.a > 0x99 { a |= 0x60; }; self.reg.a = self.reg.a.wrapping_add(a); }
+        let c: u8 = if a >= 0x60 { 1 } else { 0 };
+        let h: u8 = 0;
+        let n: u8 = 2;
+        let z: u8 = if self.reg.a == 0 { 1 } else { 0 };
+        self.reg.set_f(c, h, n, z);
     }
 
-    fn daa(&mut self) {
-    //     let c: u8;
-    //     let h: u8 = 0;
-    //     let n: u8 = 2;
-    //     if self.reg.f & FFlags::N as u8 != 0x40 {
-    //         if (self.reg.f & FFlags::C as u8 == 0x10) || self.reg.a > 0x99 {
-    //             self.reg.a = self.reg.a.wrapping_add(0x60);
-    //             c = 1;
-    //         }
-    //         if (self.reg.f & FFlags::H as u8 == 0x20) || (self.reg.a & 0xF) > 0x9 {
-    //             self.reg.a = self.reg.a.wrapping_add(0x06);
-    //             c = 0;
-    //         }
-    //     } else if (self.reg.f & FFlags::C as u8 == 0x10) && (self.reg.f & FFlags::H as u8 == 0x20) {
-    //         self.reg.a = self.reg.a.wrapping_add(0x9A);
-    //     } else if self.reg.f & FFlags::C as u8 == 0x10 {
-    //         self.reg.a = self.reg.a.wrapping_add(0xFA);
-    //     }
-    //     let z: u8 = if self.reg.a == 0 { 1 } else { 0 };
-    //     self.reg.set_f(c, 0, 2, z);
+    fn halt(&mut self) {
+
+    }
+
+    fn stop(&mut self) {
     }
 
 }

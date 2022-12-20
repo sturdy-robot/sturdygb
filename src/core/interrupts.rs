@@ -21,7 +21,7 @@ impl Cpu {
     }
 
     fn check_interrupt(&mut self) -> bool {
-        if self.reg.ime {
+        if self.ime {
             let ifflag = self.mmu.io.ifflag;
             let ieflag = self.mmu.ieflag;
             ifflag & ieflag != 0
@@ -61,6 +61,6 @@ impl Cpu {
             }
         };
 
-        self.reg.ime = false;
+        self.ime = false;
     }
 }

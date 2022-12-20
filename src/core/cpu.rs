@@ -9,6 +9,7 @@ pub struct Cpu {
     pub is_halted: bool,
     pub cycles: u32,
     pub is_paused: bool,
+    pub ime: bool,
 }
 
 impl Cpu {
@@ -19,6 +20,7 @@ impl Cpu {
             is_halted: false,
             cycles: 0,
             is_paused: false,
+            ime: true,
         }
     }
 
@@ -46,7 +48,8 @@ impl Cpu {
         opcode.decode();
         if opcode.is_halted {
             self.is_halted = true;
-        }     
+        }
+        opcode.advance_pc();
     }
 }
 

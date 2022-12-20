@@ -10,12 +10,11 @@ pub struct Registers {
     pub l: u8,
     pub sp: u16,
     pub pc: u16,
-    pub ime: bool,
 }
 
 impl Registers {
     pub fn new(a: u8, f: u8, b: u8, c: u8, d: u8, e: u8, h: u8, l: u8) -> Self {
-        Self { a, f, b, c, d, e, h, l, sp: 0xFFFE, pc: 0x0100, ime: true }
+        Self { a, f, b, c, d, e, h, l, sp: 0xFFFE, pc: 0x0100 }
     }
 
     pub fn af(&self) -> u16 {
@@ -56,26 +55,22 @@ impl Registers {
 
     pub fn set_f(&mut self, mut c: u8, mut h: u8, mut n: u8, mut z: u8) {
         if c == 2 {
-            c = self.f & FFlags::C as u8;
+            c = self.get_flag(FFlags::C);
         }
         if h == 2 {
-            h = self.f & FFlags::H as u8;
+            h = self.get_flag(FFlags::H);
         }
         if n == 2 {
-            n = self.f & FFlags::N as u8;
+            n = self.get_flag(FFlags::N);
         }
         if z == 2 {
-            z = self.f & FFlags::Z as u8;
+            z = self.get_flag(FFlags::Z);
         }
-        let value: u8 = ((z << 8) | (n << 7) | (h << 6) | (c << 5)) & 0xF0;
-
+        self.f = ((z << 7) | (n << 6) | (h << 5) | (c << 4)) & 0xF0;
     }
 
     pub fn get_flag(&self, flag: FFlags) -> u8 {
-        match self.f & (flag as u8) > 0 {
-            true => 1,
-            false => 0,
-        }
+        self.f & (flag as u8)
     }
 }
 
@@ -92,7 +87,7 @@ mod test {
     use super::Registers;
 
     fn get_registers() -> Registers {
-        Registers::new(0x01, 0x00, 0xFF, 0x13, 0x00, 0xC1, 0x84, 0x03)
+        Registers::new(0x01, 0xB0, 0x00, 0x13, 0x00, 0xD8, 0x01, 0x4D)
     }
 
 
