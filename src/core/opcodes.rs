@@ -309,13 +309,9 @@ impl<'a> Opcode<'a> {
                 self.reg.set_bc(value);
             }
             // LD BC, A
-            0x02 => {
-                self.mmu.write_byte(self.reg.bc(), self.reg.a);
-            }
+            0x02 => self.mmu.write_byte(self.reg.bc(), self.reg.a),
             // INC BC
-            0x03 => {
-                self.reg.set_bc(self.reg.bc().wrapping_add(1));
-            }
+            0x03 => self.reg.set_bc(self.reg.bc().wrapping_add(1)),
             // INC B
             0x04 => inc_r!(b),
             // DEC B
@@ -327,11 +323,12 @@ impl<'a> Opcode<'a> {
             }
             // RLCA
             0x07 => {
-                self.reg.a = (self.reg.a << 1) | (self.reg.a >> 7);
-                self.reg.set_f(FFlags::Z, self.reg.a == 0);
+                let flag: u8 = if self.reg.a & 0x80 == 0x80 { 1 } else { 0 };
+                let value = ((self.reg.a << 1) & 0xFF) | flag;
+                self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, false);
                 self.reg.set_f(FFlags::H, false);
-                self.reg.set_f(FFlags::C, self.reg.a > 0x7F);
+                self.reg.set_f(FFlags::C, value > 0x7F);
             }
             // LD u16, SP
             0x08 => {
@@ -348,14 +345,10 @@ impl<'a> Opcode<'a> {
                 self.reg.set_f(FFlags::C, did_overflow);
                 self.reg.set_hl(value);
             }
-            // LD A, BC
-            0x0A => {
-                self.reg.a = self.mmu.read_byte(self.reg.bc());
-            }
+            // LD A, (BC)
+            0x0A => self.reg.a = self.mmu.read_byte(self.reg.bc()),
             // DEC BC
-            0x0B => {
-                self.reg.set_bc(self.reg.bc().wrapping_sub(1));
-            }
+            0x0B => self.reg.set_bc(self.reg.bc().wrapping_sub(1)),
             // INC C
             0x0C => inc_r!(c),
             // DEC C
@@ -367,11 +360,13 @@ impl<'a> Opcode<'a> {
             }
             // RRCA
             0x0F => {
-                self.reg.a = (self.reg.a >> 1) | ((self.reg.a & 1) << 7);
-                self.reg.set_f(FFlags::Z, self.reg.a == 0);
+                let flag: u8 = if self.reg.a & 0x01 == 0x01 { 0x80 } else { 0 };
+                let value = flag | (self.reg.a >> 1);
+                self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, false);
                 self.reg.set_f(FFlags::H, false);
-                self.reg.set_f(FFlags::C, self.reg.a > 0x7F);
+                self.reg.set_f(FFlags::C, value > 0x7F);
+                self.reg.a = value;
             }
             // STOP
             0x10 => self.stop(),
@@ -400,12 +395,13 @@ impl<'a> Opcode<'a> {
             }
             // RLA
             0x17 => {
-                let c = self.reg.f & FFlags::C as u8;
-                self.reg.set_f(FFlags::Z, self.reg.a == 0);
+                let flag = if self.reg.a & 0x80 == 0x80 { 1 } else { 0 };
+                let value = (self.reg.a << 1) | flag;
+                self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, false);
                 self.reg.set_f(FFlags::H, false);
-                self.reg.set_f(FFlags::C, self.reg.a > 0x7F);
-                self.reg.a = (self.reg.a << 1) | c;
+                self.reg.set_f(FFlags::C, value > 0x7F);
+                self.reg.a = value;
             }
             // JR u8
             0x18 => {
@@ -439,12 +435,13 @@ impl<'a> Opcode<'a> {
             }
             // RRA
             0x1F => {
-                let c = self.reg.f & FFlags::C as u8;
-                self.reg.set_f(FFlags::Z, self.reg.a == 0);
+                let flag = if (self.reg.a & 1) == 1 { 0x80 } else { 0 };
+                let value = flag | (self.reg.a >> 1);
+                self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, false);
                 self.reg.set_f(FFlags::H, false);
-                self.reg.set_f(FFlags::C, (self.reg.a & 1) == 1);
-                self.reg.a = (self.reg.a >> 1) | c;
+                self.reg.set_f(FFlags::C, (value & 1) == 1);
+                self.reg.a = value;
             }
             // JR NZ, r8
             0x20 => {
@@ -545,7 +542,8 @@ impl<'a> Opcode<'a> {
             }
             // LDD HL, u8
             0x36 => {
-                self.mmu.write_word(self.reg.hl(), self.reg.pc);
+                let value = self.mmu.read_byte(self.reg.pc);
+                self.mmu.write_byte(self.reg.hl(), value);
                 self.reg.pc = self.reg.pc.wrapping_add(1);
             }
             // SCF
@@ -1292,7 +1290,7 @@ impl<'a> Opcode<'a> {
                 self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, false);
                 self.reg.set_f(FFlags::H, false);
-                self.reg.set_f(FFlags::C, self.reg.$reg > 0x7F);
+                self.reg.set_f(FFlags::C, value > 0x7F);
                 self.reg.$reg = value;
             }};
             ($hl:expr) => {{
@@ -1322,7 +1320,7 @@ impl<'a> Opcode<'a> {
                 self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, false);
                 self.reg.set_f(FFlags::H, false);
-                self.reg.set_f(FFlags::C, (self.reg.$reg & 0x01) == 0x01);
+                self.reg.set_f(FFlags::C, (value & 0x01) == 0x01);
                 self.reg.$reg = value;
             }};
             ($hl:expr) => {{
@@ -1343,11 +1341,8 @@ impl<'a> Opcode<'a> {
         // RLC
         macro_rules! rlcn {
             ($reg:ident) => {{
-                let flag: u8 = match self.reg.f & FFlags::C as u8 == FFlags::C as u8 {
-                    true => 1,
-                    false => 0,
-                };
-                let value = ((self.reg.$reg << 1) & 0xFF) | flag;
+                let flag: u8 = if self.reg.$reg & 0x80 == 0x80 { 1 } else { 0 };
+                let value = (self.reg.$reg << 1) | flag;
                 self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, false);
                 self.reg.set_f(FFlags::H, false);
@@ -1356,11 +1351,8 @@ impl<'a> Opcode<'a> {
             }};
             ($hl:expr) => {{
                 let byte_hl = $hl;
-                let flag: u8 = match self.reg.f & FFlags::C as u8 == FFlags::C as u8 {
-                    true => 1,
-                    false => 0,
-                };
-                let value = ((byte_hl << 1) & 0xFF) | flag;
+                let flag: u8 = if byte_hl & 0x80 == 0x80 { 1 } else { 0 };
+                let value = (byte_hl << 1) | flag;
                 self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, false);
                 self.reg.set_f(FFlags::H, false);
@@ -1372,10 +1364,7 @@ impl<'a> Opcode<'a> {
         // RRC
         macro_rules! rrcn {
             ($reg:ident) => {{
-                let flag: u8 = match self.reg.f & FFlags::C as u8 == FFlags::C as u8 {
-                    true => 0x80,
-                    false => 0,
-                };
+                let flag: u8 = if self.reg.$reg & 0x01 == 0x01 { 0x80 } else { 0 };
                 let value = flag | (self.reg.$reg >> 1);
                 self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, false);
@@ -1385,10 +1374,7 @@ impl<'a> Opcode<'a> {
             }};
             ($hl:expr) => {{
                 let byte_hl = $hl;
-                let flag: u8 = match self.reg.f & FFlags::C as u8 == FFlags::C as u8 {
-                    true => 0x80,
-                    false => 0,
-                };
+                let flag: u8 = if byte_hl & 0x01 == 0x01 { 0x80 } else { 0 };
                 let value = flag | (byte_hl >> 1);
                 self.reg.set_f(FFlags::Z, value == 0);
                 self.reg.set_f(FFlags::N, false);
