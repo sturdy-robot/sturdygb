@@ -35,22 +35,22 @@ impl Registers {
 
     pub fn set_af(&mut self, value: u16) {
         self.a = (value >> 8) as u8;
-        self.f = (value & 0x00F0) as u8;
+        self.f = (value & 0xF0) as u8;
     }
 
     pub fn set_bc(&mut self, value: u16) {
         self.b = (value >> 8) as u8;
-        self.c = (value & 0x00FF) as u8;
+        self.c = (value & 0xFF) as u8;
     }
 
     pub fn set_de(&mut self, value: u16) {
         self.d = (value >> 8) as u8;
-        self.e = (value & 0x00FF) as u8;
+        self.e = (value & 0xFF) as u8;
     }
 
     pub fn set_hl(&mut self, value: u16) {
         self.h = (value >> 8) as u8;
-        self.l = (value & 0x00FF) as u8;
+        self.l = (value & 0xFF) as u8;
     }
 
     pub fn set_f(&mut self, mut c: u8, mut h: u8, mut n: u8, mut z: u8) {
@@ -70,7 +70,10 @@ impl Registers {
     }
 
     pub fn get_flag(&self, flag: FFlags) -> u8 {
-        self.f & (flag as u8)
+        match self.f & (flag as u8) == flag as u8 {
+            true => 1,
+            false => 0,
+        }
     }
 }
 

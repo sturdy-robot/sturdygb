@@ -106,23 +106,30 @@ impl<'a> Opcode<'a> {
 
     pub fn decode(&mut self) {
         self.debug_registers();
+        let previous_pc = self.reg.pc;
         // MACROS FOR OPCODES
         match self.opcode {
             // NOP
             0x00 => { }
 
-            // LD nn, SP
-            0x08 => self.mmu.write_word(self.reg.pc, self.reg.sp),
-
             // LD INSTRUCTIONS
+            // LD rr, nn
+            0x01 => self.reg.set_bc(self.mmu.read_word(self.reg.pc.wrapping_add(1))),
+            0x11 => self.reg.set_de(self.mmu.read_word(self.reg.pc.wrapping_add(1))),
+            0x21 => self.reg.set_hl(self.mmu.read_word(self.reg.pc.wrapping_add(1))),
+            0x31 => self.reg.sp = self.mmu.read_word(self.reg.pc.wrapping_add(1)),
+            // LD nn, n
+            0x02 => self.mmu.write_byte(self.reg.bc(), self.reg.a),
+            0x12 => self.mmu.write_byte(self.reg.de(), self.reg.a),
             // LD r, n
-            0x06 => self.reg.b = self.mmu.read_byte(self.reg.pc),
-            0x0E => self.reg.c = self.mmu.read_byte(self.reg.pc),
-            0x16 => self.reg.d = self.mmu.read_byte(self.reg.pc),
-            0x1E => self.reg.e = self.mmu.read_byte(self.reg.pc),
-            0x26 => self.reg.h = self.mmu.read_byte(self.reg.pc),
-            0x2E => self.reg.l = self.mmu.read_byte(self.reg.pc),
-            
+            0x06 => self.reg.b = self.mmu.read_byte(self.reg.pc.wrapping_add(1)),
+            0x0E => self.reg.c = self.mmu.read_byte(self.reg.pc.wrapping_add(1)),
+            0x16 => self.reg.d = self.mmu.read_byte(self.reg.pc.wrapping_add(1)),
+            0x1E => self.reg.e = self.mmu.read_byte(self.reg.pc.wrapping_add(1)),
+            0x26 => self.reg.h = self.mmu.read_byte(self.reg.pc.wrapping_add(1)),
+            0x2E => self.reg.l = self.mmu.read_byte(self.reg.pc.wrapping_add(1)),
+            // LD nn, SP
+            0x08 => self.mmu.write_word(self.reg.pc.wrapping_add(1), self.reg.sp),
             // LD r, r
             0x40 => { }, // LD B, B
             0x41 => self.reg.b = self.reg.c,
@@ -186,19 +193,13 @@ impl<'a> Opcode<'a> {
             0x7B => self.reg.a = self.reg.e,
             0x7C => self.reg.a = self.reg.h,
             0x7D => self.reg.a = self.reg.l,
-            0x36 => { let value = self.mmu.read_byte(self.reg.pc); self.mmu.write_byte(self.reg.hl(), value); },
+            0x36 => { let value = self.mmu.read_byte(self.reg.pc.wrapping_add(1)); self.mmu.write_byte(self.reg.hl(), value); },
             0x0A => self.reg.a = self.mmu.read_byte(self.reg.bc()),
             0x1A => self.reg.a = self.mmu.read_byte(self.reg.de()),
             0x7E => self.reg.a = self.mmu.read_byte(self.reg.hl()),
-            0xFA => { let value = self.mmu.read_word(self.reg.pc); self.reg.a = self.mmu.read_byte(value); },
-            0x3E => self.reg.a = self.mmu.read_byte(self.reg.pc),
-            0xEA => { let value = self.mmu.read_word(self.reg.pc); self.mmu.write_byte(value, self.reg.a); },
-            
-            // LD rr, nn
-            0x01 => self.reg.set_bc(self.mmu.read_word(self.reg.pc)),
-            0x11 => self.reg.set_de(self.mmu.read_word(self.reg.pc)),
-            0x21 => self.reg.set_hl(self.mmu.read_word(self.reg.pc)),
-            0x31 => self.reg.sp = self.mmu.read_word(self.reg.pc),
+            0xFA => { let value = self.mmu.read_word(self.reg.pc.wrapping_add(1)); self.reg.a = self.mmu.read_byte(value); },
+            0x3E => self.reg.a = self.mmu.read_byte(self.reg.pc.wrapping_add(1)),
+            0xEA => { let value = self.mmu.read_word(self.reg.pc.wrapping_add(1)); self.mmu.write_byte(value, self.reg.a); },
             
             // LD A, (C)
             0xF2 => self.reg.a = self.mmu.read_byte(0xFF00_u16.wrapping_add(self.reg.c as u16)),
@@ -223,20 +224,20 @@ impl<'a> Opcode<'a> {
             // LDD A, (HL)
             0x3A => { self.reg.a = self.mmu.read_byte(self.reg.hl()); self.reg.set_hl(self.reg.hl().wrapping_sub(1)); }
             // LDH (n), A
-            0xE0 => { let value = self.mmu.read_byte(self.reg.pc); self.mmu.write_byte(0xFF00_u16.wrapping_add(value as u16), self.reg.a); }
+            0xE0 => { let value = 0xFF00 | self.mmu.read_byte(self.reg.pc.wrapping_add(1)) as u16; self.mmu.write_byte(value, self.reg.a); }
             // LDH A, (n)
-            0xF0 => { let value = self.mmu.read_byte(self.reg.pc); self.reg.a = self.mmu.read_byte(0xFF00_u16.wrapping_add(value as u16)); }
+            0xF0 => { let value = 0xFF00 | self.mmu.read_byte(self.reg.pc.wrapping_add(1)) as u16; self.reg.a = self.mmu.read_byte(value); }
             // LD SP, HL
             0xF9 => self.reg.sp = self.reg.hl(),
 
             // PUSH rr
-            0xF5 => { self.mmu.write_word(self.reg.sp, self.reg.af()); self.reg.sp = self.reg.sp.wrapping_sub(2); }
-            0xC5 => { self.mmu.write_word(self.reg.sp, self.reg.bc()); self.reg.sp = self.reg.sp.wrapping_sub(2); }
-            0xD5 => { self.mmu.write_word(self.reg.sp, self.reg.de()); self.reg.sp = self.reg.sp.wrapping_sub(2); }
-            0xE5 => { self.mmu.write_word(self.reg.sp, self.reg.hl()); self.reg.sp = self.reg.sp.wrapping_sub(2); }
+            0xF5 => { self.reg.sp = self.reg.sp.wrapping_sub(2); self.mmu.write_word(self.reg.sp, self.reg.af()); }
+            0xC5 => { self.reg.sp = self.reg.sp.wrapping_sub(2); self.mmu.write_word(self.reg.sp, self.reg.bc()); }
+            0xD5 => { self.reg.sp = self.reg.sp.wrapping_sub(2); self.mmu.write_word(self.reg.sp, self.reg.de()); }
+            0xE5 => { self.reg.sp = self.reg.sp.wrapping_sub(2); self.mmu.write_word(self.reg.sp, self.reg.hl()); }
             
             // POP rr
-            0xF1 => { let value = self.mmu.read_word(self.reg.sp); self.reg.set_af(value); self.reg.sp = self.reg.sp.wrapping_add(2); }
+            0xF1 => { let value = self.mmu.read_word(self.reg.sp) & 0xFFF0; self.reg.set_af(value); self.reg.sp = self.reg.sp.wrapping_add(2); }
             0xC1 => { let value = self.mmu.read_word(self.reg.sp); self.reg.set_bc(value); self.reg.sp = self.reg.sp.wrapping_add(2); }
             0xD1 => { let value = self.mmu.read_word(self.reg.sp); self.reg.set_de(value); self.reg.sp = self.reg.sp.wrapping_add(2); }
             0xE1 => { let value = self.mmu.read_word(self.reg.sp); self.reg.set_hl(value); self.reg.sp = self.reg.sp.wrapping_add(2); }
@@ -250,7 +251,7 @@ impl<'a> Opcode<'a> {
             0x84 => self.add_a_n(self.reg.h),
             0x85 => self.add_a_n(self.reg.l),
             0x86 => { let value = self.mmu.read_byte(self.reg.hl()); self.add_a_n(value) }
-            0xC6 => { let value = self.mmu.read_byte(self.reg.pc); self.add_a_n(value) }
+            0xC6 => { let value = self.mmu.read_byte(self.reg.pc.wrapping_add(1)); self.add_a_n(value) }
 
             // ADC A, n
             0x88 => self.adc_a_n(self.reg.b),
@@ -261,7 +262,7 @@ impl<'a> Opcode<'a> {
             0x8D => self.adc_a_n(self.reg.l),
             0x8E => { let value = self.mmu.read_byte(self.reg.hl()); self.adc_a_n(value); }
             0x8F => self.adc_a_n(self.reg.a),
-            0xCE => { let value = self.mmu.read_byte(self.reg.pc); self.adc_a_n(value); }
+            0xCE => { let value = self.mmu.read_byte(self.reg.pc.wrapping_add(1)); self.adc_a_n(value); }
 
             // SUB n
             0x90 => self.sub_a_n(self.reg.b),
@@ -272,6 +273,7 @@ impl<'a> Opcode<'a> {
             0x95 => self.sub_a_n(self.reg.l),
             0x96 => { let value = self.mmu.read_byte(self.reg.hl()); self.sub_a_n(value); }
             0x97 => self.sub_a_n(self.reg.a),
+            0xD6 => { let value = self.mmu.read_byte(self.reg.pc.wrapping_add(1)); self.sub_a_n(value); }
 
             // SBC A, n
             0x98 => self.sbc_a_n(self.reg.b),
@@ -282,6 +284,7 @@ impl<'a> Opcode<'a> {
             0x9D => self.sbc_a_n(self.reg.l),
             0x9E => { let value = self.mmu.read_byte(self.reg.hl()); self.sbc_a_n(value); }
             0x9F => self.sbc_a_n(self.reg.a),
+            0xDE => { let value = self.mmu.read_byte(self.reg.pc.wrapping_add(1)); self.sbc_a_n(value); }
 
             // AND n
             0xA0 => self.and_n(self.reg.b),
@@ -292,7 +295,7 @@ impl<'a> Opcode<'a> {
             0xA5 => self.and_n(self.reg.l),
             0xA6 => { let value = self.mmu.read_byte(self.reg.hl()); self.and_n(value); }
             0xA7 => self.and_n(self.reg.a),
-            0xE6 => { let value = self.mmu.read_byte(self.reg.pc); self.and_n(value); }
+            0xE6 => { let value = self.mmu.read_byte(self.reg.pc.wrapping_add(1)); self.and_n(value); }
             
             // OR n
             0xB0 => self.or_n(self.reg.b),
@@ -303,7 +306,7 @@ impl<'a> Opcode<'a> {
             0xB5 => self.or_n(self.reg.l),
             0xB6 => { let value = self.mmu.read_byte(self.reg.hl()); self.or_n(value) }
             0xB7 => self.or_n(self.reg.a),
-            0xF6 => { let value = self.mmu.read_byte(self.reg.pc); self.or_n(value) }
+            0xF6 => { let value = self.mmu.read_byte(self.reg.pc.wrapping_add(1)); self.or_n(value) }
 
             // XOR n
             0xA8 => self.xor_n(self.reg.b),
@@ -314,7 +317,7 @@ impl<'a> Opcode<'a> {
             0xAD => self.xor_n(self.reg.l),
             0xAE => { let value = self.mmu.read_byte(self.reg.hl()); self.xor_n(value); }
             0xAF => self.xor_n(self.reg.a),
-            0xEE => { let value = self.mmu.read_byte(self.reg.pc); self.xor_n(value); }
+            0xEE => { let value = self.mmu.read_byte(self.reg.pc.wrapping_add(1)); self.xor_n(value); }
 
             // CP n
             0xB8 => self.cp_n(self.reg.b),
@@ -324,8 +327,8 @@ impl<'a> Opcode<'a> {
             0xBC => self.cp_n(self.reg.h),
             0xBD => self.cp_n(self.reg.l),
             0xBE => { let value = self.mmu.read_byte(self.reg.hl()); self.cp_n(value); }
-            0xBF => self.cp_n(self.reg.a),
-            0xFE => { let value = self.mmu.read_byte(self.reg.pc); self.cp_n(value); }
+            0xBF => { self.reg.set_f(0, 0, 1, 1); },
+            0xFE => { let value = self.mmu.read_byte(self.reg.pc.wrapping_add(1)); self.cp_n(value); }
             
             // INC n
             0x3C => self.reg.a = self.inc_n(self.reg.a),
@@ -399,7 +402,129 @@ impl<'a> Opcode<'a> {
             0xDF => self.rst(0x18),
             0xEF => self.rst(0x28),
             0xFF => self.rst(0x38),
-            _ => println!("Not implemented!"),
+
+            // ROTATE
+            // RLCA
+            0x07 => {
+                let flag: u8 = self.reg.get_flag(FFlags::C);
+                let value = ((self.reg.a << 1) & 0xFF) | flag;
+                let z: u8 = if (value) == 0 { 1 } else { 0 };
+                let c: u8 = if value > 0x7F { 1 } else { 0 };
+                self.reg.set_f(c, 0, 0, z);
+                self.reg.a = value;
+            }
+            // RLA
+            0x17 => {
+                let flag = match self.reg.a > 0x7F {
+                    true => 1,
+                    false => 0,
+                };
+                let value = (self.reg.a << 1) | flag;
+                let z: u8 = if (value) == 0 { 1 } else { 0 };
+                let c: u8 = if (self.reg.a & 0x7F) > 0x7F { 1 } else { 0 };
+                self.reg.set_f(c, 0, 0, z);
+                self.reg.a = value;
+            }
+            // RRA
+            0x1F => {
+                let flag = match (self.reg.a & 1) == 1 {
+                    true => 0x80,
+                    false => 0,
+                };
+                let value = flag | (self.reg.a >> 1);
+                let z: u8 = if (value) == 0 { 1 } else { 0 };
+                let c: u8 = if (self.reg.a & 1) == 1 { 1 } else { 0 };
+                self.reg.set_f(c, 0, 0, z);
+                self.reg.a = value;
+            }
+            // RRCA
+            0x0F => {
+                let flag: u8 = match self.reg.f & FFlags::C as u8 == FFlags::C as u8 {
+                    true => 0x80,
+                    false => 0,
+                };
+                let value = flag | (self.reg.a >> 1);
+                let z: u8 = if (value) == 0 { 1 } else { 0 };
+                let c: u8 = if (value & 1) == 1 { 1 } else { 0 };
+                self.reg.set_f(c, 0, 0, z);
+                self.reg.a = value;
+            }
+
+            // JP nn
+            0xC3 => self.jp(),
+            // JP cc, nn
+            0xC2 => { if self.reg.get_flag(FFlags::Z) == 0 { self.jp(); } }
+            0xCA => { if self.reg.get_flag(FFlags::Z) == 1 { self.jp(); } }
+            0xD2 => { if self.reg.get_flag(FFlags::C) == 0 { self.jp(); } }
+            0xDA => { if self.reg.get_flag(FFlags::C) == 1 { self.jp(); } }
+
+            // JP (HL)
+            0xE9 => self.reg.pc = self.reg.hl(),
+
+            // JR n
+            0x18 => self.jr(),
+
+            // JR cc, n
+            0x20 => { if self.reg.get_flag(FFlags::Z) == 0 { self.jr(); } }
+            0x28 => { if self.reg.get_flag(FFlags::Z) == 1 { self.jr(); } }
+            0x30 => { if self.reg.get_flag(FFlags::C) == 0 { self.jr(); } }
+            0x38 => { if self.reg.get_flag(FFlags::C) == 1 { self.jr(); } }
+
+            // CALL nn
+            0xCD => self.call(),
+            
+            // CALL cc nn
+            0xC4 => self.call_cc(self.reg.get_flag(FFlags::Z) == 0),
+            0xCC => self.call_cc(self.reg.get_flag(FFlags::Z) == 1),
+            0xD4 => self.call_cc(self.reg.get_flag(FFlags::C) == 0),
+            0xDC => self.call_cc(self.reg.get_flag(FFlags::C) == 1),
+            
+            // RET
+            0xC9 => self.ret(),
+
+            // RET c
+            0xC0 => { if self.reg.get_flag(FFlags::Z) == 0 { self.ret(); } }
+            0xC8 => { if self.reg.get_flag(FFlags::Z) == 1 { self.ret(); } }
+            0xD0 => { if self.reg.get_flag(FFlags::C) == 0 { self.ret(); } }
+            0xD8 => { if self.reg.get_flag(FFlags::C) == 1 { self.ret(); } }
+
+            // RETI
+            0xD9 => { self.ret(); self.trigger_ime = 1; }
+
+            0xD3 | 0xE3 | 0xE4 | 0xF4 | 0xDB | 0xDD | 0xEB | 0xEC | 0xED | 0xFC | 0xFD => panic!("Unsupported instruction {}", self.name),
+        }
+
+        if previous_pc == self.reg.pc {
+            self.advance_pc();
+        }
+    } 
+
+    fn ret(&mut self) {
+        let address = self.mmu.read_word(self.reg.sp);
+        self.reg.sp = self.reg.sp.wrapping_add(2);
+        self.reg.pc = address;
+    }
+
+    fn jp(&mut self) {
+        self.reg.pc = self.mmu.read_word(self.reg.pc.wrapping_add(1));
+    }
+
+    fn jr(&mut self) {
+        let address = self.mmu.read_byte(self.reg.pc.wrapping_add(1)) as i8;
+        self.reg.pc = self.reg.pc.wrapping_add(2);
+        self.reg.pc = ((self.reg.pc as u32 as i32) + (address as i32)) as u16;
+    }
+
+    fn call(&mut self) {
+        self.reg.sp = self.reg.sp.wrapping_sub(2);
+        self.mmu.write_word(self.reg.sp, self.reg.pc.wrapping_add(3));
+        let address = self.mmu.read_word(self.reg.pc.wrapping_add(1));
+        self.reg.pc = address;
+    }
+
+    fn call_cc(&mut self, cc: bool) {
+        if cc {
+            self.call();
         }
     }
 
@@ -516,10 +641,7 @@ impl<'a> Opcode<'a> {
         // RLC
         macro_rules! rlcn {
             ($reg:ident) => {{
-                let flag: u8 = match self.reg.f & FFlags::C as u8 == FFlags::C as u8 {
-                    true => 1,
-                    false => 0,
-                };
+                let flag: u8 = self.reg.get_flag(FFlags::C);
                 let value = ((self.reg.$reg << 1) & 0xFF) | flag;
                 let z: u8 = if (value) == 0 { 1 } else { 0 };
                 let c: u8 = if value > 0x7F { 1 } else { 0 };
@@ -528,10 +650,7 @@ impl<'a> Opcode<'a> {
             }};
             ($hl:expr) => {{
                 let byte_hl = $hl;
-                let flag: u8 = match self.reg.f & FFlags::C as u8 == FFlags::C as u8 {
-                    true => 1,
-                    false => 0,
-                };
+                let flag: u8 = self.reg.get_flag(FFlags::C);
                 let value = ((byte_hl << 1) & 0xFF) | flag;
                 let z: u8 = if (value) == 0 { 1 } else { 0 };
                 let c: u8 = if value > 0x7F { 1 } else { 0 };
@@ -1338,10 +1457,10 @@ impl<'a> Opcode<'a> {
         if (self.reg.get_flag(FFlags::H)) == 1 { a |= 0x06; };
         if (self.reg.get_flag(FFlags::N)) == 1 { self.reg.a = self.reg.a.wrapping_sub(a); }
         else { if self.reg.a & 0x0F > 0x09 { a |= 0x06; }; if self.reg.a > 0x99 { a |= 0x60; }; self.reg.a = self.reg.a.wrapping_add(a); }
-        let c: u8 = if a >= 0x60 { 1 } else { 0 };
+        let z: u8 = if self.reg.a == 0 { 1 } else { 0 };
         let h: u8 = 0;
         let n: u8 = 2;
-        let z: u8 = if self.reg.a == 0 { 1 } else { 0 };
+        let c: u8 = if a >= 0x60 { 1 } else { 0 };
         self.reg.set_f(c, h, n, z);
     }
 

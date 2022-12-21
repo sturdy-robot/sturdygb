@@ -42,14 +42,17 @@ impl Cpu {
     }
 
     fn decode(&mut self) {
-        let instruction: u8;
-        (instruction, self.reg.pc) = self.mmu.fetch_instruction(&mut self.reg.pc);
+        let instruction = self.mmu.read_byte(self.reg.pc);
         let mut opcode = Opcode::new(instruction, &mut self.reg, &mut self.mmu);
         opcode.decode();
         if opcode.is_halted {
             self.is_halted = true;
         }
-        opcode.advance_pc();
+        if opcode.trigger_ime == 1 {
+            self.ime = true;
+        } else {
+            self.ime = false;
+        }
     }
 }
 
