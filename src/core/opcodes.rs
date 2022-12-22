@@ -71,7 +71,7 @@ pub struct Opcode<'a> {
     pub cb_inst: u8,
     pub is_cb: bool,
     pub is_halted: bool,
-    pub trigger_ime: u8,
+    pub trigger_ime: bool,
 }
 
 impl<'a> Opcode<'a> {
@@ -96,7 +96,7 @@ impl<'a> Opcode<'a> {
             cb_inst,
             is_cb,
             is_halted: false,
-            trigger_ime: 0,
+            trigger_ime: false,
         }
     }
 
@@ -387,8 +387,8 @@ impl<'a> Opcode<'a> {
             0x10 => self.stop(),
 
             // ENABLE/DISABLE IME
-            0xF3 => self.trigger_ime = 2, // DI
-            0xFB => self.trigger_ime = 1, // EI
+            0xF3 => self.trigger_ime = true, // DI
+            0xFB => self.trigger_ime = true, // EI
 
             // PREFIX CB
             0xCB => self.decode_cb_prefix(),
@@ -489,7 +489,7 @@ impl<'a> Opcode<'a> {
             0xD8 => { if self.reg.get_flag(FFlags::C) == 1 { self.ret(); } }
 
             // RETI
-            0xD9 => { self.ret(); self.trigger_ime = 1; }
+            0xD9 => { self.ret(); self.trigger_ime = true; }
 
             0xD3 | 0xE3 | 0xE4 | 0xF4 | 0xDB | 0xDD | 0xEB | 0xEC | 0xED | 0xFC | 0xFD => panic!("Unsupported instruction {}", self.name),
         }

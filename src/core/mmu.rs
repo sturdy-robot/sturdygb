@@ -1,6 +1,7 @@
 use super::io::IO;
 use super::mbc::Mbc;
 use super::ppu::Ppu;
+use rand::{RngCore};
 
 pub struct Mmu {
     pub mbc: Box<dyn Mbc>,
@@ -14,21 +15,21 @@ pub struct Mmu {
 
 impl Mmu {
     pub fn new(cartridge: Box<dyn Mbc>) -> Self {
+        let mut rng = rand::thread_rng();
+        let mut wram = [0; 0x8000];
+        let mut hram = [0; 0x7F];
+        rng.fill_bytes(&mut wram);
+        rng.fill_bytes(&mut hram);
+
         Self {
             mbc: cartridge,
             ppu: Ppu::new(),
             io: IO::new(),
             ieflag: 0,
-            wram: [0; 0x8000],
-            hram: [0; 0x7F],
+            wram: wram,
+            hram: hram,
             ram_bank: 1,
         }
-    }
-
-    pub fn fetch_instruction(&mut self, pc: &mut u16) -> (u8, u16) {
-        let instruction = self.read_byte(*pc);
-        let inc_pc = pc.wrapping_add(1);
-        (instruction, inc_pc)
     }
 
     pub fn push_stack(&mut self, sp: u16, address: u16) -> u16 {

@@ -46,18 +46,23 @@ impl Cpu {
         match interrupt {
             Interrupt::Vblank => {
                 self.reg.pc = 0x40;
+                self.mmu.io.ifflag &= 0x1E;
             }
             Interrupt::Serial => {
                 self.reg.pc = 0x58;
+                self.mmu.io.ifflag &= 0x17;             
             }
             Interrupt::Hitolo => {
                 self.reg.pc = 0x60;
+                self.mmu.io.ifflag &= 0x0F;
             }
             Interrupt::Lcdc => {
                 self.reg.pc = 0x48;
+                self.mmu.io.ifflag &= 0x1D;
             }
             Interrupt::Timer => {
                 self.reg.pc = 0x50;
+                self.mmu.io.ifflag &= 0x1B;
             }
         };
 

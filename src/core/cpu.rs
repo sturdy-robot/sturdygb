@@ -27,8 +27,10 @@ impl Cpu {
     pub fn execute(&mut self) {
         while !self.is_paused {
             self.update_interrupts();
-            self.decode();
-            // self.mmu.ppu.execute();
+            if !self.is_halted {
+                self.decode();
+                // self.mmu.ppu.execute();
+            }
             self.get_serial_message();
         }
     }
@@ -48,11 +50,7 @@ impl Cpu {
         if opcode.is_halted {
             self.is_halted = true;
         }
-        if opcode.trigger_ime == 1 {
-            self.ime = true;
-        } else {
-            self.ime = false;
-        }
+        if opcode.trigger_ime { self.ime = !self.ime;}
     }
 }
 
