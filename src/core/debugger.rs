@@ -33,7 +33,7 @@ impl<'a> Opcode<'a> {
     }
 
     pub fn debug_registers(&mut self) {
-        let pc = self.reg.pc.wrapping_sub(1);
+        let pc = self.reg.pc;
         print!("[{:04X}]: ({:02X} {:02X} {:02X})", pc, self.opcode, self.mmu.read_byte(pc.wrapping_add(1)), self.mmu.read_byte(pc.wrapping_add(2)));
         // print!("  A: 0x{:02X} F: 0x{:02X}, B: 0x{:02X} C: 0x{:02X} D: 0x{:02X} E: 0x{:02X} H: 0x{:02X} L: 0x{:02X}", self.reg.a, self.reg.f, self.reg.b, self.reg.c, self.reg.d, self.reg.e, self.reg.h, self.reg.l);
         print!(" A: {:02X}", self.reg.a);

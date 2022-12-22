@@ -10,12 +10,11 @@ pub struct Registers {
     pub l: u8,
     pub sp: u16,
     pub pc: u16,
-    pub ime: bool,
 }
 
 impl Registers {
     pub fn new(a: u8, f: u8, b: u8, c: u8, d: u8, e: u8, h: u8, l: u8) -> Self {
-        Self { a, f, b, c, d, e, h, l, sp: 0xFFFE, pc: 0x0100, ime: true }
+        Self { a, f, b, c, d, e, h, l, sp: 0xFFFE, pc: 0x0100 }
     }
 
     pub fn af(&self) -> u16 {
@@ -36,35 +35,42 @@ impl Registers {
 
     pub fn set_af(&mut self, value: u16) {
         self.a = (value >> 8) as u8;
-        self.f = (value & 0x00F0) as u8;
+        self.f = (value & 0xF0) as u8;
     }
 
     pub fn set_bc(&mut self, value: u16) {
         self.b = (value >> 8) as u8;
-        self.c = (value & 0x00FF) as u8;
+        self.c = (value & 0xFF) as u8;
     }
 
     pub fn set_de(&mut self, value: u16) {
         self.d = (value >> 8) as u8;
-        self.e = (value & 0x00FF) as u8;
+        self.e = (value & 0xFF) as u8;
     }
 
     pub fn set_hl(&mut self, value: u16) {
         self.h = (value >> 8) as u8;
-        self.l = (value & 0x00FF) as u8;
+        self.l = (value & 0xFF) as u8;
     }
 
-    pub fn set_f(&mut self, flag: FFlags, condition: bool) {
-        let value: u8 = flag as u8;
-        match condition {
-            true => self.f |= value,
-            false => self.f &= !value,
+    pub fn set_f(&mut self, mut c: u8, mut h: u8, mut n: u8, mut z: u8) {
+        if c == 2 {
+            c = self.get_flag(FFlags::C);
         }
-        self.f &= 0xF0;
+        if h == 2 {
+            h = self.get_flag(FFlags::H);
+        }
+        if n == 2 {
+            n = self.get_flag(FFlags::N);
+        }
+        if z == 2 {
+            z = self.get_flag(FFlags::Z);
+        }
+        self.f = ((z << 7) | (n << 6) | (h << 5) | (c << 4)) & 0xF0;
     }
 
     pub fn get_flag(&self, flag: FFlags) -> u8 {
-        match self.f & (flag as u8) > 0 {
+        match self.f & (flag as u8) == flag as u8 {
             true => 1,
             false => 0,
         }
@@ -81,11 +87,10 @@ pub enum FFlags {
 
 #[cfg(test)]
 mod test {
-    use super::FFlags;
     use super::Registers;
 
     fn get_registers() -> Registers {
-        Registers::new(0x01, 0x00, 0xFF, 0x13, 0x00, 0xC1, 0x84, 0x03)
+        Registers::new(0x01, 0xB0, 0x00, 0x13, 0x00, 0xD8, 0x01, 0x4D)
     }
 
 
@@ -148,16 +153,4 @@ mod test {
         assert_eq!(r.hl(), 0x4444);
     }
 
-    #[test]
-    fn test_cpu_flags() {
-        let mut r: Registers = get_registers();
-        r.set_f(FFlags::C, true);
-        assert_eq!(r.f, 0xB0);
-        r.set_f(FFlags::H, true);
-        assert_eq!(r.f, 0xB0);
-        r.set_f(FFlags::N, false);
-        assert_eq!(r.f, 0xB0);
-        r.set_f(FFlags::Z, false);
-        assert_eq!(r.f, 0x30);
-    }
 }

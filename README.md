@@ -13,13 +13,13 @@ Checklist of (not yet) implemented features:
 - [ ] Timer
 - [x] Cartridge
     - [x] ROMONLY
-    - [ ] MBC1
+    - [x] MBC1
     - [ ] MM01
     - [ ] MBC2
     - [ ] MBC3
     - [ ] MBC5
     - [ ] MBC7
-- [x] MMU/Memory
+- [x] MMU/Memory Bus
 - [ ] Audio
 - [ ] Joystick and input
 - [ ] Load/Save

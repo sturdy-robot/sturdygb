@@ -9,6 +9,7 @@ pub struct Cpu {
     pub is_halted: bool,
     pub cycles: u32,
     pub is_paused: bool,
+    pub ime: bool,
 }
 
 impl Cpu {
@@ -19,14 +20,17 @@ impl Cpu {
             is_halted: false,
             cycles: 0,
             is_paused: false,
+            ime: true,
         }
     }
 
     pub fn execute(&mut self) {
         while !self.is_paused {
             self.update_interrupts();
-            self.decode();
-            // self.mmu.ppu.execute();
+            if !self.is_halted {
+                self.decode();
+                // self.mmu.ppu.execute();
+            }
             self.get_serial_message();
         }
     }
@@ -40,15 +44,13 @@ impl Cpu {
     }
 
     fn decode(&mut self) {
-        let instruction: u8;
-        (instruction, self.reg.pc) = self.mmu.fetch_instruction(&mut self.reg.pc);
+        let instruction = self.mmu.read_byte(self.reg.pc);
         let mut opcode = Opcode::new(instruction, &mut self.reg, &mut self.mmu);
         opcode.decode();
         if opcode.is_halted {
             self.is_halted = true;
         }
-        self.cycles += opcode.get_cycles();
-        
+        if opcode.trigger_ime { self.ime = !self.ime;}
     }
 }
 

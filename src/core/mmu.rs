@@ -1,6 +1,7 @@
 use super::io::IO;
 use super::mbc::Mbc;
 use super::ppu::Ppu;
+use rand::{RngCore};
 
 pub struct Mmu {
     pub mbc: Box<dyn Mbc>,
@@ -9,24 +10,26 @@ pub struct Mmu {
     pub ieflag: u8,
     wram: [u8; 0x8000],
     hram: [u8; 0x7F],
+    ram_bank: usize,
 }
 
 impl Mmu {
     pub fn new(cartridge: Box<dyn Mbc>) -> Self {
+        let mut rng = rand::thread_rng();
+        let mut wram = [0; 0x8000];
+        let mut hram = [0; 0x7F];
+        rng.fill_bytes(&mut wram);
+        rng.fill_bytes(&mut hram);
+
         Self {
             mbc: cartridge,
             ppu: Ppu::new(),
             io: IO::new(),
             ieflag: 0,
-            wram: [0; 0x8000],
-            hram: [0; 0x7F],
+            wram: wram,
+            hram: hram,
+            ram_bank: 1,
         }
-    }
-
-    pub fn fetch_instruction(&mut self, pc: &mut u16) -> (u8, u16) {
-        let instruction = self.read_byte(*pc);
-        let inc_pc = pc.wrapping_add(1);
-        (instruction, inc_pc)
     }
 
     pub fn push_stack(&mut self, sp: u16, address: u16) -> u16 {
@@ -48,12 +51,13 @@ impl Mmu {
             0x8000..=0x9FFF => self.ppu.read_byte(address),
             0xA000..=0xBFFF => self.mbc.read_ram(address),
             0xC000..=0xCFFF | 0xE000..=0xEFFF => self.wram[(address & 0x1FFF) as usize],
-            0xD000..=0xDFFF | 0xF000..=0xFDFF => self.wram[(address & 0x1FFF) as usize], // switchable banks later
+            0xD000..=0xDFFF | 0xF000..=0xFDFF => self.wram[(self.ram_bank * 0x1000) | address as usize & 0x0FFF], // switchable banks later
             0xFE00..=0xFE9F => self.ppu.read_byte(address),
             0xFF00..=0xFF26 => self.io.read_byte(address),
             0xFF40..=0xFF4F => self.ppu.read_byte(address),
             0xFF51..=0xFF55 => self.ppu.read_byte(address),
             0xFF68..=0xFF69 => self.ppu.read_byte(address),
+            0xFF70 => self.ram_bank as u8,
             0xFF80..=0xFFFE => self.hram[(address & 0x007F) as usize],
             0xFFFF => self.ieflag,
             _ => 0x00,
@@ -66,12 +70,13 @@ impl Mmu {
             0x8000..=0x9FFF => self.ppu.write_byte(address, value),
             0xA000..=0xBFFF => self.mbc.write_ram(address, value),
             0xC000..=0xCFFF | 0xE000..=0xEFFF => self.wram[(address & 0x1FFF) as usize] = value,
-            0xD000..=0xDFFF | 0xF000..=0xFDFF => self.wram[(address & 0x1FFF) as usize] = value, // switchable banks later
+            0xD000..=0xDFFF | 0xF000..=0xFDFF => self.wram[(self.ram_bank * 0x1000) | address as usize & 0x0FFF] = value, // switchable banks later
             0xFE00..=0xFE9F => self.ppu.write_byte(address, value),
             0xFF00..=0xFF26 => self.io.write_byte(address, value),
             0xFF40..=0xFF4F => self.ppu.write_byte(address, value),
             0xFF51..=0xFF55 => self.ppu.write_byte(address, value),
             0xFF68..=0xFF69 => self.ppu.write_byte(address, value),
+            0xFF70 => { self.ram_bank = match value & 0x7 { 0 => 1, n => n as usize }; }
             0xFF80..=0xFFFE => self.hram[(address & 0x007F) as usize] = value,
             0xFFFF => self.ieflag = value,
             _ => println!("Attempted to write to invalid memory address: 0x{address:04X}"),

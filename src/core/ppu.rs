@@ -1,3 +1,5 @@
+use rand::RngCore;
+
 const FRAME_WIDTH: u16 = 256;
 const FRAME_HEIGHT: u16 = 256;
 
@@ -34,9 +36,15 @@ pub struct Ppu {
 
 impl Ppu {
     pub fn new() -> Self {
+        let mut rng = rand::thread_rng();
+        let mut vram = [0_u8; 0x2000];
+        let mut oam = [0_u8; 0xA0];
+        rng.fill_bytes(&mut vram);
+        rng.fill_bytes(&mut oam);
+
         Self {
-            vram: [0; 0x2000],
-            oam: [0; 0xA0],
+            vram: vram,
+            oam: oam,
             lcdc: 0x91,
             stat: 0x81,
             scy: 0x00,
@@ -88,7 +96,7 @@ impl Ppu {
             0xFF69 => self.bcpd,
             0xFF6A => self.ocps,
             0xFF6B => self.ocpd,
-            _ => 0
+            _ => 0xFF
         }
     }
 
@@ -117,7 +125,7 @@ impl Ppu {
             0xFF6A => self.ocps = value,
             0xFF6B => self.ocpd = value,
             _ => {
-                //println!("Write to invalid memory address: {address:04X}");
+                println!("Write to invalid memory address: {address:04X}");
             },
         };
     }

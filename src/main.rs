@@ -35,7 +35,7 @@ fn main() {
 
     match load_cartridge(filename) {
         Ok(mbc) => {
-            gb = GB::new(mbc, GbType::Dmg0);
+            gb = GB::new(mbc, GbType::Dmg);
             gb.run()
         },
         Err(e) => println!("{}", e),
