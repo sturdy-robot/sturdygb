@@ -66,6 +66,6 @@ impl Mbc for Mbc1 {
     }
 
     fn write_ram(&mut self, address: u16, value: u8) {
-        todo!()
+        self.external_ram[address as usize - 0xA000 * (self.current_ram_bank + 1)] = value;
     }
 }
