@@ -1,62 +1,227 @@
-use crate::core::mmu::Mmu;
-use crate::core::opcodes::Opcode;
-use crate::core::registers::Registers;
-
-
 pub struct Cpu {
-    pub reg: Registers,
-    pub mmu: Mmu,
-    pub is_halted: bool,
-    pub cycles: u32,
-    pub is_paused: bool,
-    pub ime: bool,
+    pub registers: [u8; 8],
+    pub sp: u16,
+    pub pc: u16,
+    pub f_carry: bool,
+    pub f_half_carry: bool,
+    pub f_negative: bool,
+    pub f_zero: bool,
+    pub current_instruction: u8,
+    pub pending_cycles: usize,
+    pub interrupt_master: bool,
+}
+
+const OPCODES_SIZE: [u16; 256] = [
+    //  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+    1, 3, 1, 1, 1, 1, 2, 1, 3, 1, 1, 1, 1, 1, 2, 1, 2, 3, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1,
+    2, 3, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 3, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 3, 3, 3, 1, 2, 1, 1, 1, 3, 2, 3, 3, 2, 1, 1, 1, 3, 1, 3, 1, 2, 1, 1, 1, 3, 1, 3, 1, 2, 1,
+    2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 3, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 3, 1, 1, 1, 2, 1,
+];
+
+fn get_initial_flag_states(value: u8) -> (bool, bool, bool, bool) {
+    let carry = value & 0x10 == 0x10;
+    let half_carry = value & 0x20 == 0x20;
+    let negative = value & 0x40 == 0x40;
+    let zero = value & 0x80 == 0x80;
+    (carry, half_carry, negative, zero)
 }
 
 impl Cpu {
-    pub fn new(registers: Registers, mmu: Mmu) -> Self {
+    pub fn new(registers: [u8; 8]) -> Self {
+        let (f_carry, f_half_carry, f_negative, f_zero) = get_initial_flag_states(registers[1]);
         Self {
-            reg: registers,
-            mmu: mmu,
-            is_halted: false,
-            cycles: 0,
-            is_paused: false,
-            ime: true,
+            registers,
+            f_carry,
+            f_half_carry,
+            f_negative,
+            f_zero,
+            sp: 0xFFFE,
+            pc: 0x0100,
+            current_instruction: 0,
+            pending_cycles: 0,
+            interrupt_master: true,
         }
     }
 
-    pub fn execute(&mut self) {
-        while !self.is_paused {
-            self.update_interrupts();
-            if !self.is_halted {
-                self.decode();
-                // self.mmu.ppu.execute();
-            }
-            self.get_serial_message();
+    pub fn advance_pc(&mut self) {
+        let adv = OPCODES_SIZE[self.current_instruction as usize];
+        self.pc = self.pc.wrapping_add(adv);
+    }
+
+    pub fn a(&self) -> u8 {
+        self.registers[0]
+    }
+
+    pub fn f(&self) -> u8 {
+        self.registers[1] & 0xF0
+    }
+
+    pub fn b(&self) -> u8 {
+        self.registers[2]
+    }
+
+    pub fn c(&self) -> u8 {
+        self.registers[3]
+    }
+
+    pub fn d(&self) -> u8 {
+        self.registers[4]
+    }
+
+    pub fn e(&self) -> u8 {
+        self.registers[5]
+    }
+
+    pub fn h(&self) -> u8 {
+        self.registers[6]
+    }
+
+    pub fn l(&self) -> u8 {
+        self.registers[7]
+    }
+
+    pub fn af(&self) -> u16 {
+        (self.a() << 8) as u16 | (self.f()) as u16
+    }
+
+    pub fn bc(&self) -> u16 {
+        (self.b() << 8) as u16 | (self.c()) as u16
+    }
+
+    pub fn de(&self) -> u16 {
+        (self.d() << 8) as u16 | (self.e()) as u16
+    }
+
+    pub fn hl(&self) -> u16 {
+        (self.h() << 8) as u16 | (self.l()) as u16
+    }
+
+    pub fn set_a(&mut self, value: u8) {
+        self.registers[0] = value;
+    }
+
+    pub fn set_f(&mut self, value: u8) {
+        self.registers[1] = value & 0xF0;
+        self.f_carry = value & 0x10 == 0x10;
+        self.f_half_carry = value & 0x20 == 0x20;
+        self.f_negative = value & 0x40 == 0x40;
+        self.f_zero = value & 0x80 == 0x80;
+    }
+
+    pub fn set_b(&mut self, value: u8) {
+        self.registers[2] = value;
+    }
+
+    pub fn set_c(&mut self, value: u8) {
+        self.registers[3] = value;
+    }
+
+    pub fn set_d(&mut self, value: u8) {
+        self.registers[4] = value;
+    }
+
+    pub fn set_e(&mut self, value: u8) {
+        self.registers[5] = value;
+    }
+
+    pub fn set_h(&mut self, value: u8) {
+        self.registers[6] = value;
+    }
+
+    pub fn set_l(&mut self, value: u8) {
+        self.registers[7] = value;
+    }
+
+    pub fn set_af(&mut self, value: u16) {
+        self.set_a((value >> 8) as u8);
+        self.set_f((value & 0xF0) as u8);
+    }
+
+    pub fn set_bc(&mut self, value: u16) {
+        self.set_b((value >> 8) as u8);
+        self.set_c(value as u8);
+    }
+
+    pub fn set_de(&mut self, value: u16) {
+        self.set_d((value >> 8) as u8);
+        self.set_e(value as u8);
+    }
+
+    pub fn set_hl(&mut self, value: u16) {
+        self.set_h((value >> 8) as u8);
+        self.set_l(value as u8);
+    }
+
+    pub fn get_carry(&self) -> u8 {
+        if self.f_carry {
+            1
+        } else {
+            0
         }
     }
 
-    fn get_serial_message(&mut self) {
-        if self.mmu.io.is_there_serial_data() {
-            let serial_data = self.mmu.io.get_serial_data();
-            let serial_string = serial_data.escape_ascii().to_string();
-            println!("{}", serial_string);
+    pub fn get_half_carry(&self) -> u8 {
+        if self.f_half_carry {
+            1
+        } else {
+            0
         }
     }
 
-    fn decode(&mut self) {
-        let instruction = self.mmu.read_byte(self.reg.pc);
-        let mut opcode = Opcode::new(instruction, &mut self.reg, &mut self.mmu);
-        opcode.decode();
-        if opcode.is_halted {
-            self.is_halted = true;
+    pub fn get_negative(&self) -> u8 {
+        if self.f_negative {
+            1
+        } else {
+            0
         }
-        if opcode.trigger_ime { self.ime = !self.ime;}
     }
-}
 
-#[cfg(test)]
-mod test {
-    use super::Cpu;
+    pub fn get_zero(&self) -> u8 {
+        if self.f_zero {
+            1
+        } else {
+            0
+        }
+    }
 
-    
+    pub fn set_carry(&mut self, value: bool) {
+        self.f_carry = value;
+        self.set_f(if value {
+            self.f() | 0x10
+        } else {
+            self.f() & 0xEF
+        });
+    }
+
+    pub fn set_half_carry(&mut self, value: bool) {
+        self.f_half_carry = value;
+        self.set_f(if value {
+            self.f() | 0x20
+        } else {
+            self.f() & 0xDF
+        });
+    }
+
+    pub fn set_negative(&mut self, value: bool) {
+        self.f_negative = value;
+        self.set_f(if value {
+            self.f() | 0x40
+        } else {
+            self.f() & 0xBF
+        });
+    }
+
+    pub fn set_zero(&mut self, value: bool) {
+        self.f_zero = value;
+        self.set_f(if value {
+            self.f() | 0x80
+        } else {
+            self.f() & 0x7F
+        });
+    }
 }

@@ -1,11 +1,11 @@
 use super::Memory;
 
-pub struct Serial {}
+pub struct Joypad {}
 
-impl Serial {
+impl Joypad {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl Memory for Serial {}
+impl Memory for Joypad {}

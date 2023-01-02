@@ -1,44 +1,36 @@
-#![allow(dead_code)]
-#![allow(unused_variables)]
-use crate::core::gb::{GB, GbType};
-use crate::core::cartridge::*;
-
-use winit::{
-    event::*,
-    event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder
-};
-
-
 mod core;
+use crate::core::gb::{Gb, GbTypes};
+use crate::core::mbc::{get_mbc, CartridgeHeader, GbMode, Mbc};
 use std::env;
+use std::fs;
 
-fn get_window() {
-    env_logger::init();
-    let event_loop = EventLoop::new();
-    let window = WindowBuilder::new().build(&event_loop).unwrap();
-
-    event_loop.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::Wait;
-    });
+fn load_cartridge(filename: &str) -> Result<(Box<dyn Mbc>, GbMode), &str> {
+    let rom_data = fs::read(filename).expect("Unable to read file contents");
+    match CartridgeHeader::new(&rom_data) {
+        Ok(header) => Ok(get_mbc(rom_data, header)),
+        Err(f) => return Err(f),
+    }
 }
 
 fn main() {
-    let mut gb: GB;
     let args: Vec<String> = env::args().collect();
     let filename: &str;
     if args.len() == 1 {
-        filename = "roms/cpu_instrs.gb"
+        filename = "roms/cpu_instrs.gb";
     } else {
         filename = &args[1];
     }
-
     match load_cartridge(filename) {
-        Ok(mbc) => {
-            gb = GB::new(mbc, GbType::Dmg);
-            gb.run()
-        },
-        Err(e) => println!("{}", e),
-    }
-    
+        Ok((mbc, gb_mode)) => {
+            let gb_type: GbTypes;
+            if gb_mode == GbMode::CgbMode {
+                gb_type = GbTypes::Cgb;
+            } else {
+                gb_type = GbTypes::Dmg;
+            }
+            let mut gb = Gb::new(mbc, gb_mode, gb_type);
+            gb.run();
+        }
+        Err(e) => println!("Error loading ROM: {}", e),
+    };
 }

@@ -1,51 +1,112 @@
-use crate::core::registers::Registers;
 use crate::core::cpu::Cpu;
-use crate::core::mmu::Mmu;
-use crate::core::mbc::Mbc;
+use crate::core::joypad::Joypad;
+use crate::core::mbc::{GbMode, Mbc};
+use crate::core::ppu::Ppu;
+use crate::core::serial::Serial;
+use crate::core::sound::Sound;
+use crate::core::timer::Timer;
+use rand::prelude::*;
 
-pub enum GbType {
+#[allow(dead_code)]
+#[derive(PartialEq, Eq)]
+pub enum GbTypes {
     Dmg,
     Mgb,
-    Sgb,
-    Sgb2,
-    CgbDmg,
-    AgbDmg,
     Cgb,
-    Agb
+    Sgb,
 }
 
-/// GameBoy emulator implementation
-pub struct GB {
-    pub cpu: Cpu,
-    gb_type: GbType
+pub enum SpeedMode {
+    Normal,
+    Double,
 }
 
-fn get_registers_from_gb_type(gb_type: &GbType) -> Registers {
-    match gb_type {
-        GbType::Dmg => Registers::new(0x11, 0xB0, 0x00, 0x13, 0x00, 0xD8, 0x01, 0x4D),
-        GbType::Mgb => Registers::new(0xFF, 0xB0, 0x00, 0x13, 0x00, 0xD8, 0x01, 0x4D), // F VALUE INCORRECT
-        GbType::Sgb => Registers::new(0x01, 0x00, 0x00, 0x14, 0x00, 0x00, 0xC0, 0x60),
-        GbType::Sgb2 => Registers::new(0xFF, 0x00, 0x00, 0x14, 0x00, 0x00, 0xC0, 0x60),
-        // TODO: FROM HERE ON THE VALUES ARE NOT RIGHT! FIX THESE
-        GbType::CgbDmg => Registers::new(0x11, 0x00, 0x01, 0x00, 0x00, 0x08, 0x99, 0x1A),
-        GbType::AgbDmg => Registers::new(0x11, 0x00, 0x01, 0x00, 0x00, 0x08, 0x99, 0x1A),
-        GbType::Cgb => Registers::new(0x11, 0x00, 0x00, 0x00, 0xFF, 0x56, 0x00, 0x0D),
-        GbType::Agb => Registers::new(0x11, 0x00, 0x01, 0x00, 0xFF, 0x56, 0x00, 0x0D),
+fn get_gb_type(t: u8) -> GbTypes {
+    match t {
+        _ => GbTypes::Dmg,
     }
 }
 
-impl GB {
-    pub fn new(mbc: Box<dyn Mbc>, gb_type: GbType) -> Self {
-        let registers: Registers = get_registers_from_gb_type(&gb_type);
-        let mmu = Mmu::new(mbc);
-        
+pub struct Gb {
+    pub cpu: Cpu,
+    pub ppu: Ppu,
+    pub serial: Serial,
+    pub joypad: Joypad,
+    pub sound: Sound,
+    pub timer: Timer,
+    pub mbc: Box<dyn Mbc>,
+    pub gb_speed: u8,
+    pub gb_type: GbTypes,
+    pub gb_mode: GbMode,
+    pub wram: Vec<u8>,
+    pub hram: Vec<u8>,
+    pub ram_bank: usize,
+    pub ie_flag: u8,
+    pub if_flag: u8,
+    pub boot_rom_enabled: u8,
+    pub prepare_speed_switch: bool,
+    pub speed_mode: SpeedMode,
+    pub undoc_registers: [u8; 4],
+}
+
+impl Gb {
+    pub fn new(mbc: Box<dyn Mbc>, gb_mode: GbMode, gb_type: GbTypes) -> Self {
+        let registers: [u8; 8];
+        match gb_type {
+            GbTypes::Dmg => {
+                registers = [0x01, 0x00, 0xFF, 0x13, 0x00, 0xC1, 0x84, 0x03];
+            }
+            GbTypes::Mgb => {
+                registers = [0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+            }
+            GbTypes::Cgb => {
+                registers = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+            }
+            GbTypes::Sgb => {
+                registers = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+            }
+        };
+        let mut wram: Vec<u8>;
+        if gb_mode == GbMode::CgbMode {
+            wram = vec![0; 0x8000];
+        } else {
+            wram = vec![0; 0x2000];
+        }
+
+        let mut hram = vec![0; 0x7F];
+        let mut rng = rand::thread_rng();
+        rng.fill_bytes(&mut wram);
+        rng.fill_bytes(&mut hram);
+
         Self {
-            cpu: Cpu::new(registers, mmu),
+            cpu: Cpu::new(registers),
+            ppu: Ppu::new(),
+            serial: Serial::new(),
+            joypad: Joypad::new(),
+            sound: Sound::new(),
+            timer: Timer::new(),
+            mbc,
+            gb_speed: 0,
             gb_type,
+            gb_mode,
+            wram,
+            hram,
+            ram_bank: 0,
+            ie_flag: 0,
+            if_flag: 0,
+            boot_rom_enabled: 0,
+            prepare_speed_switch: false,
+            speed_mode: SpeedMode::Normal,
+            undoc_registers: [0; 4],
         }
     }
 
     pub fn run(&mut self) {
-        self.cpu.execute();
+        self.cpu.pc = 0x00;
+        while self.cpu.pc <= 0xFFFE {
+            self.cpu.current_instruction = self.read_byte(self.cpu.pc);
+            let instr_disasm = self.disassemble();
+            self.decode();
+        }
     }
 }
