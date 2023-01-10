@@ -7,7 +7,7 @@ impl Gb {
         match opcode {
             0x00 => self.nop(),
             0x01 => self.ld_rr_d16(opcode),
-            0x02 => (),
+            0x02 => self.ld_rr_a(opcode),
             0x03 => self.inc_rr(opcode),
             0x04 => (),
             0x05 => (),
@@ -23,7 +23,7 @@ impl Gb {
             0x0F => (),
             0x10 => (),
             0x11 => self.ld_rr_d16(opcode),
-            0x12 => (),
+            0x12 => self.ld_rr_a(opcode),
             0x13 => self.inc_rr(opcode),
             0x14 => (),
             0x15 => (),
@@ -39,7 +39,7 @@ impl Gb {
             0x1F => (),
             0x20 => self.jr_cc_r8(),
             0x21 => self.ld_rr_d16(opcode),
-            0x22 => (),
+            0x22 => self.ld_rr_a(opcode),
             0x23 => self.inc_rr(opcode),
             0x24 => (),
             0x25 => (),
@@ -124,7 +124,7 @@ impl Gb {
             0x74 => (),
             0x75 => (),
             0x76 => (),
-            0x77 => (),
+            0x77 => self.ld_rr_a(opcode),
             0x78 => (),
             0x79 => (),
             0x7A => (),
@@ -239,7 +239,7 @@ impl Gb {
             0xE7 => (),
             0xE8 => (),
             0xE9 => (),
-            0xEA => (),
+            0xEA => self.ld_nn_a(),
             0xEB => (),
             0xEC => (),
             0xED => (),
@@ -377,9 +377,18 @@ impl Gb {
         self.cpu.pc = self.cpu.pc.wrapping_add(1);
     }
 
+    fn ld_nn_a(&mut self) {
+        let value: u16 = (self.cpu.a() as u16) << 8;
+        let memory_value: u16 = self.read_word(self.cpu.pc.wrapping_add(1));
+        self.write_word(memory_value, value);
+        self.cpu.pc = self.cpu.pc.wrapping_add(3);
+    }
+
     fn inc_rr(&mut self, opcode: u8) {
         let register_index: usize = (opcode as usize >> 4) + 1;
-        let register_value: u16 = self.get_word_register_from_index(register_index).wrapping_add(1);
+        let register_value: u16 = self
+            .get_word_register_from_index(register_index)
+            .wrapping_add(1);
         self.set_word_register_from_index(register_index, register_value);
         self.cpu.pc = self.cpu.pc.wrapping_add(1);
     }
@@ -388,7 +397,7 @@ impl Gb {
         let value = self.read_byte(self.cpu.pc.wrapping_add(1)) as i8 as i16 as u16;
         self.cpu.pc = self.cpu.pc.wrapping_add(value);
     }
-    
+
     fn jr_cc_r8(&mut self) {
         if self.get_flag_condition(self.cpu.current_instruction) {
             self.jr_r8();
