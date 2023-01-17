@@ -1,3 +1,6 @@
+// Decode instructions
+// The implementation here is based on the SameBoy implementation
+
 use crate::core::gb::Gb;
 use crate::core::memorybus;
 
@@ -9,64 +12,64 @@ impl Gb {
             0x01 => self.ld_rr_d16(opcode),
             0x02 => self.ld_rr_a(opcode),
             0x03 => self.inc_rr(opcode),
-            0x04 => (),
-            0x05 => (),
-            0x06 => (),
-            0x07 => (),
+            0x04 => self.inc_hr(opcode),
+            0x05 => self.dec_hr(opcode),
+            0x06 => self.ld_hr_d8(opcode),
+            0x07 => self.rlca(),
             0x08 => (),
             0x09 => (),
             0x0A => (),
             0x0B => (),
-            0x0C => (),
-            0x0D => (),
+            0x0C => self.inc_lr(opcode),
+            0x0D => self.dec_lr(opcode),
             0x0E => (),
             0x0F => (),
             0x10 => (),
             0x11 => self.ld_rr_d16(opcode),
             0x12 => self.ld_rr_a(opcode),
             0x13 => self.inc_rr(opcode),
-            0x14 => (),
-            0x15 => (),
-            0x16 => (),
-            0x17 => (),
+            0x14 => self.inc_hr(opcode),
+            0x15 => self.dec_hr(opcode),
+            0x16 => self.ld_hr_d8(opcode),
+            0x17 => self.rla(),
             0x18 => self.jr_r8(),
             0x19 => (),
             0x1A => (),
             0x1B => (),
-            0x1C => (),
-            0x1D => (),
+            0x1C => self.inc_lr(opcode),
+            0x1D => self.dec_lr(opcode),
             0x1E => (),
             0x1F => (),
             0x20 => self.jr_cc_r8(),
             0x21 => self.ld_rr_d16(opcode),
             0x22 => self.ld_rr_a(opcode),
             0x23 => self.inc_rr(opcode),
-            0x24 => (),
-            0x25 => (),
-            0x26 => (),
+            0x24 => self.inc_hr(opcode),
+            0x25 => self.dec_hr(opcode),
+            0x26 => self.ld_hr_d8(opcode),
             0x27 => (),
             0x28 => self.jr_cc_r8(),
             0x29 => (),
             0x2A => (),
             0x2B => (),
-            0x2C => (),
-            0x2D => (),
+            0x2C => self.inc_lr(opcode),
+            0x2D => self.dec_lr(opcode),
             0x2E => (),
             0x2F => (),
             0x30 => self.jr_cc_r8(),
             0x31 => self.ld_rr_d16(opcode),
             0x32 => (),
             0x33 => self.inc_rr(opcode),
-            0x34 => (),
-            0x35 => (),
-            0x36 => (),
+            0x34 => self.inc_hr(opcode),
+            0x35 => self.dec_hr(opcode),
+            0x36 => self.ld_dhl_d8(),
             0x37 => (),
             0x38 => self.jr_cc_r8(),
             0x39 => (),
             0x3A => (),
             0x3B => (),
-            0x3C => (),
-            0x3D => (),
+            0x3C => self.inc_lr(opcode),
+            0x3D => self.dec_lr(opcode),
             0x3E => (),
             0x3F => (),
             0x40 => (),
@@ -300,7 +303,7 @@ impl Gb {
         }
     }
 
-    fn get_reg_value(&self, reg_index: usize) -> u8 {
+    fn get_byte_register_from_index(&self, reg_index: usize) -> u8 {
         if reg_index == 8 {
             self.read_byte(self.cpu.hl())
         } else {
@@ -355,6 +358,7 @@ impl Gb {
         }
     }
 
+    // REGULAR INSTRUCTIONS
     fn nop(&mut self) {
         self.cpu.pc = self.cpu.pc.wrapping_add(1);
     }
@@ -393,6 +397,93 @@ impl Gb {
         self.cpu.pc = self.cpu.pc.wrapping_add(1);
     }
 
+    fn inc_hr(&mut self, opcode: u8) {
+        let register_index: usize = ((opcode as usize >> 4) + 1) & 0x03;
+        let register_value: u16 = self.get_word_register_from_index(register_index).wrapping_add(0x100);
+        self.set_word_register_from_index(register_index, register_value);
+        self.cpu.set_zero(register_value == 0);
+        self.cpu.set_negative(false);
+        let half_carry = register_value & 0x0F00 == 0;
+        self.cpu.set_half_carry(half_carry);
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+    }
+
+    fn dec_hr(&mut self, opcode: u8) {
+        let register_index: usize = ((opcode as usize >> 4) + 1) & 0x03;
+        let register_value: u16 = self.get_word_register_from_index(register_index).wrapping_sub(0x100);
+        self.set_word_register_from_index(register_index, register_value);
+        self.cpu.set_zero(register_value == 0);
+        self.cpu.set_negative(true);
+        let half_carry = register_value & 0x0F00 == 0xF00;
+        self.cpu.set_half_carry(half_carry);
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+    }
+
+    fn ld_hr_d8(&mut self, opcode: u8) {
+        let register_index: usize = ((opcode as usize >> 4) + 1) & 0x03;
+        let register_value: u16 = self.get_word_register_from_index(register_index);
+        let value = (self.read_byte(self.cpu.pc.wrapping_add(1)) as u16) << 8;
+        self.set_word_register_from_index(register_index, (register_value & 0xFF) | value);
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
+    }
+
+    fn ld_dhl_d8(&mut self) {
+        let value = self.read_byte(self.cpu.pc.wrapping_add(1));
+        self.write_byte(self.cpu.hl(), value);
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
+    }
+
+    fn rlca(&mut self) {
+        let carry = self.cpu.af() & 0x8000 != 0;
+        let value = self.cpu.af() & 0xFF00 << 1;
+        self.cpu.set_af(value);
+        if carry {
+            let value = self.cpu.af() | 0x10 | 0x0100;
+            self.cpu.set_af(value);
+        }
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+    }
+
+    fn rla(&mut self) {
+        let bit7 = (self.cpu.af() & 0x8000) != 0;
+        let carry = self.cpu.af() & 16 != 0;
+
+        let value = self.cpu.af() & 0xFF00 << 1;
+        self.cpu.set_af(value);
+        if carry {
+            let value = self.cpu.af() | 0x0100;
+            self.cpu.set_af(value);
+        }
+        if bit7 {
+            let value = self.cpu.af() | 16;
+            self.cpu.set_af(value);
+        }
+    }
+
+    fn inc_lr(&mut self, opcode: u8) {
+        let register_index: usize = (opcode as usize >> 4) + 1;
+        let register_value: u16 = self.get_word_register_from_index(register_index);
+        let value = (register_value & 0xFF).wrapping_add(1);
+        self.set_word_register_from_index(register_index, (register_value & 0xFF00) | value);
+        self.cpu.set_zero(value == 0);
+        self.cpu.set_negative(false);
+        let half_carry = value & 0x0F == 0;
+        self.cpu.set_half_carry(half_carry);
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+    }
+
+    fn dec_lr(&mut self, opcode: u8) {
+        let register_index: usize = (opcode as usize >> 4) + 1;
+        let register_value: u16 = self.get_word_register_from_index(register_index);
+        let value = (register_value & 0xFF).wrapping_sub(1);
+        self.set_word_register_from_index(register_index, (register_value & 0xFF00) | value);
+        self.cpu.set_zero(value == 0);
+        self.cpu.set_negative(true);
+        let half_carry = value & 0x0F == 0xF;
+        self.cpu.set_half_carry(half_carry);
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+    }
+
     fn jr_r8(&mut self) {
         let value = self.read_byte(self.cpu.pc.wrapping_add(1)) as i8 as i16 as u16;
         self.cpu.pc = self.cpu.pc.wrapping_add(value);
@@ -406,9 +497,10 @@ impl Gb {
         }
     }
 
+    // DECODE CB SECTION
     fn rlc_r(&mut self, prefix: u8) {
         let reg_index = self.get_reg_index(prefix);
-        let mut value: u8 = self.get_reg_value(reg_index);
+        let mut value: u8 = self.get_byte_register_from_index(reg_index);
         self.cpu.set_f(0);
         self.cpu.set_carry((value & 0x01) != 0);
         let carry_value: u8 = self.cpu.get_carry();
@@ -419,7 +511,7 @@ impl Gb {
 
     fn rrc_r(&mut self, prefix: u8) {
         let reg_index = self.get_reg_index(prefix);
-        let mut value: u8 = self.get_reg_value(reg_index);
+        let mut value: u8 = self.get_byte_register_from_index(reg_index);
         self.cpu.set_f(0);
         self.cpu.set_carry((value & 0x01) != 0);
         let carry_value: u8 = self.cpu.get_carry();
@@ -430,7 +522,7 @@ impl Gb {
 
     fn rl_r(&mut self, prefix: u8) {
         let reg_index = self.get_reg_index(prefix);
-        let mut value: u8 = self.get_reg_value(reg_index);
+        let mut value: u8 = self.get_byte_register_from_index(reg_index);
         self.cpu.set_f(0);
         self.cpu.set_carry((value & 0x80) != 0);
         let carry_value: u8 = self.cpu.get_carry();
@@ -441,7 +533,7 @@ impl Gb {
 
     fn rr_r(&mut self, prefix: u8) {
         let reg_index = self.get_reg_index(prefix);
-        let mut value: u8 = self.get_reg_value(reg_index);
+        let mut value: u8 = self.get_byte_register_from_index(reg_index);
         self.cpu.set_f(0);
         self.cpu.set_carry((value & 0x1) != 0);
         let carry_value: u8 = self.cpu.get_carry();
@@ -452,7 +544,7 @@ impl Gb {
 
     fn sla_r(&mut self, prefix: u8) {
         let reg_index = self.get_reg_index(prefix);
-        let mut value: u8 = self.get_reg_value(reg_index);
+        let mut value: u8 = self.get_byte_register_from_index(reg_index);
         self.cpu.set_f(0);
         self.cpu.set_carry((value & 0x80) != 0);
         value = value << 1;
@@ -462,7 +554,7 @@ impl Gb {
 
     fn sra_r(&mut self, prefix: u8) {
         let reg_index = self.get_reg_index(prefix);
-        let mut value: u8 = self.get_reg_value(reg_index);
+        let mut value: u8 = self.get_byte_register_from_index(reg_index);
         self.cpu.set_f(0);
         self.cpu.set_carry(value & 1 == 1);
         value = (value >> 1) | (value & 0x80);
@@ -472,7 +564,7 @@ impl Gb {
 
     fn swap_r(&mut self, prefix: u8) {
         let reg_index = self.get_reg_index(prefix);
-        let mut value: u8 = self.get_reg_value(reg_index);
+        let mut value: u8 = self.get_byte_register_from_index(reg_index);
         self.cpu.set_f(0);
         value = (value >> 4) | (value << 4);
         self.cpu.set_zero(value == 0);
@@ -480,7 +572,7 @@ impl Gb {
 
     fn srl_r(&mut self, prefix: u8) {
         let reg_index = self.get_reg_index(prefix);
-        let mut value: u8 = self.get_reg_value(reg_index);
+        let mut value: u8 = self.get_byte_register_from_index(reg_index);
         self.cpu.set_f(0);
         self.cpu.set_carry(value & 1 == 1);
         value = value >> 1;
@@ -490,7 +582,7 @@ impl Gb {
 
     fn bit_res_set_r(&mut self, prefix: u8) {
         let reg_index = self.get_reg_index(prefix);
-        let value: u8 = self.get_reg_value(reg_index);
+        let value: u8 = self.get_byte_register_from_index(reg_index);
         let result = 1 << ((prefix >> 3) & 7);
         if (prefix & 0xC0) == 0x40 {
             // BIT
