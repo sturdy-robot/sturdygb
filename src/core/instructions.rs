@@ -16,14 +16,14 @@ impl Gb {
             0x05 => self.dec_hr(opcode),
             0x06 => self.ld_hr_d8(opcode),
             0x07 => self.rlca(),
-            0x08 => (),
-            0x09 => (),
-            0x0A => (),
-            0x0B => (),
+            0x08 => self.ld_da16_sp(),
+            0x09 => self.add_hl_rr(opcode),
+            0x0A => self.ld_a_drr(opcode),
+            0x0B => self.dec_rr(opcode),
             0x0C => self.inc_lr(opcode),
             0x0D => self.dec_lr(opcode),
-            0x0E => (),
-            0x0F => (),
+            0x0E => self.ld_lr_d8(opcode),
+            0x0F => self.rrca(),
             0x10 => (),
             0x11 => self.ld_rr_d16(opcode),
             0x12 => self.ld_rr_a(opcode),
@@ -33,14 +33,14 @@ impl Gb {
             0x16 => self.ld_hr_d8(opcode),
             0x17 => self.rla(),
             0x18 => self.jr_r8(),
-            0x19 => (),
-            0x1A => (),
-            0x1B => (),
+            0x19 => self.add_hl_rr(opcode),
+            0x1A => self.ld_a_drr(opcode),
+            0x1B => self.dec_rr(opcode),
             0x1C => self.inc_lr(opcode),
             0x1D => self.dec_lr(opcode),
-            0x1E => (),
+            0x1E => self.ld_a_drr(opcode),
             0x1F => (),
-            0x20 => self.jr_cc_r8(),
+            0x20 => self.jr_cc_r8(opcode),
             0x21 => self.ld_rr_d16(opcode),
             0x22 => self.ld_rr_a(opcode),
             0x23 => self.inc_rr(opcode),
@@ -48,15 +48,15 @@ impl Gb {
             0x25 => self.dec_hr(opcode),
             0x26 => self.ld_hr_d8(opcode),
             0x27 => (),
-            0x28 => self.jr_cc_r8(),
-            0x29 => (),
-            0x2A => (),
-            0x2B => (),
+            0x28 => self.jr_cc_r8(opcode),
+            0x29 => self.add_hl_rr(opcode),
+            0x2A => self.ld_a_drr(opcode),
+            0x2B => self.dec_rr(opcode),
             0x2C => self.inc_lr(opcode),
             0x2D => self.dec_lr(opcode),
-            0x2E => (),
+            0x2E => self.ld_a_drr(opcode),
             0x2F => (),
-            0x30 => self.jr_cc_r8(),
+            0x30 => self.jr_cc_r8(opcode),
             0x31 => self.ld_rr_d16(opcode),
             0x32 => (),
             0x33 => self.inc_rr(opcode),
@@ -64,10 +64,10 @@ impl Gb {
             0x35 => self.dec_hr(opcode),
             0x36 => self.ld_dhl_d8(),
             0x37 => (),
-            0x38 => self.jr_cc_r8(),
-            0x39 => (),
-            0x3A => (),
-            0x3B => (),
+            0x38 => self.jr_cc_r8(opcode),
+            0x39 => self.add_hl_rr(opcode),
+            0x3A => self.ld_a_drr(opcode),
+            0x3B => self.dec_rr(opcode),
             0x3C => self.inc_lr(opcode),
             0x3D => self.dec_lr(opcode),
             0x3E => (),
@@ -458,16 +458,49 @@ impl Gb {
             let value = self.cpu.af() | 16;
             self.cpu.set_af(value);
         }
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+    }
+
+    fn ld_da16_sp(&mut self) {
+        let address: u16 = self.read_word(self.cpu.pc.wrapping_add(1));
+        self.write_word(address, self.cpu.sp);
+        self.cpu.pc = self.cpu.pc.wrapping_add(3);
+    }
+
+    fn add_hl_rr(&mut self, opcode: u8) {
+        let hl: u16 = self.cpu.hl();
+        let register_index: usize = (opcode as usize >> 4) + 1;
+        let rr: u16 = self.get_word_register_from_index(register_index);
+        self.cpu.set_hl(hl.wrapping_add(rr));
+        self.cpu.set_negative(false);
+        self.cpu.set_half_carry(((hl as u32) & 0xFFF) + ((rr as u32) & 0xFFF) & 0x1000 != 0);
+        self.cpu.set_carry((hl as u32 + rr as u32) & 0x10000 != 0);
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+    }
+
+    fn ld_a_drr(&mut self, opcode: u8) {
+        let register_index = (opcode as usize >> 4) + 1;
+        let register: u16 = self.get_word_register_from_index(register_index);
+        let value: u8 = self.read_byte(register);
+        self.cpu.set_a(value);
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+    }
+
+    fn dec_rr(&mut self, opcode: u8) {
+        let register_index = (opcode as usize >> 4) + 1;
+        let rr: u16 = self.get_word_register_from_index(register_index);
+        self.set_word_register_from_index(register_index, rr.wrapping_sub(1));
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
     }
 
     fn inc_lr(&mut self, opcode: u8) {
         let register_index: usize = (opcode as usize >> 4) + 1;
         let register_value: u16 = self.get_word_register_from_index(register_index);
-        let value = (register_value & 0xFF).wrapping_add(1);
+        let value: u16 = (register_value & 0xFF).wrapping_add(1);
         self.set_word_register_from_index(register_index, (register_value & 0xFF00) | value);
         self.cpu.set_zero(value == 0);
         self.cpu.set_negative(false);
-        let half_carry = value & 0x0F == 0;
+        let half_carry: bool = value & 0x0F == 0;
         self.cpu.set_half_carry(half_carry);
         self.cpu.pc = self.cpu.pc.wrapping_add(1);
     }
@@ -475,13 +508,43 @@ impl Gb {
     fn dec_lr(&mut self, opcode: u8) {
         let register_index: usize = (opcode as usize >> 4) + 1;
         let register_value: u16 = self.get_word_register_from_index(register_index);
-        let value = (register_value & 0xFF).wrapping_sub(1);
+        let value: u16 = (register_value & 0xFF).wrapping_sub(1);
         self.set_word_register_from_index(register_index, (register_value & 0xFF00) | value);
         self.cpu.set_zero(value == 0);
         self.cpu.set_negative(true);
-        let half_carry = value & 0x0F == 0xF;
+        let half_carry: bool = value & 0x0F == 0xF;
         self.cpu.set_half_carry(half_carry);
         self.cpu.pc = self.cpu.pc.wrapping_add(1);
+    }
+
+    fn ld_lr_d8(&mut self, opcode: u8) {
+        let register_index: usize = (opcode as usize >> 4) + 1;
+        let mut register: u16 = self.get_word_register_from_index(register_index);
+        self.set_word_register_from_index(register_index, register & 0xFF00);
+        register = self.get_word_register_from_index(register_index);
+        let value: u16 = self.read_byte(self.cpu.pc.wrapping_add(1)) as u16;
+        self.set_word_register_from_index(register_index, register | value);
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
+    }
+
+    fn rrca(&mut self) {
+        let carry: bool = self.cpu.af() & 0x100 != 0;
+        let a: u8 = self.cpu.a();
+        self.cpu.set_a(a >> 1);    
+        self.cpu.set_carry(carry);
+    }
+
+    fn rra(&mut self) {
+        let bit1: bool = self.cpu.af() & 0x100 != 0;
+        let carry = self.cpu.f_carry;
+
+        let mut a: u8 = self.cpu.a();
+        self.cpu.set_a(a >> 1);
+        a = self.cpu.a();
+        if carry {
+            self.cpu.set_a(a | 0x80);
+        }
+        self.cpu.set_carry(bit1);
     }
 
     fn jr_r8(&mut self) {
@@ -489,8 +552,8 @@ impl Gb {
         self.cpu.pc = self.cpu.pc.wrapping_add(value);
     }
 
-    fn jr_cc_r8(&mut self) {
-        if self.get_flag_condition(self.cpu.current_instruction) {
+    fn jr_cc_r8(&mut self, opcode: u8) {
+        if self.get_flag_condition(opcode) {
             self.jr_r8();
         } else {
             self.cpu.pc = self.cpu.pc.wrapping_add(2);
@@ -597,4 +660,14 @@ impl Gb {
             self.set_byte_register_from_index(reg_index, value | result);
         }
     }
+}
+
+
+#[cfg(test)]
+mod test {
+    use crate::core::gb::Gb;
+    use crate::core::cpu;
+    use super::*;
+
+
 }
