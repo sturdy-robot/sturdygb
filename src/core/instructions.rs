@@ -24,7 +24,7 @@ impl Gb {
             0x0D => self.dec_lr(opcode),
             0x0E => self.ld_lr_d8(opcode),
             0x0F => self.rrca(),
-            0x10 => (),
+            0x10 => self.stop(),
             0x11 => self.ld_rr_d16(opcode),
             0x12 => self.ld_rr_a(opcode),
             0x13 => self.inc_rr(opcode),
@@ -39,7 +39,7 @@ impl Gb {
             0x1C => self.inc_lr(opcode),
             0x1D => self.dec_lr(opcode),
             0x1E => self.ld_a_drr(opcode),
-            0x1F => (),
+            0x1F => self.rra(),
             0x20 => self.jr_cc_r8(opcode),
             0x21 => self.ld_rr_d16(opcode),
             0x22 => self.ld_rr_a(opcode),
@@ -47,15 +47,15 @@ impl Gb {
             0x24 => self.inc_hr(opcode),
             0x25 => self.dec_hr(opcode),
             0x26 => self.ld_hr_d8(opcode),
-            0x27 => (),
+            0x27 => self.daa(),
             0x28 => self.jr_cc_r8(opcode),
             0x29 => self.add_hl_rr(opcode),
-            0x2A => self.ld_a_drr(opcode),
+            0x2A => self.ld_a_hli(),
             0x2B => self.dec_rr(opcode),
             0x2C => self.inc_lr(opcode),
             0x2D => self.dec_lr(opcode),
             0x2E => self.ld_a_drr(opcode),
-            0x2F => (),
+            0x2F => self.cpl(),
             0x30 => self.jr_cc_r8(opcode),
             0x31 => self.ld_rr_d16(opcode),
             0x32 => (),
@@ -63,16 +63,16 @@ impl Gb {
             0x34 => self.inc_hr(opcode),
             0x35 => self.dec_hr(opcode),
             0x36 => self.ld_dhl_d8(),
-            0x37 => (),
+            0x37 => self.scf(),
             0x38 => self.jr_cc_r8(opcode),
             0x39 => self.add_hl_rr(opcode),
-            0x3A => self.ld_a_drr(opcode),
+            0x3A => self.ld_a_hld(),
             0x3B => self.dec_rr(opcode),
             0x3C => self.inc_lr(opcode),
             0x3D => self.dec_lr(opcode),
-            0x3E => (),
-            0x3F => (),
-            0x40 => (),
+            0x3E => self.ld_a_d8(),
+            0x3F => self.ccf(),
+            0x40 => (), // LD B,B
             0x41 => (),
             0x42 => (),
             0x43 => (),
@@ -81,7 +81,7 @@ impl Gb {
             0x46 => (),
             0x47 => (),
             0x48 => (),
-            0x49 => (),
+            0x49 => (), // LD C, C
             0x4A => (),
             0x4B => (),
             0x4C => (),
@@ -90,7 +90,7 @@ impl Gb {
             0x4F => (),
             0x50 => (),
             0x51 => (),
-            0x52 => (),
+            0x52 => (), // LD D, D
             0x53 => (),
             0x54 => (),
             0x55 => (),
@@ -99,7 +99,7 @@ impl Gb {
             0x58 => (),
             0x59 => (),
             0x5A => (),
-            0x5B => (),
+            0x5B => (), // LD E, E
             0x5C => (),
             0x5D => (),
             0x5E => (),
@@ -108,7 +108,7 @@ impl Gb {
             0x61 => (),
             0x62 => (),
             0x63 => (),
-            0x64 => (),
+            0x64 => (), // LD H, H
             0x65 => (),
             0x66 => (),
             0x67 => (),
@@ -117,7 +117,7 @@ impl Gb {
             0x6A => (),
             0x6B => (),
             0x6C => (),
-            0x6D => (),
+            0x6D => (), // LD L, L
             0x6E => (),
             0x6F => (),
             0x70 => (),
@@ -135,7 +135,7 @@ impl Gb {
             0x7C => (),
             0x7D => (),
             0x7E => (),
-            0x7F => (),
+            0x7F => (), // LD A, A
             0x80 => (),
             0x81 => (),
             0x82 => (),
@@ -363,6 +363,9 @@ impl Gb {
         self.cpu.pc = self.cpu.pc.wrapping_add(1);
     }
 
+    fn stop(&mut self) {
+    }
+
     fn ld_rr_d16(&mut self, opcode: u8) {
         let register_index: usize = (opcode as usize >> 4) + 1;
         let value = self.read_word(self.cpu.pc.wrapping_add(1));
@@ -478,6 +481,22 @@ impl Gb {
         self.cpu.pc = self.cpu.pc.wrapping_add(1);
     }
 
+    fn ld_a_hli(&mut self) {
+        let hl = self.cpu.hl().wrapping_add(1);
+        let value = self.read_byte(hl);
+        self.cpu.set_a(value);
+        self.cpu.set_hl(hl);
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+    }
+
+    fn ld_a_hld(&mut self) {
+        let hl = self.cpu.hl().wrapping_sub(1);
+        let value = self.read_byte(hl);
+        self.cpu.set_a(value);
+        self.cpu.set_hl(hl);
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+    }
+
     fn ld_a_drr(&mut self, opcode: u8) {
         let register_index = (opcode as usize >> 4) + 1;
         let register: u16 = self.get_word_register_from_index(register_index);
@@ -558,6 +577,60 @@ impl Gb {
         } else {
             self.cpu.pc = self.cpu.pc.wrapping_add(2);
         }
+    }
+
+    fn daa(&mut self) {
+        let mut a = self.cpu.a();
+        let mut adjust = if self.cpu.f_carry { 0x60 } else { 0 };
+        if self.cpu.f_half_carry {
+            adjust |= 0x06;
+        }
+        if !self.cpu.f_negative {
+            if a & 0x0F > 0x09 {
+                adjust |= 0x06;
+            }
+            if a > 0x99 {
+                adjust |= 0x60;
+            }
+            a = a.wrapping_add(adjust);
+        } else {
+            a = a.wrapping_sub(adjust);
+        }
+
+        self.cpu.set_carry(adjust >= 0x60);
+        self.cpu.set_half_carry(false);
+        self.cpu.set_zero(a == 0);
+        self.cpu.set_a(a);
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+    }
+
+    fn cpl(&mut self) {
+        let a = self.cpu.a();
+        self.cpu.set_a(!a);
+        self.cpu.set_negative(true);
+        self.cpu.set_half_carry(true);
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+    }
+
+    fn scf(&mut self) {
+        self.cpu.set_negative(false);
+        self.cpu.set_half_carry(false);
+        self.cpu.set_carry(true);
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+    }
+
+    fn ld_a_d8(&mut self) {
+        let value = self.read_byte(self.cpu.pc.wrapping_add(1));
+        self.cpu.set_a(value);
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
+    }
+
+    fn ccf(&mut self) {
+        let value = !self.cpu.f_carry;
+        self.cpu.set_carry(value);
+        self.cpu.set_negative(false);
+        self.cpu.set_half_carry(false);
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
     }
 
     // DECODE CB SECTION
