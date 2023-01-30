@@ -106,6 +106,7 @@ impl Gb {
         while self.cpu.pc <= 0xFFFE {
             self.cpu.current_instruction = self.read_byte(self.cpu.pc);
             let instr_disasm = self.disassemble();
+            println!("{}", instr_disasm);
             self.decode();
         }
     }

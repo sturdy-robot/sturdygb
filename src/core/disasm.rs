@@ -95,14 +95,7 @@ impl Gb {
         result.push_str(target);
         result
     }
-
-    fn d_add_hl_n(&self) -> String {
-        let mut result = "add hl, ".to_string();
-        let value = self.read_byte(self.cpu.pc.wrapping_add(1));
-        result.push_str(&format!("{:#x}h, ", value));
-        result
-    }
-
+    
     fn d_add_sp_n(&self) -> String {
         let mut result = "add sp, ".to_string();
         let value = self.read_byte(self.cpu.pc.wrapping_add(1)) as i8;

@@ -9,6 +9,7 @@ pub mod ppu;
 pub mod serial;
 pub mod sound;
 pub mod timer;
+pub mod cb_prefix;
 
 pub trait Memory {
     fn read_byte(&self, address: u16) -> u8 {
