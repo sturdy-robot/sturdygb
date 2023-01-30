@@ -1,5 +1,6 @@
 use rand::prelude::*;
 
+#[allow(unused_variables)]
 pub trait Mbc {
     fn read_rom(&self, address: u16) -> u8 {
         0xFF
@@ -92,6 +93,7 @@ impl CartridgeHeader {
     }
 }
 
+#[allow(dead_code)]
 pub struct MbcBase {
     header: CartridgeHeader,
     rom_data: Vec<u8>,
@@ -132,6 +134,7 @@ impl RomOnly {
     }
 }
 
+#[allow(unused_variables)]
 impl Mbc for RomOnly {
     fn read_rom(&self, address: u16) -> u8 {
         self.mbc.rom_data[address as usize]

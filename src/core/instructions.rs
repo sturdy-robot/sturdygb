@@ -11,55 +11,55 @@ impl Gb {
             0x00 => self.nop(),
             0x01 => self.ld_rr_d16(opcode),
             0x02 => self.ld_rr_a(opcode),
-            0x03 => self.inc_rr(opcode),
-            0x04 => self.inc_hr(opcode),
-            0x05 => self.dec_hr(opcode),
+            0x03 => self.inc_bc(),
+            0x04 => self.inc_b(),
+            0x05 => self.dec_b(),
             0x06 => self.ld_hr_d8(opcode),
             0x07 => self.rlca(),
             0x08 => self.ld_da16_sp(),
             0x09 => self.add_hl_rr(opcode),
             0x0A => self.ld_a_drr(opcode),
-            0x0B => self.dec_rr(opcode),
-            0x0C => self.inc_lr(opcode),
-            0x0D => self.dec_lr(opcode),
+            0x0B => self.dec_bc(),
+            0x0C => self.inc_c(),
+            0x0D => self.dec_c(),
             0x0E => self.ld_lr_d8(opcode),
             0x0F => self.rrca(),
             0x10 => self.stop(),
             0x11 => self.ld_rr_d16(opcode),
             0x12 => self.ld_rr_a(opcode),
-            0x13 => self.inc_rr(opcode),
-            0x14 => self.inc_hr(opcode),
-            0x15 => self.dec_hr(opcode),
+            0x13 => self.inc_de(),
+            0x14 => self.inc_d(),
+            0x15 => self.dec_d(),
             0x16 => self.ld_hr_d8(opcode),
             0x17 => self.rla(),
             0x18 => self.jr_r8(),
             0x19 => self.add_hl_rr(opcode),
             0x1A => self.ld_a_drr(opcode),
-            0x1B => self.dec_rr(opcode),
-            0x1C => self.inc_lr(opcode),
-            0x1D => self.dec_lr(opcode),
+            0x1B => self.dec_de(),
+            0x1C => self.inc_e(),
+            0x1D => self.dec_e(),
             0x1E => self.ld_a_drr(opcode),
             0x1F => self.rra(),
             0x20 => self.jr_cc_r8(opcode),
             0x21 => self.ld_rr_d16(opcode),
             0x22 => self.ld_dhli_a(),
-            0x23 => self.inc_rr(opcode),
-            0x24 => self.inc_hr(opcode),
-            0x25 => self.dec_hr(opcode),
+            0x23 => self.inc_hl(),
+            0x24 => self.inc_h(),
+            0x25 => self.dec_h(),
             0x26 => self.ld_hr_d8(opcode),
             0x27 => self.daa(),
             0x28 => self.jr_cc_r8(opcode),
             0x29 => self.add_hl_rr(opcode),
             0x2A => self.ld_a_hli(),
-            0x2B => self.dec_rr(opcode),
-            0x2C => self.inc_lr(opcode),
-            0x2D => self.dec_lr(opcode),
+            0x2B => self.dec_hl(),
+            0x2C => self.inc_l(),
+            0x2D => self.dec_l(),
             0x2E => self.ld_a_drr(opcode),
             0x2F => self.cpl(),
             0x30 => self.jr_cc_r8(opcode),
             0x31 => self.ld_rr_d16(opcode),
             0x32 => self.ld_dhld_a(),
-            0x33 => self.inc_rr(opcode),
+            0x33 => self.inc_sp(),
             0x34 => self.inc_dhl(),
             0x35 => self.dec_dhl(),
             0x36 => self.ld_dhl_d8(),
@@ -67,9 +67,9 @@ impl Gb {
             0x38 => self.jr_cc_r8(opcode),
             0x39 => self.add_hl_rr(opcode),
             0x3A => self.ld_a_hld(),
-            0x3B => self.dec_rr(opcode),
-            0x3C => self.inc_lr(opcode),
-            0x3D => self.dec_lr(opcode),
+            0x3B => self.dec_sp(),
+            0x3C => self.inc_a(),
+            0x3D => self.dec_a(),
             0x3E => self.ld_a_d8(),
             0x3F => self.ccf(),
             0x40 => self.nop(), // LD B,B
@@ -200,70 +200,70 @@ impl Gb {
             0xBD => self.cp_l(),
             0xBE => self.cp_dhl(),
             0xBF => self.cp_a(),
-            0xC0 => (),
+            0xC0 => self.ret_cc(opcode),
             0xC1 => (),
-            0xC2 => (),
-            0xC3 => (),
-            0xC4 => (),
+            0xC2 => self.jp_cc(opcode),
+            0xC3 => self.jp(),
+            0xC4 => self.call_cc(opcode),
             0xC5 => (),
             0xC6 => (),
-            0xC7 => (),
-            0xC8 => (),
-            0xC9 => (),
+            0xC7 => self.rst(opcode),
+            0xC8 => self.ret_cc(opcode),
+            0xC9 => self.ret(),
             0xCA => (),
             0xCB => self.decode_cb_prefix(),
-            0xCC => (),
-            0xCD => (),
+            0xCC => self.call_cc(opcode),
+            0xCD => self.call_a16(),
             0xCE => (),
-            0xCF => (),
-            0xD0 => (),
+            0xCF => self.rst(opcode),
+            0xD0 => self.ret_cc(opcode),
             0xD1 => (),
-            0xD2 => (),
-            0xD3 => (),
-            0xD4 => (),
+            0xD2 => self.jp_cc(opcode),
+            0xD3 => self.ill(opcode),
+            0xD4 => self.call_cc(opcode),
             0xD5 => (),
             0xD6 => (),
-            0xD7 => (),
-            0xD8 => (),
-            0xD9 => (),
+            0xD7 => self.rst(opcode),
+            0xD8 => self.ret_cc(opcode),
+            0xD9 => self.reti(),
             0xDA => (),
-            0xDB => (),
-            0xDC => (),
-            0xDD => (),
+            0xDB => self.ill(opcode),
+            0xDC => self.call_cc(opcode),
+            0xDD => self.ill(opcode),
             0xDE => (),
-            0xDF => (),
+            0xDF => self.rst(opcode),
             0xE0 => (),
             0xE1 => (),
             0xE2 => (),
-            0xE3 => (),
-            0xE4 => (),
+            0xE3 => self.ill(opcode),
+            0xE4 => self.ill(opcode),
             0xE5 => (),
             0xE6 => (),
-            0xE7 => (),
+            0xE7 => self.rst(opcode),
             0xE8 => (),
             0xE9 => (),
             0xEA => self.ld_nn_a(),
-            0xEB => (),
-            0xEC => (),
-            0xED => (),
+            0xEB => self.ill(opcode),
+            0xEC => self.ill(opcode),
+            0xED => self.ill(opcode),
             0xEE => (),
-            0xEF => (),
+            0xEF => self.rst(opcode),
             0xF0 => (),
             0xF1 => (),
             0xF2 => (),
             0xF3 => (),
-            0xF4 => (),
+            0xF4 => self.ill(opcode),
             0xF5 => (),
             0xF6 => (),
-            0xF7 => (),
+            0xF7 => self.rst(opcode),
             0xF8 => (),
             0xF9 => (),
             0xFA => (),
             0xFB => (),
-            0xFC => (),
-            0xFD => (),
+            0xFC => self.ill(opcode),
+            0xFD => self.ill(opcode),
             0xFE => (),
-            0xFF => (),
+            0xFF => self.rst(opcode),
         }
     }
 
@@ -347,6 +347,11 @@ impl Gb {
         self.cpu.pc = self.cpu.pc.wrapping_add(1);
     }
 
+    fn ill(&mut self, opcode: u8) {
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+        println!("ILLEGAL OPCODE: {opcode}");
+    }
+
     fn stop(&mut self) {
         self.cpu.pc = self.cpu.pc.wrapping_add(1);
     }
@@ -380,41 +385,6 @@ impl Gb {
         self.cpu.pc = self.cpu.pc.wrapping_add(3);
     }
 
-    fn inc_rr(&mut self, opcode: u8) {
-        let register_index: usize = (opcode as usize >> 4) + 1;
-        let register_value: u16 = self
-            .get_word_register_from_index(register_index)
-            .wrapping_add(1);
-        self.set_word_register_from_index(register_index, register_value);
-        self.cpu.pc = self.cpu.pc.wrapping_add(1);
-    }
-
-    fn inc_hr(&mut self, opcode: u8) {
-        let register_index: usize = ((opcode as usize >> 4) + 1) & 0x03;
-        let register_value: u16 = self
-            .get_word_register_from_index(register_index)
-            .wrapping_add(0x100);
-        self.set_word_register_from_index(register_index, register_value);
-        self.cpu.set_zero(register_value == 0);
-        self.cpu.set_negative(false);
-        let half_carry = register_value & 0x0F00 == 0;
-        self.cpu.set_half_carry(half_carry);
-        self.cpu.pc = self.cpu.pc.wrapping_add(1);
-    }
-
-    fn dec_hr(&mut self, opcode: u8) {
-        let register_index: usize = ((opcode as usize >> 4) + 1) & 0x03;
-        let register_value: u16 = self
-            .get_word_register_from_index(register_index)
-            .wrapping_sub(0x100);
-        self.set_word_register_from_index(register_index, register_value);
-        self.cpu.set_zero(register_value == 0);
-        self.cpu.set_negative(true);
-        let half_carry = register_value & 0x0F00 == 0xF00;
-        self.cpu.set_half_carry(half_carry);
-        self.cpu.pc = self.cpu.pc.wrapping_add(1);
-    }
-
     fn ld_hr_d8(&mut self, opcode: u8) {
         let register_index: usize = ((opcode as usize >> 4) + 1) & 0x03;
         let register_value: u16 = self.get_word_register_from_index(register_index);
@@ -427,6 +397,16 @@ impl Gb {
         let value = self.read_byte(self.cpu.pc.wrapping_add(1));
         self.write_byte(self.cpu.hl(), value);
         self.cpu.pc = self.cpu.pc.wrapping_add(2);
+    }
+
+    fn inc_sp(&mut self) {
+        self.cpu.sp = self.cpu.sp.wrapping_add(1);
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+    }
+
+    fn dec_sp(&mut self) {
+        self.cpu.sp = self.cpu.sp.wrapping_sub(1);
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
     }
 
     fn rlca(&mut self) {
@@ -496,37 +476,6 @@ impl Gb {
         let register: u16 = self.get_word_register_from_index(register_index);
         let value: u8 = self.read_byte(register);
         self.cpu.set_a(value);
-        self.cpu.pc = self.cpu.pc.wrapping_add(1);
-    }
-
-    fn dec_rr(&mut self, opcode: u8) {
-        let register_index = (opcode as usize >> 4) + 1;
-        let rr: u16 = self.get_word_register_from_index(register_index);
-        self.set_word_register_from_index(register_index, rr.wrapping_sub(1));
-        self.cpu.pc = self.cpu.pc.wrapping_add(1);
-    }
-
-    fn inc_lr(&mut self, opcode: u8) {
-        let register_index: usize = (opcode as usize >> 4) + 1;
-        let register_value: u16 = self.get_word_register_from_index(register_index);
-        let value: u16 = (register_value & 0xFF).wrapping_add(1);
-        self.set_word_register_from_index(register_index, (register_value & 0xFF00) | value);
-        self.cpu.set_zero(value == 0);
-        self.cpu.set_negative(false);
-        let half_carry: bool = value & 0x0F == 0;
-        self.cpu.set_half_carry(half_carry);
-        self.cpu.pc = self.cpu.pc.wrapping_add(1);
-    }
-
-    fn dec_lr(&mut self, opcode: u8) {
-        let register_index: usize = (opcode as usize >> 4) + 1;
-        let register_value: u16 = self.get_word_register_from_index(register_index);
-        let value: u16 = (register_value & 0xFF).wrapping_sub(1);
-        self.set_word_register_from_index(register_index, (register_value & 0xFF00) | value);
-        self.cpu.set_zero(value == 0);
-        self.cpu.set_negative(true);
-        let half_carry: bool = value & 0x0F == 0xF;
-        self.cpu.set_half_carry(half_carry);
         self.cpu.pc = self.cpu.pc.wrapping_add(1);
     }
 
@@ -776,6 +725,128 @@ impl Gb {
         self.cpu.set_carry(a < r);
         self.cpu.pc = self.cpu.pc.wrapping_add(1);
     }
+
+    fn ret(&mut self) {
+        let value = self.read_word(self.cpu.sp);
+        self.cpu.sp = self.cpu.sp.wrapping_add(2);
+        self.cpu.pc = value;
+    }
+
+    fn ret_cc(&mut self, opcode: u8) {
+        if self.get_flag_condition(opcode) {
+            self.ret()
+        } else {
+            self.cpu.pc = self.cpu.pc.wrapping_add(1);
+        }
+    }
+
+    fn reti(&mut self) {
+        self.ret();
+        self.cpu.interrupt_master = true;
+    }
+
+    fn jp(&mut self) {
+        let value = self.read_word(self.cpu.pc.wrapping_add(1));
+        self.cpu.pc = value;
+    }
+
+    fn jp_cc(&mut self, opcode: u8) {
+        if self.get_flag_condition(opcode) {
+            self.jp();
+        } else {
+            self.cpu.pc = self.cpu.pc.wrapping_add(3);
+        }
+    }
+
+    fn call_a16(&mut self) {
+        self.cpu.sp = self.cpu.sp.wrapping_sub(2);
+        self.write_word(self.cpu.sp, self.cpu.pc.wrapping_add(1));
+        self.cpu.pc = self.read_word(self.cpu.pc.wrapping_add(1));
+    }
+
+    fn call_cc(&mut self, opcode: u8) {
+        if self.get_flag_condition(opcode) {
+            self.call_a16();
+        } else {
+            self.cpu.pc = self.cpu.pc.wrapping_add(3);
+        }
+    }
+
+    fn rst(&mut self, opcode: u8) {
+        self.cpu.sp = self.cpu.sp.wrapping_sub(2);
+        self.write_word(self.cpu.sp, self.cpu.pc.wrapping_add(1));
+        self.cpu.pc = (opcode as u16) ^ 0xC7;
+    }
+}
+
+macro_rules! create_inc_word_instructions {
+    ($($rr:ident),*) => {
+        impl Gb {
+            paste! {
+                $(
+                    fn [<inc_ $rr>](&mut self) {
+                        let value = self.cpu.$rr().wrapping_add(1);
+                        self.cpu.[<set_ $rr>](value);
+                        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+                    }
+                )*
+            }
+        }
+    }
+}
+
+macro_rules! create_dec_word_instructions {
+    ($($rr:ident),*) => {
+        impl Gb {
+            paste! {
+                $(
+                    fn [<dec_ $rr>](&mut self) {
+                        let value = self.cpu.$rr().wrapping_sub(1);
+                        self.cpu.[<set_ $rr>](value);
+                        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+                    }
+                )*
+            }
+        }
+    }
+}
+
+macro_rules! create_inc_byte_instructions {
+    ($($r:ident),*) => {
+        impl Gb {
+            paste! {
+                $(
+                    fn [<inc_ $r>](&mut self) {
+                        let value = self.cpu.$r().wrapping_add(1);
+                        self.cpu.[<set_ $r>](value);
+                        self.cpu.set_zero(value == 0);
+                        self.cpu.set_negative(false);
+                        self.cpu.set_half_carry((value & 0xF) == 0xF);
+                        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+                    }
+                )*
+            }
+        }
+    }
+}
+
+macro_rules! create_dec_byte_instructions {
+    ($($r:ident),*) => {
+        impl Gb {
+            paste! {
+                $(
+                    fn [<dec_ $r>](&mut self) {
+                        let value = self.cpu.$r().wrapping_sub(1);
+                        self.cpu.[<set_ $r>](value);
+                        self.cpu.set_zero(value == 0);
+                        self.cpu.set_negative(true);
+                        self.cpu.set_half_carry((value & 0xF) == 0xF);
+                        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+                    }
+                )*
+            }
+        }
+    }
 }
 
 // Create all simple LD instructions using macros
@@ -784,42 +855,49 @@ macro_rules! create_ld_instructions {
         impl Gb {
             paste! {
                 $(
+                    #[allow(dead_code)]
                     fn [<ld_a_ $r>](&mut self) {
                         let value = self.cpu.$r();
                         self.cpu.set_a(value);
                         self.cpu.pc = self.cpu.pc.wrapping_add(1);
                     }
 
+                    #[allow(dead_code)]
                     fn [<ld_b_ $r>](&mut self) {
                         let value = self.cpu.$r();
                         self.cpu.set_b(value);
                         self.cpu.pc = self.cpu.pc.wrapping_add(1);
                     }
 
+                    #[allow(dead_code)]
                     fn [<ld_c_ $r>](&mut self) {
                         let value = self.cpu.$r();
                         self.cpu.set_c(value);
                         self.cpu.pc = self.cpu.pc.wrapping_add(1);
                     }
 
+                    #[allow(dead_code)]
                     fn [<ld_d_ $r>](&mut self) {
                         let value = self.cpu.$r();
                         self.cpu.set_d(value);
                         self.cpu.pc = self.cpu.pc.wrapping_add(1);
                     }
-
+                    
+                    #[allow(dead_code)]
                     fn [<ld_e_ $r>](&mut self) {
                         let value = self.cpu.$r();
                         self.cpu.set_e(value);
                         self.cpu.pc = self.cpu.pc.wrapping_add(1);
                     }
 
+                    #[allow(dead_code)]
                     fn [<ld_h_ $r>](&mut self) {
                         let value = self.cpu.$r();
                         self.cpu.set_h(value);
                         self.cpu.pc = self.cpu.pc.wrapping_add(1);
                     }
-
+                    
+                    #[allow(dead_code)]
                     fn [<ld_l_ $r>](&mut self) {
                         let value = self.cpu.$r();
                         self.cpu.set_l(value);
@@ -1032,7 +1110,10 @@ macro_rules! create_cp_byte_instructions {
 }
 
 
-
+create_dec_word_instructions!(bc, de, hl);
+create_inc_word_instructions!(bc, de, hl);
+create_dec_byte_instructions!(a, b, c, d, e, h, l);
+create_inc_byte_instructions!(a, b, c, d, e, h, l);
 create_ld_instructions!(a, b, c, d, e, h, l);
 create_add_byte_instructions!(a, b, c, d, e, h, l);
 create_adc_byte_instructions!(a, b, c, d, e, h, l);

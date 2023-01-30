@@ -11,6 +11,7 @@ pub mod sound;
 pub mod timer;
 pub mod cb_prefix;
 
+#[allow(unused_variables)]
 pub trait Memory {
     fn read_byte(&self, address: u16) -> u8 {
         0x00
