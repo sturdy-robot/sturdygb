@@ -1,6 +1,10 @@
 use rand::prelude::*;
+use mockall::*;
+use mockall::predicate::*;
+
 
 #[allow(unused_variables)]
+#[automock]
 pub trait Mbc {
     fn read_rom(&self, address: u16) -> u8 {
         0xFF

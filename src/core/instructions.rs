@@ -378,13 +378,6 @@ impl Gb {
         self.cpu.pc = self.cpu.pc.wrapping_add(1);
     }
 
-    fn ld_nn_a(&mut self) {
-        let value: u16 = (self.cpu.a() as u16) << 8;
-        let memory_value: u16 = self.read_word(self.cpu.pc.wrapping_add(1));
-        self.write_word(memory_value, value);
-        self.cpu.pc = self.cpu.pc.wrapping_add(3);
-    }
-
     fn ld_hr_d8(&mut self, opcode: u8) {
         let register_index: usize = ((opcode as usize >> 4) + 1) & 0x03;
         let register_value: u16 = self.get_word_register_from_index(register_index);
@@ -512,8 +505,8 @@ impl Gb {
     }
 
     fn jr_r8(&mut self) {
-        let value = self.read_byte(self.cpu.pc.wrapping_add(1)) as i8 as i16 as u16;
-        self.cpu.pc = self.cpu.pc.wrapping_add(value);
+        let value = self.read_byte(self.cpu.pc.wrapping_add(1)) as i8;
+        self.cpu.pc = ((self.cpu.pc.wrapping_add(1) as u32 as i32) + (value as i32)) as u16;
     }
 
     fn jr_cc_r8(&mut self, opcode: u8) {
@@ -736,7 +729,7 @@ impl Gb {
 
     fn ret_cc(&mut self, opcode: u8) {
         if self.get_flag_condition(opcode) {
-            self.ret()
+            self.ret();
         } else {
             self.cpu.pc = self.cpu.pc.wrapping_add(1);
         }
@@ -762,7 +755,7 @@ impl Gb {
 
     fn call_a16(&mut self) {
         self.cpu.sp = self.cpu.sp.wrapping_sub(2);
-        self.write_word(self.cpu.sp, self.cpu.pc.wrapping_add(1));
+        self.write_word(self.cpu.sp, self.cpu.pc.wrapping_add(3));
         self.cpu.pc = self.read_word(self.cpu.pc.wrapping_add(1));
     }
 
@@ -974,7 +967,7 @@ impl Gb {
         let address = self.read_word(self.cpu.pc.wrapping_add(1));
         let a = self.cpu.a();
         self.write_byte(address, a);
-        self.cpu.pc = self.cpu.pc.wrapping_add(2);
+        self.cpu.pc = self.cpu.pc.wrapping_add(3);
     }
 }
 
@@ -1364,4 +1357,5 @@ mod test {
     use super::*;
     use crate::core::cpu;
     use crate::core::gb::Gb;
+
 }
