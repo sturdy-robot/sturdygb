@@ -48,9 +48,10 @@ impl Cpu {
         }
     }
 
-    pub fn advance_pc(&mut self) {
+    pub fn advance_pc(&mut self, mut did_overflow: bool) -> bool {
         let adv = OPCODES_SIZE[self.current_instruction as usize];
-        self.pc = self.pc.wrapping_add(adv);
+        (self.pc, did_overflow) = self.pc.overflowing_add(adv);
+        did_overflow
     }
 
     pub fn a(&self) -> u8 {
@@ -159,30 +160,6 @@ impl Cpu {
 
     pub fn get_carry(&self) -> u8 {
         if self.f_carry {
-            1
-        } else {
-            0
-        }
-    }
-
-    pub fn get_half_carry(&self) -> u8 {
-        if self.f_half_carry {
-            1
-        } else {
-            0
-        }
-    }
-
-    pub fn get_negative(&self) -> u8 {
-        if self.f_negative {
-            1
-        } else {
-            0
-        }
-    }
-
-    pub fn get_zero(&self) -> u8 {
-        if self.f_zero {
             1
         } else {
             0

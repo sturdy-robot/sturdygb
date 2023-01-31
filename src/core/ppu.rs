@@ -21,13 +21,13 @@ impl Memory for Ppu {
         match address {
             0x40 => 0xFF, // todo: implement this
             0x48 => self.lcdc,
-            _ => { println!("Address not implemented {}", address); 0xFF },
+            _ => { println!("Address not implemented {:04X}", address); 0xFF },
         }
     }
 
     fn write_byte(&self, address: u16, value: u8) {
         match address {
-            _ => println!("Address not implemented {}", address)
+            _ => println!("Address not implemented {:04X}", address)
         }
     }
     
