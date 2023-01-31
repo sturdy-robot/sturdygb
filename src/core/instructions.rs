@@ -506,7 +506,8 @@ impl Gb {
 
     fn jr_r8(&mut self) {
         let value = self.read_byte(self.cpu.pc.wrapping_add(1)) as i8;
-        self.cpu.pc = ((self.cpu.pc.wrapping_add(1) as u32 as i32) + (value as i32)) as u16;
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+        self.cpu.pc = ((self.cpu.pc as u32 as i32) + (value as i32)) as u16;
     }
 
     fn jr_cc_r8(&mut self, opcode: u8) {
