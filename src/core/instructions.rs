@@ -201,68 +201,68 @@ impl Gb {
             0xBE => self.cp_dhl(),
             0xBF => self.cp_a(),
             0xC0 => self.ret_cc(opcode),
-            0xC1 => (),
+            0xC1 => self.pop_bc(),
             0xC2 => self.jp_cc(opcode),
             0xC3 => self.jp(),
             0xC4 => self.call_cc(opcode),
-            0xC5 => (),
-            0xC6 => (),
+            0xC5 => self.push_bc(),
+            0xC6 => self.add_a_d8(),
             0xC7 => self.rst(opcode),
             0xC8 => self.ret_cc(opcode),
             0xC9 => self.ret(),
-            0xCA => (),
+            0xCA => self.jp_cc(opcode),
             0xCB => self.decode_cb_prefix(),
             0xCC => self.call_cc(opcode),
             0xCD => self.call_a16(),
-            0xCE => (),
+            0xCE => self.adc_a_d8(),
             0xCF => self.rst(opcode),
             0xD0 => self.ret_cc(opcode),
-            0xD1 => (),
+            0xD1 => self.pop_de(),
             0xD2 => self.jp_cc(opcode),
             0xD3 => self.ill(opcode),
             0xD4 => self.call_cc(opcode),
-            0xD5 => (),
-            0xD6 => (),
+            0xD5 => self.push_de(),
+            0xD6 => self.sub_a_d8(),
             0xD7 => self.rst(opcode),
             0xD8 => self.ret_cc(opcode),
             0xD9 => self.reti(),
-            0xDA => (),
+            0xDA => self.jp_cc(opcode),
             0xDB => self.ill(opcode),
             0xDC => self.call_cc(opcode),
             0xDD => self.ill(opcode),
-            0xDE => (),
+            0xDE => self.sbc_a_d8(),
             0xDF => self.rst(opcode),
-            0xE0 => (),
-            0xE1 => (),
-            0xE2 => (),
+            0xE0 => self.ldh_a8_a(),
+            0xE1 => self.pop_hl(),
+            0xE2 => self.ld_dc_a(),
             0xE3 => self.ill(opcode),
             0xE4 => self.ill(opcode),
-            0xE5 => (),
-            0xE6 => (),
+            0xE5 => self.push_hl(),
+            0xE6 => self.and_d8(),
             0xE7 => self.rst(opcode),
-            0xE8 => (),
-            0xE9 => (),
-            0xEA => self.ld_nn_a(),
+            0xE8 => self.add_sp_r8(),
+            0xE9 => self.jp_hl(),
+            0xEA => self.ld_a16_a(),
             0xEB => self.ill(opcode),
             0xEC => self.ill(opcode),
             0xED => self.ill(opcode),
-            0xEE => (),
+            0xEE => self.xor_d8(),
             0xEF => self.rst(opcode),
-            0xF0 => (),
-            0xF1 => (),
-            0xF2 => (),
-            0xF3 => (),
+            0xF0 => self.ldh_a_a8(),
+            0xF1 => self.pop_af(),
+            0xF2 => self.ld_a_dc(),
+            0xF3 => self.di(),
             0xF4 => self.ill(opcode),
-            0xF5 => (),
-            0xF6 => (),
+            0xF5 => self.push_af(),
+            0xF6 => self.or_d8(),
             0xF7 => self.rst(opcode),
-            0xF8 => (),
-            0xF9 => (),
-            0xFA => (),
-            0xFB => (),
+            0xF8 => self.ld_hl_sp_r8(),
+            0xF9 => self.ld_sp_hl(),
+            0xFA => self.ld_a_da16(),
+            0xFB => self.ei(),
             0xFC => self.ill(opcode),
             0xFD => self.ill(opcode),
-            0xFE => (),
+            0xFE => self.cp_d8(),
             0xFF => self.rst(opcode),
         }
     }
@@ -348,8 +348,8 @@ impl Gb {
     }
 
     fn ill(&mut self, opcode: u8) {
-        self.cpu.pc = self.cpu.pc.wrapping_add(1);
         println!("ILLEGAL OPCODE: {opcode}");
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
     }
 
     fn stop(&mut self) {
@@ -494,6 +494,7 @@ impl Gb {
         let a: u8 = self.cpu.a();
         self.cpu.set_a(a >> 1);
         self.cpu.set_carry(carry);
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
     }
 
     fn rra(&mut self) {
@@ -507,6 +508,7 @@ impl Gb {
             self.cpu.set_a(a | 0x80);
         }
         self.cpu.set_carry(bit1);
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
     }
 
     fn jr_r8(&mut self) {
@@ -776,6 +778,203 @@ impl Gb {
         self.cpu.sp = self.cpu.sp.wrapping_sub(2);
         self.write_word(self.cpu.sp, self.cpu.pc.wrapping_add(1));
         self.cpu.pc = (opcode as u16) ^ 0xC7;
+    }
+
+    fn cp_d8(&mut self) {
+        let r = self.read_byte(self.cpu.pc.wrapping_add(1));
+        let a = self.cpu.a();
+        self.cpu.set_zero(a == r);
+        self.cpu.set_negative(true);
+        self.cpu.set_half_carry((a & 0xF) < (r & 0xF));
+        self.cpu.set_carry(a < r);
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
+    }
+
+    fn ei(&mut self) {
+        if !self.cpu.interrupt_master && !self.cpu.ime_toggle {
+            self.cpu.ime_toggle = true;
+        }
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+    }
+
+    fn di(&mut self) {
+        self.cpu.interrupt_master = false;
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+    }
+
+    fn ld_a_da16(&mut self) {
+        let address = self.read_word(self.cpu.pc.wrapping_add(1));
+        let value = self.read_byte(address);
+        self.cpu.set_a(value);
+        self.cpu.pc = self.cpu.pc.wrapping_add(3);
+    }
+
+    fn ld_sp_hl(&mut self) {
+        let hl = self.cpu.hl();
+        self.cpu.sp = hl;
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+    }
+
+    fn ld_hl_sp_r8(&mut self) {
+        let value = self.read_byte(self.cpu.pc.wrapping_add(1)) as i8 as i16 as u16;
+        let (sp_r8, did_overflow) = self.cpu.sp.overflowing_add(value);
+        self.cpu.set_hl(sp_r8);
+        self.cpu.set_zero(false);
+        self.cpu.set_negative(false);
+        self.cpu.set_half_carry((self.cpu.sp & 0xF) + (value & 0xF) > 0xF);
+        self.cpu.set_carry(did_overflow);
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
+    }
+
+    fn add_sp_r8(&mut self) {
+        let value = self.read_byte(self.cpu.pc.wrapping_add(1)) as i8 as i16 as u16;
+        let (sp_r8, did_overflow) = self.cpu.sp.overflowing_add(value);
+        self.cpu.set_zero(false);
+        self.cpu.set_negative(false);
+        self.cpu.set_half_carry((self.cpu.sp & 0xF) + (value & 0xF) > 0xF);
+        self.cpu.set_carry(did_overflow);
+        self.cpu.sp = sp_r8;
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
+    }
+
+    fn jp_hl(&mut self) {
+        let hl = self.cpu.hl();
+        self.cpu.pc = hl;
+    }
+
+    fn or_d8(&mut self) {
+        let r = self.read_byte(self.cpu.pc.wrapping_add(1));
+        let a = self.cpu.a();
+        let value = a | r;
+        self.cpu.set_a(value);
+        self.cpu.set_zero(value == 0);
+        self.cpu.set_negative(false);
+        self.cpu.set_half_carry(false);
+        self.cpu.set_carry(false);
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
+    }
+
+    fn and_d8(&mut self) {
+        let r = self.read_byte(self.cpu.pc.wrapping_add(1));
+        let a = self.cpu.a();
+        let value = a & r;
+        self.cpu.set_a(value);
+        self.cpu.set_zero(value == 0);
+        self.cpu.set_negative(false);
+        self.cpu.set_half_carry(true);
+        self.cpu.set_carry(false);
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
+    }
+
+    fn add_a_d8(&mut self) {
+        let r = self.read_byte(self.cpu.pc.wrapping_add(1));
+        let a = self.cpu.a();
+        let (value, did_overflow) = a.overflowing_add(r);
+        self.cpu.set_a(value);
+        self.cpu.set_zero(value == 0);
+        self.cpu.set_negative(false);
+        self.cpu.set_half_carry((value & 0xF) > 0x0F);
+        self.cpu.set_carry(did_overflow);
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
+    }
+
+    fn adc_a_d8(&mut self) {
+        let r = self.read_byte(self.cpu.pc.wrapping_add(1));
+        let a = self.cpu.a();
+        let carry = self.cpu.get_carry();
+        let (mut value, mut did_overflow) = a.overflowing_add(carry);
+        if did_overflow {
+            value = value.wrapping_add(r);
+        } else {
+            (value, did_overflow) = value.overflowing_add(r);
+        }
+        self.cpu.set_a(value);
+        self.cpu.set_zero(value == 0);
+        self.cpu.set_negative(false);
+        self.cpu.set_half_carry((value & 0xF) > 0x0F);
+        self.cpu.set_carry(did_overflow);
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
+    }
+
+    fn xor_d8(&mut self) {
+        let r = self.read_byte(self.cpu.pc.wrapping_add(1));
+        let a = self.cpu.a();
+        let value = a ^ r;
+        self.cpu.set_a(value);
+        self.cpu.set_zero(value == 0);
+        self.cpu.set_negative(false);
+        self.cpu.set_half_carry(false);
+        self.cpu.set_carry(false);
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
+    }
+
+    fn sub_a_d8(&mut self) {
+        let r = self.read_byte(self.cpu.pc.wrapping_add(1));
+        let a = self.cpu.a();
+        let (value, did_overflow) = a.overflowing_sub(r);
+        self.cpu.set_a(value);
+        self.cpu.set_zero(value == 0);
+        self.cpu.set_negative(true);
+        self.cpu.set_half_carry((a & 0xF) < (r & 0xF));
+        self.cpu.set_carry(did_overflow);
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
+    }
+
+    fn sbc_a_d8(&mut self) {
+        let r = self.read_byte(self.cpu.pc.wrapping_add(1));
+        let a = self.cpu.a();
+        let carry = self.cpu.get_carry();
+        let (mut value, mut did_overflow) = a.overflowing_sub(carry);
+        if did_overflow {
+            value = value.wrapping_sub(r);
+        } else {
+            (value, did_overflow) = value.overflowing_sub(r);
+        }
+        self.cpu.set_a(value);
+        self.cpu.set_zero(value == 0);
+        self.cpu.set_negative(true);
+        self.cpu.set_half_carry((a & 0xF) < (value & 0xF) + carry);
+        self.cpu.set_carry(did_overflow);
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
+    }
+
+    fn ld_a_dc(&mut self) {
+        let c = self.cpu.c() as u16;
+        let address = 0xFF00 | c;
+        let value = self.read_byte(address);
+        self.cpu.set_a(value);
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
+    }
+
+    fn ld_dc_a(&mut self) {
+        let c = self.cpu.c() as u16;
+        let address = 0xFF00 | c;
+        let a = self.cpu.a();
+        self.write_byte(address, a);
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
+    }
+
+    fn ldh_a_a8(&mut self) {
+        let r = self.read_byte(self.cpu.pc.wrapping_add(1)) as u16;
+        let address = 0xFF00 | r;
+        let value = self.read_byte(address);
+        self.cpu.set_a(value);
+        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+    }
+
+    fn ldh_a8_a(&mut self) {
+        let r = self.read_byte(self.cpu.pc.wrapping_add(1)) as u16;
+        let address = 0xFF00 | r;
+        let a = self.cpu.a();
+        self.write_byte(address, a);
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
+    }
+
+    fn ld_a16_a(&mut self) {
+        let address = self.read_word(self.cpu.pc.wrapping_add(1));
+        let a = self.cpu.a();
+        self.write_byte(address, a);
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
     }
 }
 
@@ -1109,6 +1308,39 @@ macro_rules! create_cp_byte_instructions {
     }
 }
 
+macro_rules! create_pop_instructions {
+    ($($rr:ident),*) => {
+        impl Gb {
+            paste! {
+                $(
+                    fn [<pop_ $rr>](&mut self) {
+                        let value = self.read_word(self.cpu.sp);
+                        self.cpu.sp = self.cpu.sp.wrapping_add(2);
+                        self.cpu.[<set_ $rr>](value);
+                        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+                    }
+                )*
+            }
+        }
+    }
+}
+
+macro_rules! create_push_instructions {
+    ($($rr:ident),*) => {
+        impl Gb {
+            paste! {
+                $(
+                    fn [<push_ $rr>](&mut self) {
+                        let r = self.cpu.$rr();
+                        self.cpu.sp = self.cpu.sp.wrapping_sub(2);
+                        self.write_word(self.cpu.sp, r);
+                        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+                    }
+                )*
+            }
+        }
+    }
+}
 
 create_dec_word_instructions!(bc, de, hl);
 create_inc_word_instructions!(bc, de, hl);
@@ -1123,6 +1355,8 @@ create_and_byte_instructions!(a, b, c, d, e, h, l);
 create_xor_byte_instructions!(a, b, c, d, e, h, l);
 create_or_byte_instructions!(a, b, c, d, e, h, l);
 create_cp_byte_instructions!(a, b, c, d, e, h, l);
+create_pop_instructions!(af, bc, de, hl);
+create_push_instructions!(af, bc, de, hl);
 
 
 #[cfg(test)]

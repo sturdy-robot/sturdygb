@@ -9,6 +9,8 @@ pub struct Cpu {
     pub current_instruction: u8,
     pub pending_cycles: usize,
     pub interrupt_master: bool,
+    pub is_halted: bool,
+    pub ime_toggle: bool,
 }
 
 const OPCODES_SIZE: [u16; 256] = [
@@ -45,6 +47,8 @@ impl Cpu {
             current_instruction: 0,
             pending_cycles: 0,
             interrupt_master: true,
+            is_halted: false,
+            ime_toggle: false,
         }
     }
 

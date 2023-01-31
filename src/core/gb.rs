@@ -103,12 +103,11 @@ impl Gb {
 
     pub fn run(&mut self) {
         self.cpu.pc = 0x00;
-        let mut did_overflow = false;
-        while !did_overflow {
+        while !self.cpu.is_halted {
             self.cpu.current_instruction = self.read_byte(self.cpu.pc);
             let instr_disasm = self.disassemble();
             println!("[{:04X}]: {}", self.cpu.pc, instr_disasm);
-            did_overflow = self.cpu.advance_pc(did_overflow);
+            self.decode();
         }
     }
 }
