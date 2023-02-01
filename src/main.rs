@@ -1,6 +1,6 @@
 mod core;
 use crate::core::gb::{Gb, GbTypes};
-use crate::core::mbc::{GbMode, load_cartridge};
+use crate::core::mbc::{load_cartridge, GbMode};
 use std::env;
 
 fn main() {

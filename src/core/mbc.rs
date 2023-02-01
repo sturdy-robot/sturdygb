@@ -1,6 +1,6 @@
-use rand::prelude::*;
-use mockall::*;
 use mockall::predicate::*;
+use mockall::*;
+use rand::prelude::*;
 use std::fs;
 
 pub fn get_mbc(rom_data: Vec<u8>, header: CartridgeHeader) -> (Box<dyn Mbc>, GbMode) {

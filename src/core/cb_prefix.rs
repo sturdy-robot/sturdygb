@@ -1,6 +1,5 @@
 use crate::core::gb::Gb;
 
-
 // DECODE CB PREFIXED INSTRUCTIONS
 impl Gb {
     pub fn decode_cb_prefix(&mut self) {

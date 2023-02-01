@@ -95,7 +95,7 @@ impl Gb {
         result.push_str(target);
         result
     }
-    
+
     fn d_add_sp_n(&self) -> String {
         let mut result = "add sp, ".to_string();
         let value = self.read_byte(self.cpu.pc.wrapping_add(1)) as i8;
@@ -224,7 +224,9 @@ impl Gb {
 
     fn d_jr_n(&self) -> String {
         let mut result = "jr ".to_string();
-        let value = ((self.cpu.pc as u32 as i32) + (self.read_byte(self.cpu.pc.wrapping_add(1)) as i8 as i32)) as u16;
+        let value = ((self.cpu.pc as u32 as i32)
+            + (self.read_byte(self.cpu.pc.wrapping_add(1)) as i8 as i32))
+            as u16;
         result.push_str(&format!("{:#x}h", value));
         result
     }

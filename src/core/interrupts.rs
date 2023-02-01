@@ -6,9 +6,8 @@ pub enum Interrupt {
     TIMER = 0x04,
     SERIAL = 0x08,
     JOYPAD = 0x10,
-    INVALID
+    INVALID,
 }
-
 
 impl Gb {
     pub fn handle_interrupt(&mut self) {

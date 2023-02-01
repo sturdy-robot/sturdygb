@@ -107,8 +107,21 @@ impl Gb {
             self.handle_interrupt();
             self.cpu.current_instruction = self.read_byte(self.cpu.pc);
             let instr_disasm = self.disassemble();
-            println!("[{:04X}]: {} \t\tAF: {:04X} BC: {:04X} DE: {:04X} HL: {:04X} SP: {:04X}", self.cpu.pc, instr_disasm, self.cpu.af(), self.cpu.bc(), self.cpu.de(), self.cpu.hl(), self.cpu.sp);
+            println!(
+                "[{:04X}]: {} \t\tAF: {:04X} BC: {:04X} DE: {:04X} HL: {:04X} SP: {:04X}",
+                self.cpu.pc,
+                instr_disasm,
+                self.cpu.af(),
+                self.cpu.bc(),
+                self.cpu.de(),
+                self.cpu.hl(),
+                self.cpu.sp
+            );
             self.decode();
+            match self.serial.get_serial_message() {
+                Some(message) => println!("{}", message),
+                None => (),
+            };
         }
     }
 }

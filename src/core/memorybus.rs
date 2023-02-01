@@ -1,4 +1,4 @@
-use super::gb::{GbTypes, Gb};
+use super::gb::{Gb, GbTypes};
 use super::mbc::GbMode;
 use super::Memory;
 
@@ -97,8 +97,7 @@ impl Gb {
     }
 
     pub fn read_word(&self, address: u16) -> u16 {
-        (self.read_byte(address) as u16)
-            | ((self.read_byte(address.wrapping_add(1)) as u16) << 8)
+        (self.read_byte(address) as u16) | ((self.read_byte(address.wrapping_add(1)) as u16) << 8)
     }
 
     pub fn write_word(&mut self, address: u16, value: u16) {

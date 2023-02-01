@@ -815,7 +815,8 @@ impl Gb {
         self.cpu.set_hl(sp_r8);
         self.cpu.set_zero(false);
         self.cpu.set_negative(false);
-        self.cpu.set_half_carry((self.cpu.sp & 0xF) + (value & 0xF) > 0xF);
+        self.cpu
+            .set_half_carry((self.cpu.sp & 0xF) + (value & 0xF) > 0xF);
         self.cpu.set_carry(did_overflow);
         self.cpu.pc = self.cpu.pc.wrapping_add(2);
     }
@@ -825,7 +826,8 @@ impl Gb {
         let (sp_r8, did_overflow) = self.cpu.sp.overflowing_add(value);
         self.cpu.set_zero(false);
         self.cpu.set_negative(false);
-        self.cpu.set_half_carry((self.cpu.sp & 0xF) + (value & 0xF) > 0xF);
+        self.cpu
+            .set_half_carry((self.cpu.sp & 0xF) + (value & 0xF) > 0xF);
         self.cpu.set_carry(did_overflow);
         self.cpu.sp = sp_r8;
         self.cpu.pc = self.cpu.pc.wrapping_add(2);
@@ -1075,7 +1077,7 @@ macro_rules! create_ld_instructions {
                         self.cpu.set_d(value);
                         self.cpu.pc = self.cpu.pc.wrapping_add(1);
                     }
-                    
+
                     #[allow(dead_code)]
                     fn [<ld_e_ $r>](&mut self) {
                         let value = self.cpu.$r();
@@ -1089,7 +1091,7 @@ macro_rules! create_ld_instructions {
                         self.cpu.set_h(value);
                         self.cpu.pc = self.cpu.pc.wrapping_add(1);
                     }
-                    
+
                     #[allow(dead_code)]
                     fn [<ld_l_ $r>](&mut self) {
                         let value = self.cpu.$r();
@@ -1352,13 +1354,12 @@ create_cp_byte_instructions!(a, b, c, d, e, h, l);
 create_pop_instructions!(af, bc, de, hl);
 create_push_instructions!(af, bc, de, hl);
 
-
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::core::cpu;
-    use crate::core::mbc::{load_cartridge, GbMode, Mbc};
     use crate::core::gb::{Gb, GbTypes};
+    use crate::core::mbc::{load_cartridge, GbMode, Mbc};
 
     fn setup_gb() -> Gb {
         let (mbc, gb_mode) = load_cartridge("roms/cpu_instrs.gb").unwrap();
@@ -1367,8 +1368,6 @@ mod test {
     }
 
     macro_rules! test_ {
-        () => {
-            
-        };
+        () => {};
     }
 }
