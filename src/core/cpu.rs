@@ -98,19 +98,19 @@ impl Cpu {
     }
 
     pub fn af(&self) -> u16 {
-        ((self.a() as u16) << 8) | (self.f()) as u16
+        ((self.a() as u16) << 8) | (self.f() as u16)
     }
 
     pub fn bc(&self) -> u16 {
-        ((self.b() as u16) << 8) as u16 | (self.c()) as u16
+        ((self.b() as u16) << 8) | (self.c() as u16) 
     }
 
     pub fn de(&self) -> u16 {
-        ((self.d() as u16) << 8) as u16 | (self.e()) as u16
+        ((self.d() as u16) << 8)| (self.e() as u16) 
     }
 
     pub fn hl(&self) -> u16 {
-        ((self.h() as u16) << 8) as u16 | (self.l()) as u16
+        ((self.h() as u16) << 8) | (self.l()as u16)
     }
 
     pub fn set_a(&mut self, value: u8) {
@@ -178,38 +178,49 @@ impl Cpu {
     }
 
     pub fn set_carry(&mut self, value: bool) {
-        self.f_carry = value;
         self.set_f(if value {
             self.f() | 0x10
         } else {
-            self.f() & 0xEF
+            self.f() & 0xE0
         });
     }
 
     pub fn set_half_carry(&mut self, value: bool) {
-        self.f_half_carry = value;
         self.set_f(if value {
             self.f() | 0x20
         } else {
-            self.f() & 0xDF
+            self.f() & 0xD0
         });
     }
 
     pub fn set_negative(&mut self, value: bool) {
-        self.f_negative = value;
         self.set_f(if value {
             self.f() | 0x40
         } else {
-            self.f() & 0xBF
+            self.f() & 0xB0
         });
     }
 
     pub fn set_zero(&mut self, value: bool) {
-        self.f_zero = value;
         self.set_f(if value {
             self.f() | 0x80
         } else {
-            self.f() & 0x7F
+            self.f() & 0x70
         });
+    }
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn get_cpu() -> Cpu {
+        Cpu::new([0, 0, 0, 0, 0, 0, 0, 0])
+    }
+
+    #[test]
+    fn test_set_flags() {
+        let expected_values: Vec<u8> = vec![0,];
     }
 }

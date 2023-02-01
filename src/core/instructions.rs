@@ -264,49 +264,6 @@ impl Gb {
         }
     }
 
-    pub fn get_reg_index(&self, opcode: u8) -> usize {
-        if opcode & 0x00 == 0x00 || opcode & 0x08 == 0x08 {
-            2 // B
-        } else if opcode & 0x01 == 0x01 || opcode & 0x09 == 0x09 {
-            3 // C
-        } else if opcode & 0x02 == 0x02 || opcode & 0x0A == 0x0A {
-            4 // D
-        } else if opcode & 0x03 == 0x03 || opcode & 0x0B == 0x0B {
-            5 // E
-        } else if opcode & 0x04 == 0x04 || opcode & 0x0C == 0x0C {
-            6 // H
-        } else if opcode & 0x05 == 0x05 || opcode & 0x0D == 0x0D {
-            7 // L
-        } else if opcode & 0x06 == 0x06 || opcode & 0x0E == 0x0E {
-            8 // (HL)
-        } else {
-            0 // A
-        }
-    }
-
-    pub fn get_byte_register_from_index(&self, reg_index: usize) -> u8 {
-        if reg_index == 8 {
-            self.read_byte(self.cpu.hl())
-        } else {
-            self.cpu.registers[reg_index]
-        }
-    }
-
-    pub fn set_byte_register_from_index(&mut self, reg_index: usize, value: u8) {
-        match reg_index {
-            0 => self.cpu.set_a(value),
-            1 => self.cpu.set_f(value & 0xF0),
-            2 => self.cpu.set_b(value),
-            3 => self.cpu.set_c(value),
-            4 => self.cpu.set_d(value),
-            5 => self.cpu.set_e(value),
-            6 => self.cpu.set_h(value),
-            7 => self.cpu.set_l(value),
-            8 => self.write_byte(self.cpu.hl(), value),
-            _ => unreachable!(),
-        }
-    }
-
     fn get_flag_condition(&self, opcode: u8) -> bool {
         match (opcode >> 3) & 0x3 {
             0 => self.cpu.f_zero == false,
@@ -323,8 +280,7 @@ impl Gb {
     }
 
     fn ill(&mut self, opcode: u8) {
-        println!("ILLEGAL OPCODE: {opcode}");
-        self.cpu.advance_pc();
+        panic!("ILLEGAL OPCODE: {opcode:04X}");
     }
 
     fn stop(&mut self) {
@@ -332,6 +288,7 @@ impl Gb {
     }
 
     fn halt(&mut self) {
+        self.cpu.is_halted = true;
         self.cpu.advance_pc();
     }
 
@@ -563,7 +520,7 @@ impl Gb {
         self.cpu.set_a(value);
         self.cpu.set_zero(value == 0);
         self.cpu.set_negative(false);
-        self.cpu.set_half_carry((value & 0xF) > 0x0F);
+        self.cpu.set_half_carry((a & 0xF) + (r & 0xF) > 0x0F);
         self.cpu.set_carry(did_overflow);
         self.cpu.advance_pc();
     }
@@ -580,7 +537,7 @@ impl Gb {
         self.cpu.set_a(value);
         self.cpu.set_zero(value == 0);
         self.cpu.set_negative(false);
-        self.cpu.set_half_carry((value & 0xF) > 0x0F);
+        self.cpu.set_half_carry((a & 0xF) + (r & 0xF) + carry > 0x0F);
         self.cpu.set_carry(did_overflow);
         self.cpu.advance_pc();
     }
@@ -608,7 +565,7 @@ impl Gb {
         self.cpu.set_a(value);
         self.cpu.set_zero(value == 0);
         self.cpu.set_negative(true);
-        self.cpu.set_half_carry((a & 0xF) < (value & 0xF) + carry);
+        self.cpu.set_half_carry((a & 0xF) < (r & 0xF) + carry);
         self.cpu.set_carry(did_overflow);
         self.cpu.advance_pc();
     }
@@ -1120,7 +1077,152 @@ mod test {
         Gb::new(mbc, gb_mode, gb_type)
     }
 
-    macro_rules! test_ {
-        () => {};
+    macro_rules! test_ld_instructions {
+        ($($r:ident),*) => {
+            paste! {
+                $(
+                    #[test]
+                    fn [<test_ld_a_ $r>]() {
+                        let mut gb = setup_gb();
+                        let values: [u8; 256] = (0..=255).collect::<Vec<u8>>().try_into().unwrap();
+                        for value in values.iter() {
+                            let pc = gb.cpu.pc;
+                            gb.cpu.[<set_ $r>](*value);
+                            gb.[<ld_a_ $r>]();
+                            let a = gb.cpu.a();
+                            assert_eq!(a, *value);
+                            assert_eq!(gb.cpu.pc, pc.wrapping_add(1));
+                        }
+                    }
+
+                    #[test]
+                    fn [<test_ld_b_ $r>]() {
+                        let mut gb = setup_gb();
+                        let values: [u8; 256] = (0..=255).collect::<Vec<u8>>().try_into().unwrap();
+                        for value in values.iter() {
+                            let pc = gb.cpu.pc;
+                            gb.cpu.[<set_ $r>](*value);
+                            gb.[<ld_b_ $r>]();
+                            let b = gb.cpu.b();
+                            assert_eq!(b, *value);
+                            assert_eq!(gb.cpu.pc, pc.wrapping_add(1));
+                        }
+                    }
+
+                    #[test]
+                    fn [<test_ld_c_ $r>]() {
+                        let mut gb = setup_gb();
+                        let values: [u8; 256] = (0..=255).collect::<Vec<u8>>().try_into().unwrap();
+                        for value in values.iter() {
+                            let pc = gb.cpu.pc;
+                            gb.cpu.[<set_ $r>](*value);
+                            gb.[<ld_c_ $r>]();
+                            let c = gb.cpu.c();
+                            assert_eq!(c, *value);
+                            assert_eq!(gb.cpu.pc, pc.wrapping_add(1));
+                        }
+                    }
+
+                    #[test]
+                    fn [<test_ld_d_ $r>]() {
+                        let mut gb = setup_gb();
+                        let values: [u8; 256] = (0..=255).collect::<Vec<u8>>().try_into().unwrap();
+                        for value in values.iter() {
+                            let pc = gb.cpu.pc;
+                            gb.cpu.[<set_ $r>](*value);
+                            gb.[<ld_d_ $r>]();
+                            let d = gb.cpu.d();
+                            assert_eq!(d, *value);
+                            assert_eq!(gb.cpu.pc, pc.wrapping_add(1));
+                        }
+                    }
+
+                    #[test]
+                    fn [<test_ld_e_ $r>]() {
+                        let mut gb = setup_gb();
+                        let values: [u8; 256] = (0..=255).collect::<Vec<u8>>().try_into().unwrap();
+                        for value in values.iter() {
+                            let pc = gb.cpu.pc;
+                            gb.cpu.[<set_ $r>](*value);
+                            gb.[<ld_e_ $r>]();
+                            let e = gb.cpu.e();
+                            assert_eq!(e, *value);
+                            assert_eq!(gb.cpu.pc, pc.wrapping_add(1));
+                        }
+                    }
+
+                    #[test]
+                    fn [<test_ld_h_ $r>]() {
+                        let mut gb = setup_gb();
+                        let values: [u8; 256] = (0..=255).collect::<Vec<u8>>().try_into().unwrap();
+                        for value in values.iter() {
+                            let pc = gb.cpu.pc;
+                            gb.cpu.[<set_ $r>](*value);
+                            gb.[<ld_h_ $r>]();
+                            let h = gb.cpu.h();
+                            assert_eq!(h, *value);
+                            assert_eq!(gb.cpu.pc, pc.wrapping_add(1));
+                        }
+                    }
+
+                    #[test]
+                    fn [<test_ld_l_ $r>]() {
+                        let mut gb = setup_gb();
+                        let values: [u8; 256] = (0..=255).collect::<Vec<u8>>().try_into().unwrap();
+                        for value in values.iter() {
+                            let pc = gb.cpu.pc;
+                            gb.cpu.[<set_ $r>](*value);
+                            gb.[<ld_l_ $r>]();
+                            let l = gb.cpu.l();
+                            assert_eq!(l, *value);
+                            assert_eq!(gb.cpu.pc, pc.wrapping_add(1));
+                        }
+                    }
+
+                    #[test]
+                    fn [<test_ld_ $r _dhl>]() {
+                        let mut gb = setup_gb();
+                        let values: [u16; (u16::MAX as usize + 1) as usize] = (0..=u16::MAX).collect::<Vec<u16>>().try_into().unwrap();
+                        for value in values.iter() {
+                            let pc = gb.cpu.pc;
+                            gb.cpu.set_hl(*value);
+                            let v = gb.read_byte(*value);
+                            gb.[<ld_ $r _dhl>]();
+                            let r = gb.cpu.$r();
+                            assert_eq!(r, v);
+                            assert_eq!(gb.cpu.pc, pc.wrapping_add(1));
+                        }
+                    }
+                )*
+            }
+        };
     }
+
+    macro_rules! test_ld_dhl_instructions {
+        ($($r:ident),*) => {
+            paste! {
+                $(
+                    #[test]
+                    fn [<test_ld_dhl_ $r>]() {
+                        let mut gb = setup_gb();
+                        let values: [u8; 256] = (0..=255).collect::<Vec<u8>>().try_into().unwrap();
+                        for value in values.iter() {
+                            let pc = gb.cpu.pc;
+                            gb.cpu.set_hl(0xC000);
+                            gb.cpu.[<set_ $r>](*value);
+                            gb.[<ld_dhl_ $r>]();
+                            let v = gb.read_byte(0xC000);
+                            assert_eq!(v, *value);
+                            assert_eq!(gb.cpu.pc, pc.wrapping_add(1));
+                        }
+                    }
+                )*
+            }
+        };
+    }
+
+    
+
+    test_ld_instructions!(a, b, c, d, e, h, l);
+    test_ld_dhl_instructions!(a, b, c, d, e);
 }

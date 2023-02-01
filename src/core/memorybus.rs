@@ -9,7 +9,7 @@ impl Gb {
             0x8000..=0x9FFF => self.ppu.read_byte(address),
             0xA000..=0xBFFF => self.mbc.read_ram(address),
             0xC000..=0xCFFF | 0xE000..=0xEFFF => self.wram[(address & 0x1FFF) as usize],
-            0xD000..=0xDFFF | 0xF000..=0xFDFF => self.wram[(address & 0x1FFF) as usize],
+            0xD000..=0xDFFF | 0xF000..=0xFDFF => self.wram[(self.ram_bank * 0x1000) | (address & 0x1FFF) as usize],
             0xFE00..=0xFE9F => self.ppu.read_byte(address),
             0xFEA0..=0xFEFF => 0xFF, // PROHIBITED AREA
             0xFF00 => self.joypad.read_byte(address),
@@ -37,7 +37,7 @@ impl Gb {
             }
             0xFF75 => self.undoc_registers[3] & 0x70,
             0xFF80..=0xFFFE => self.hram[(address & 0x7F) as usize],
-            0xFFFF => self.ie_flag,
+            0xFFFF => self.ie_flag & 0x1F,
             _ => 0xFF,
         }
     }
@@ -89,7 +89,7 @@ impl Gb {
             }
             0xFF75 => self.undoc_registers[3] = value & 0x70,
             0xFF80..=0xFFFE => self.hram[(address & 0x7F) as usize] = value,
-            0xFFFF => self.ie_flag = value,
+            0xFFFF => self.ie_flag = value & 0x1F,
             _ => {
                 println!("Not implemented memory region {}", address);
             }

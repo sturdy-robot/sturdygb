@@ -18,7 +18,7 @@ impl Memory for Ppu {
             0x40 => 0xFF, // todo: implement this
             0x48 => self.lcdc,
             _ => {
-                println!("Address not implemented {:04X}", address);
+                println!("PPU Address not implemented {:04X}", address);
                 0xFF
             }
         }
@@ -26,7 +26,7 @@ impl Memory for Ppu {
 
     fn write_byte(&mut self, address: u16, value: u8) {
         match address {
-            _ => println!("Address not implemented {:04X}", address),
+            _ => println!("PPU Address not implemented {:04X}", address),
         }
     }
 }
