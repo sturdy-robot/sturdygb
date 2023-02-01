@@ -15,7 +15,7 @@ impl Gb {
             7 => self.srl_r(prefix),
             _ => self.bit_res_set_r(prefix),
         };
-        self.cpu.pc = self.cpu.pc.wrapping_add(2);
+        self.cpu.advance_pc();
     }
 
     fn rlc_r(&mut self, prefix: u8) {
