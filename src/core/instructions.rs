@@ -864,23 +864,8 @@ impl Gb {
     }
 }
 
-macro_rules! create_inc_word_instructions {
-    ($($rr:ident),*) => {
-        impl Gb {
-            paste! {
-                $(
-                    fn [<inc_ $rr>](&mut self) {
-                        let value = self.cpu.$rr().wrapping_add(1);
-                        self.cpu.[<set_ $rr>](value);
-                        self.cpu.advance_pc();
-                    }
-                )*
-            }
-        }
-    }
-}
 
-macro_rules! create_dec_word_instructions {
+macro_rules! create_alu_ld_word_instructions {
     ($($rr:ident),*) => {
         impl Gb {
             paste! {
@@ -890,52 +875,46 @@ macro_rules! create_dec_word_instructions {
                         self.cpu.[<set_ $rr>](value);
                         self.cpu.advance_pc();
                     }
-                )*
-            }
-        }
-    }
-}
 
-macro_rules! create_inc_byte_instructions {
-    ($($r:ident),*) => {
-        impl Gb {
-            paste! {
-                $(
-                    fn [<inc_ $r>](&mut self) {
-                        let value = self.cpu.$r().wrapping_add(1);
-                        self.cpu.[<set_ $r>](value);
-                        self.cpu.set_zero(value == 0);
+                    fn [<inc_ $rr>](&mut self) {
+                        let value = self.cpu.$rr().wrapping_add(1);
+                        self.cpu.[<set_ $rr>](value);
+                        self.cpu.advance_pc();
+                    }
+
+                    fn [<add_hl_ $rr>](&mut self) {
+                        let hl: u16 = self.cpu.hl();
+                        let rr: u16 = self.cpu.$rr();
+                        self.cpu.set_hl(hl.wrapping_add(rr));
                         self.cpu.set_negative(false);
-                        self.cpu.set_half_carry((value & 0xF) == 0xF);
+                        self.cpu.set_half_carry((hl & 0xFFF) + (rr & 0xFFF) & 0x1000 != 0);
+                        self.cpu.set_carry((hl as u32 + rr as u32) & 0x10000 != 0);
+                        self.cpu.advance_pc();
+                    }
+
+                    fn [<ld_ $rr _d16>](&mut self) {
+                        let value = self.read_word(self.cpu.pc.wrapping_add(1));
+                        self.cpu.[<set_ $rr>](value);
                         self.cpu.advance_pc();
                     }
                 )*
+            }
+
+            fn add_hl_sp(&mut self) {
+                let hl: u16 = self.cpu.hl();
+                let rr = self.cpu.sp;
+                self.cpu.set_hl(hl.wrapping_add(rr));
+                self.cpu.set_negative(false);
+                self.cpu.set_half_carry((hl & 0xFFF) + (rr & 0xFFF) & 0x1000 != 0);
+                self.cpu.set_carry((hl as u32 + rr as u32) & 0x10000 != 0);
+                self.cpu.advance_pc();
             }
         }
     }
 }
 
-macro_rules! create_dec_byte_instructions {
-    ($($r:ident),*) => {
-        impl Gb {
-            paste! {
-                $(
-                    fn [<dec_ $r>](&mut self) {
-                        let value = self.cpu.$r().wrapping_sub(1);
-                        self.cpu.[<set_ $r>](value);
-                        self.cpu.set_zero(value == 0);
-                        self.cpu.set_negative(true);
-                        self.cpu.set_half_carry((value & 0xF) == 0xF);
-                        self.cpu.advance_pc();
-                    }
-                )*
-            }
-        }
-    }
-}
 
-// Create all simple LD instructions using macros
-macro_rules! create_ld_instructions {
+macro_rules! create_byte_instructions {
     ($($r:ident),*) => {
         impl Gb {
             paste! {
@@ -1008,122 +987,60 @@ macro_rules! create_ld_instructions {
                         self.cpu.[<set_ $r>](value);
                         self.cpu.advance_pc();
                     }
-                )*
-            }
-        }
-    }
-}
 
-macro_rules! create_add_byte_instructions {
-    ($($r:ident),*) => {
-        impl Gb {
-            paste! {
-                $(
+                    fn [<inc_ $r>](&mut self) {
+                        let value = self.cpu.$r().wrapping_add(1);
+                        self.cpu.[<set_ $r>](value);
+                        self.cpu.set_zero(value == 0);
+                        self.cpu.set_negative(false);
+                        self.cpu.set_half_carry((value & 0xF) == 0xF);
+                        self.cpu.advance_pc();
+                    }
+
+                    fn [<dec_ $r>](&mut self) {
+                        let value = self.cpu.$r().wrapping_sub(1);
+                        self.cpu.[<set_ $r>](value);
+                        self.cpu.set_zero(value == 0);
+                        self.cpu.set_negative(true);
+                        self.cpu.set_half_carry((value & 0xF) == 0xF);
+                        self.cpu.advance_pc();
+                    }
+
                     fn [<add_ $r>](&mut self) {
                         let r = self.cpu.$r();
                         self.alu_add(r);
                     }
-                )*
-            }
-        }
-    }
-}
 
-macro_rules! create_adc_byte_instructions {
-    ($($r:ident),*) => {
-        impl Gb {
-            paste! {
-                $(
                     fn [<adc_ $r>](&mut self) {
                         let r = self.cpu.$r();
                         self.alu_adc(r);
                     }
-                )*
-            }
-        }
-    }
-}
 
-macro_rules! create_sub_byte_instructions {
-    ($($r:ident),*) => {
-        impl Gb {
-            paste! {
-                $(
                     fn [<sub_ $r>](&mut self) {
                         let r = self.cpu.$r();
                         self.alu_sub(r);
                     }
-                )*
-            }
-        }
-    }
-}
 
-macro_rules! create_sbc_byte_instructions {
-    ($($r:ident),*) => {
-        impl Gb {
-            paste! {
-                $(
                     fn [<sbc_ $r>](&mut self) {
                         let r = self.cpu.$r();
                         self.alu_sbc(r);
                     }
-                )*
-            }
-        }
-    }
-}
 
-macro_rules! create_and_byte_instructions {
-    ($($r:ident),*) => {
-        impl Gb {
-            paste! {
-                $(
                     fn [<and_ $r>](&mut self) {
                         let r = self.cpu.$r();
                         self.alu_and(r);
                     }
-                )*
-            }
-        }
-    }
-}
 
-macro_rules! create_xor_byte_instructions {
-    ($($r:ident),*) => {
-        impl Gb {
-            paste! {
-                $(
                     fn [<xor_ $r>](&mut self) {
                         let r = self.cpu.$r();
                         self.alu_xor(r);
                     }
-                )*
-            }
-        }
-    }
-}
 
-macro_rules! create_or_byte_instructions {
-    ($($r:ident),*) => {
-        impl Gb {
-            paste! {
-                $(
                     fn [<or_ $r>](&mut self) {
                         let r = self.cpu.$r();
                         self.alu_or(r);
                     }
-                )*
-            }
-        }
-    }
-}
 
-macro_rules! create_cp_byte_instructions {
-    ($($r:ident),*) => {
-        impl Gb {
-            paste! {
-                $(
                     fn [<cp_ $r>](&mut self) {
                         let r = self.cpu.$r();
                         self.alu_cp(r);
@@ -1134,7 +1051,9 @@ macro_rules! create_cp_byte_instructions {
     }
 }
 
-macro_rules! create_pop_instructions {
+
+
+macro_rules! create_push_pop_instructions {
     ($($rr:ident),*) => {
         impl Gb {
             paste! {
@@ -1145,17 +1064,7 @@ macro_rules! create_pop_instructions {
                         self.cpu.[<set_ $rr>](value);
                         self.cpu.advance_pc();
                     }
-                )*
-            }
-        }
-    }
-}
 
-macro_rules! create_push_instructions {
-    ($($rr:ident),*) => {
-        impl Gb {
-            paste! {
-                $(
                     fn [<push_ $rr>](&mut self) {
                         let r = self.cpu.$rr();
                         self.cpu.sp = self.cpu.sp.wrapping_sub(2);
@@ -1191,70 +1100,12 @@ macro_rules! create_ld_rra_instructions {
     }
 }
 
-macro_rules! create_ld_rr_d16_instructions {
-    ($($rr:ident),*) => {
-        impl Gb {
-            paste! {
-                $(
-                    fn [<ld_ $rr _d16>](&mut self) {
-                        let value = self.read_word(self.cpu.pc.wrapping_add(1));
-                        self.cpu.[<set_ $rr>](value);
-                        self.cpu.advance_pc();
-                    }
-                )*
-            }
-        }
-    }
-}
 
-macro_rules! create_add_hl_rr_instructions {
-    ($($rr:ident),*) => {
-        impl Gb {
-            paste! {
-                $(
-                    fn [<add_hl_ $rr>](&mut self) {
-                        let hl: u16 = self.cpu.hl();
-                        let rr: u16 = self.cpu.$rr();
-                        self.cpu.set_hl(hl.wrapping_add(rr));
-                        self.cpu.set_negative(false);
-                        self.cpu.set_half_carry((hl & 0xFFF) + (rr & 0xFFF) & 0x1000 != 0);
-                        self.cpu.set_carry((hl as u32 + rr as u32) & 0x10000 != 0);
-                        self.cpu.advance_pc();
-                    }
-                )*
-            }
-            
-            fn add_hl_sp(&mut self) {
-                let hl: u16 = self.cpu.hl();
-                let rr = self.cpu.sp;
-                self.cpu.set_hl(hl.wrapping_add(rr));
-                self.cpu.set_negative(false);
-                self.cpu.set_half_carry((hl & 0xFFF) + (rr & 0xFFF) & 0x1000 != 0);
-                self.cpu.set_carry((hl as u32 + rr as u32) & 0x10000 != 0);
-                self.cpu.advance_pc();
-            }
-        }
-    }
-}
-
-create_dec_word_instructions!(bc, de, hl);
-create_inc_word_instructions!(bc, de, hl);
-create_dec_byte_instructions!(a, b, c, d, e, h, l);
-create_inc_byte_instructions!(a, b, c, d, e, h, l);
-create_ld_instructions!(a, b, c, d, e, h, l);
-create_add_byte_instructions!(a, b, c, d, e, h, l);
-create_adc_byte_instructions!(a, b, c, d, e, h, l);
-create_sub_byte_instructions!(a, b, c, d, e, h, l);
-create_sbc_byte_instructions!(a, b, c, d, e, h, l);
-create_and_byte_instructions!(a, b, c, d, e, h, l);
-create_xor_byte_instructions!(a, b, c, d, e, h, l);
-create_or_byte_instructions!(a, b, c, d, e, h, l);
-create_cp_byte_instructions!(a, b, c, d, e, h, l);
-create_pop_instructions!(af, bc, de, hl);
-create_push_instructions!(af, bc, de, hl);
+create_alu_ld_word_instructions!(bc, de, hl);
+create_byte_instructions!(a, b, c, d, e, h, l);
+create_push_pop_instructions!(af, bc, de, hl);
 create_ld_rra_instructions!(bc, de);
-create_ld_rr_d16_instructions!(bc, de, hl);
-create_add_hl_rr_instructions!(bc, de, hl);
+
 
 #[cfg(test)]
 mod test {
