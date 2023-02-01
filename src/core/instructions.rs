@@ -1,6 +1,3 @@
-// Decode instructions
-// The implementation here is based on the SameBoy implementation
-
 use crate::core::gb::Gb;
 use paste::paste;
 
@@ -17,7 +14,7 @@ impl Gb {
             0x06 => self.ld_b_d8(),
             0x07 => self.rlca(),
             0x08 => self.ld_da16_sp(),
-            0x09 => self.add_hl_rr(opcode),
+            0x09 => self.add_hl_bc(),
             0x0A => self.ld_a_bc(),
             0x0B => self.dec_bc(),
             0x0C => self.inc_c(),
@@ -33,7 +30,7 @@ impl Gb {
             0x16 => self.ld_d_d8(),
             0x17 => self.rla(),
             0x18 => self.jr_r8(),
-            0x19 => self.add_hl_rr(opcode),
+            0x19 => self.add_hl_de(),
             0x1A => self.ld_a_de(),
             0x1B => self.dec_de(),
             0x1C => self.inc_e(),
@@ -49,7 +46,7 @@ impl Gb {
             0x26 => self.ld_h_d8(),
             0x27 => self.daa(),
             0x28 => self.jr_cc_r8(opcode),
-            0x29 => self.add_hl_rr(opcode),
+            0x29 => self.add_hl_hl(),
             0x2A => self.ld_a_hli(),
             0x2B => self.dec_hl(),
             0x2C => self.inc_l(),
@@ -65,7 +62,7 @@ impl Gb {
             0x36 => self.ld_dhl_d8(), 
             0x37 => self.scf(),
             0x38 => self.jr_cc_r8(opcode),
-            0x39 => self.add_hl_rr(opcode),
+            0x39 => self.add_hl_sp(),
             0x3A => self.ld_a_hld(),
             0x3B => self.dec_sp(),
             0x3C => self.inc_a(),
@@ -295,17 +292,6 @@ impl Gb {
         }
     }
 
-    pub fn get_word_register_from_index(&self, reg_index: usize) -> u16 {
-        match reg_index {
-            0 => self.cpu.af(),
-            1 => self.cpu.bc(),
-            2 => self.cpu.de(),
-            3 => self.cpu.hl(),
-            4 => self.cpu.sp,
-            _ => unreachable!(),
-        }
-    }
-
     pub fn set_byte_register_from_index(&mut self, reg_index: usize, value: u8) {
         match reg_index {
             0 => self.cpu.set_a(value),
@@ -402,18 +388,6 @@ impl Gb {
     fn ld_da16_sp(&mut self) {
         let address: u16 = self.read_word(self.cpu.pc.wrapping_add(1));
         self.write_word(address, self.cpu.sp);
-        self.cpu.advance_pc();
-    }
-
-    fn add_hl_rr(&mut self, opcode: u8) {
-        let hl: u16 = self.cpu.hl();
-        let register_index: usize = (opcode as usize >> 4) + 1;
-        let rr: u16 = self.get_word_register_from_index(register_index);
-        self.cpu.set_hl(hl.wrapping_add(rr));
-        self.cpu.set_negative(false);
-        self.cpu
-            .set_half_carry(((hl as u32) & 0xFFF) + ((rr as u32) & 0xFFF) & 0x1000 != 0);
-        self.cpu.set_carry((hl as u32 + rr as u32) & 0x10000 != 0);
         self.cpu.advance_pc();
     }
 
@@ -555,8 +529,36 @@ impl Gb {
 
     fn add_dhl(&mut self) {
         let hl = self.cpu.hl();
-        let a = self.cpu.a();
         let r = self.read_byte(hl);
+        self.alu_add(r);
+    }
+
+    fn adc_dhl(&mut self) {
+        let hl = self.cpu.hl();
+        let r = self.read_byte(hl);
+        self.alu_adc(r);
+    }
+
+    fn sub_dhl(&mut self) {
+        let hl = self.cpu.hl();
+        let r = self.read_byte(hl);
+        self.alu_sub(r);
+    }
+
+    fn sbc_dhl(&mut self) {
+        let hl = self.cpu.hl();
+        let r = self.read_byte(hl);
+        self.alu_sbc(r);
+    }
+
+    fn and_dhl(&mut self) {
+        let hl = self.cpu.hl();
+        let r = self.read_byte(hl);
+        self.alu_and(r);
+    }
+
+    fn alu_add(&mut self, r: u8) {
+        let a = self.cpu.a();
         let (value, did_overflow) = a.overflowing_add(r);
         self.cpu.set_a(value);
         self.cpu.set_zero(value == 0);
@@ -566,9 +568,7 @@ impl Gb {
         self.cpu.advance_pc();
     }
 
-    fn adc_dhl(&mut self) {
-        let hl = self.cpu.hl();
-        let r = self.read_byte(hl);
+    fn alu_adc(&mut self, r: u8) {
         let a = self.cpu.a();
         let carry = self.cpu.get_carry();
         let (mut value, mut did_overflow) = a.overflowing_add(carry);
@@ -585,9 +585,7 @@ impl Gb {
         self.cpu.advance_pc();
     }
 
-    fn sub_dhl(&mut self) {
-        let hl = self.cpu.hl();
-        let r = self.read_byte(hl);
+    fn alu_sub(&mut self, r: u8) {
         let a = self.cpu.a();
         let (value, did_overflow) = a.overflowing_sub(r);
         self.cpu.set_a(value);
@@ -598,9 +596,7 @@ impl Gb {
         self.cpu.advance_pc();
     }
 
-    fn sbc_dhl(&mut self) {
-        let hl = self.cpu.hl();
-        let r = self.read_byte(hl);
+    fn alu_sbc(&mut self, r: u8) {
         let a = self.cpu.a();
         let carry = self.cpu.get_carry();
         let (mut value, mut did_overflow) = a.overflowing_sub(carry);
@@ -617,22 +613,7 @@ impl Gb {
         self.cpu.advance_pc();
     }
 
-    fn and_dhl(&mut self) {
-        let hl = self.cpu.hl();
-        let r = self.read_byte(hl);
-        let a = self.cpu.a();
-        let value = a & r;
-        self.cpu.set_a(value);
-        self.cpu.set_zero(value == 0);
-        self.cpu.set_negative(false);
-        self.cpu.set_half_carry(true);
-        self.cpu.set_carry(false);
-        self.cpu.advance_pc();
-    }
-
-    fn xor_dhl(&mut self) {
-        let hl = self.cpu.hl();
-        let r = self.read_byte(hl);
+    fn alu_xor(&mut self, r: u8) {
         let a = self.cpu.a();
         let value = a ^ r;
         self.cpu.set_a(value);
@@ -643,9 +624,7 @@ impl Gb {
         self.cpu.advance_pc();
     }
 
-    fn or_dhl(&mut self) {
-        let hl = self.cpu.hl();
-        let r = self.read_byte(hl);
+    fn alu_or(&mut self, r: u8) {
         let a = self.cpu.a();
         let value = a | r;
         self.cpu.set_a(value);
@@ -656,15 +635,42 @@ impl Gb {
         self.cpu.advance_pc();
     }
 
-    fn cp_dhl(&mut self) {
-        let hl = self.cpu.hl();
-        let r = self.read_byte(hl);
+    fn alu_and(&mut self, r: u8) {
+        let a = self.cpu.a();
+        let value = a & r;
+        self.cpu.set_a(value);
+        self.cpu.set_zero(value == 0);
+        self.cpu.set_negative(false);
+        self.cpu.set_half_carry(true);
+        self.cpu.set_carry(false);
+        self.cpu.advance_pc();
+    }
+
+    fn alu_cp(&mut self, r: u8) {
         let a = self.cpu.a();
         self.cpu.set_zero(a == r);
         self.cpu.set_negative(true);
         self.cpu.set_half_carry((a & 0xF) < (r & 0xF));
         self.cpu.set_carry(a < r);
         self.cpu.advance_pc();
+    }
+
+    fn xor_dhl(&mut self) {
+        let hl = self.cpu.hl();
+        let r = self.read_byte(hl);
+        self.alu_xor(r);
+    }
+
+    fn or_dhl(&mut self) {
+        let hl = self.cpu.hl();
+        let r = self.read_byte(hl);
+        self.alu_or(r);
+    }
+
+    fn cp_dhl(&mut self) {
+        let hl = self.cpu.hl();
+        let r = self.read_byte(hl);
+        self.alu_cp(r);
     }
 
     fn ret(&mut self) {
@@ -785,98 +791,37 @@ impl Gb {
 
     fn or_d8(&mut self) {
         let r = self.read_byte(self.cpu.pc.wrapping_add(1));
-        let a = self.cpu.a();
-        let value = a | r;
-        self.cpu.set_a(value);
-        self.cpu.set_zero(value == 0);
-        self.cpu.set_negative(false);
-        self.cpu.set_half_carry(false);
-        self.cpu.set_carry(false);
-        self.cpu.advance_pc();
+        self.alu_or(r);
     }
 
     fn and_d8(&mut self) {
         let r = self.read_byte(self.cpu.pc.wrapping_add(1));
-        let a = self.cpu.a();
-        let value = a & r;
-        self.cpu.set_a(value);
-        self.cpu.set_zero(value == 0);
-        self.cpu.set_negative(false);
-        self.cpu.set_half_carry(true);
-        self.cpu.set_carry(false);
-        self.cpu.advance_pc();
+        self.alu_and(r);
     }
 
     fn add_a_d8(&mut self) {
         let r = self.read_byte(self.cpu.pc.wrapping_add(1));
-        let a = self.cpu.a();
-        let (value, did_overflow) = a.overflowing_add(r);
-        self.cpu.set_a(value);
-        self.cpu.set_zero(value == 0);
-        self.cpu.set_negative(false);
-        self.cpu.set_half_carry((value & 0xF) > 0x0F);
-        self.cpu.set_carry(did_overflow);
-        self.cpu.advance_pc();
+        self.alu_add(r);
     }
 
     fn adc_a_d8(&mut self) {
         let r = self.read_byte(self.cpu.pc.wrapping_add(1));
-        let a = self.cpu.a();
-        let carry = self.cpu.get_carry();
-        let (mut value, mut did_overflow) = a.overflowing_add(carry);
-        if did_overflow {
-            value = value.wrapping_add(r);
-        } else {
-            (value, did_overflow) = value.overflowing_add(r);
-        }
-        self.cpu.set_a(value);
-        self.cpu.set_zero(value == 0);
-        self.cpu.set_negative(false);
-        self.cpu.set_half_carry((value & 0xF) > 0x0F);
-        self.cpu.set_carry(did_overflow);
-        self.cpu.advance_pc();
+        self.alu_adc(r);
     }
 
     fn xor_d8(&mut self) {
         let r = self.read_byte(self.cpu.pc.wrapping_add(1));
-        let a = self.cpu.a();
-        let value = a ^ r;
-        self.cpu.set_a(value);
-        self.cpu.set_zero(value == 0);
-        self.cpu.set_negative(false);
-        self.cpu.set_half_carry(false);
-        self.cpu.set_carry(false);
-        self.cpu.advance_pc();
+        self.alu_xor(r);
     }
 
     fn sub_a_d8(&mut self) {
         let r = self.read_byte(self.cpu.pc.wrapping_add(1));
-        let a = self.cpu.a();
-        let (value, did_overflow) = a.overflowing_sub(r);
-        self.cpu.set_a(value);
-        self.cpu.set_zero(value == 0);
-        self.cpu.set_negative(true);
-        self.cpu.set_half_carry((a & 0xF) < (r & 0xF));
-        self.cpu.set_carry(did_overflow);
-        self.cpu.advance_pc();
+        self.alu_sub(r);
     }
 
     fn sbc_a_d8(&mut self) {
         let r = self.read_byte(self.cpu.pc.wrapping_add(1));
-        let a = self.cpu.a();
-        let carry = self.cpu.get_carry();
-        let (mut value, mut did_overflow) = a.overflowing_sub(carry);
-        if did_overflow {
-            value = value.wrapping_sub(r);
-        } else {
-            (value, did_overflow) = value.overflowing_sub(r);
-        }
-        self.cpu.set_a(value);
-        self.cpu.set_zero(value == 0);
-        self.cpu.set_negative(true);
-        self.cpu.set_half_carry((a & 0xF) < (value & 0xF) + carry);
-        self.cpu.set_carry(did_overflow);
-        self.cpu.advance_pc();
+        self.alu_sbc(r);
     }
 
     fn ld_a_dc(&mut self) {
@@ -1076,14 +1021,7 @@ macro_rules! create_add_byte_instructions {
                 $(
                     fn [<add_ $r>](&mut self) {
                         let r = self.cpu.$r();
-                        let a = self.cpu.a();
-                        let (value, did_overflow) = a.overflowing_add(r);
-                        self.cpu.set_a(value);
-                        self.cpu.set_zero(value == 0);
-                        self.cpu.set_negative(false);
-                        self.cpu.set_half_carry((value & 0xF) > 0x0F);
-                        self.cpu.set_carry(did_overflow);
-                        self.cpu.advance_pc();
+                        self.alu_add(r);
                     }
                 )*
             }
@@ -1098,20 +1036,7 @@ macro_rules! create_adc_byte_instructions {
                 $(
                     fn [<adc_ $r>](&mut self) {
                         let r = self.cpu.$r();
-                        let a = self.cpu.a();
-                        let carry = self.cpu.get_carry();
-                        let (mut value, mut did_overflow) = a.overflowing_add(carry);
-                        if did_overflow {
-                            value = value.wrapping_add(r);
-                        } else {
-                            (value, did_overflow) = value.overflowing_add(r);
-                        }
-                        self.cpu.set_a(value);
-                        self.cpu.set_zero(value == 0);
-                        self.cpu.set_negative(false);
-                        self.cpu.set_half_carry((value & 0xF) > 0x0F);
-                        self.cpu.set_carry(did_overflow);
-                        self.cpu.advance_pc();
+                        self.alu_adc(r);
                     }
                 )*
             }
@@ -1126,14 +1051,7 @@ macro_rules! create_sub_byte_instructions {
                 $(
                     fn [<sub_ $r>](&mut self) {
                         let r = self.cpu.$r();
-                        let a = self.cpu.a();
-                        let (value, did_overflow) = a.overflowing_sub(r);
-                        self.cpu.set_a(value);
-                        self.cpu.set_zero(value == 0);
-                        self.cpu.set_negative(true);
-                        self.cpu.set_half_carry((a & 0xF) < (r & 0xF));
-                        self.cpu.set_carry(did_overflow);
-                        self.cpu.advance_pc();
+                        self.alu_sub(r);
                     }
                 )*
             }
@@ -1148,20 +1066,7 @@ macro_rules! create_sbc_byte_instructions {
                 $(
                     fn [<sbc_ $r>](&mut self) {
                         let r = self.cpu.$r();
-                        let a = self.cpu.a();
-                        let carry = self.cpu.get_carry();
-                        let (mut value, mut did_overflow) = a.overflowing_sub(carry);
-                        if did_overflow {
-                            value = value.wrapping_sub(r);
-                        } else {
-                            (value, did_overflow) = value.overflowing_sub(r);
-                        }
-                        self.cpu.set_a(value);
-                        self.cpu.set_zero(value == 0);
-                        self.cpu.set_negative(true);
-                        self.cpu.set_half_carry((a & 0xF) < (value & 0xF) + carry);
-                        self.cpu.set_carry(did_overflow);
-                        self.cpu.advance_pc();
+                        self.alu_sbc(r);
                     }
                 )*
             }
@@ -1176,14 +1081,7 @@ macro_rules! create_and_byte_instructions {
                 $(
                     fn [<and_ $r>](&mut self) {
                         let r = self.cpu.$r();
-                        let a = self.cpu.a();
-                        let value = a & r;
-                        self.cpu.set_a(value);
-                        self.cpu.set_zero(value == 0);
-                        self.cpu.set_negative(false);
-                        self.cpu.set_half_carry(true);
-                        self.cpu.set_carry(false);
-                        self.cpu.advance_pc();
+                        self.alu_and(r);
                     }
                 )*
             }
@@ -1198,14 +1096,7 @@ macro_rules! create_xor_byte_instructions {
                 $(
                     fn [<xor_ $r>](&mut self) {
                         let r = self.cpu.$r();
-                        let a = self.cpu.a();
-                        let value = a ^ r;
-                        self.cpu.set_a(value);
-                        self.cpu.set_zero(value == 0);
-                        self.cpu.set_negative(false);
-                        self.cpu.set_half_carry(false);
-                        self.cpu.set_carry(false);
-                        self.cpu.advance_pc();
+                        self.alu_xor(r);
                     }
                 )*
             }
@@ -1220,14 +1111,7 @@ macro_rules! create_or_byte_instructions {
                 $(
                     fn [<or_ $r>](&mut self) {
                         let r = self.cpu.$r();
-                        let a = self.cpu.a();
-                        let value = a | r;
-                        self.cpu.set_a(value);
-                        self.cpu.set_zero(value == 0);
-                        self.cpu.set_negative(false);
-                        self.cpu.set_half_carry(false);
-                        self.cpu.set_carry(false);
-                        self.cpu.advance_pc();
+                        self.alu_or(r);
                     }
                 )*
             }
@@ -1242,12 +1126,7 @@ macro_rules! create_cp_byte_instructions {
                 $(
                     fn [<cp_ $r>](&mut self) {
                         let r = self.cpu.$r();
-                        let a = self.cpu.a();
-                        self.cpu.set_zero(a == r);
-                        self.cpu.set_negative(true);
-                        self.cpu.set_half_carry((a & 0xF) < (r & 0xF));
-                        self.cpu.set_carry(a < r);
-                        self.cpu.advance_pc();
+                        self.alu_cp(r);
                     }
                 )*
             }
@@ -1328,6 +1207,36 @@ macro_rules! create_ld_rr_d16_instructions {
     }
 }
 
+macro_rules! create_add_hl_rr_instructions {
+    ($($rr:ident),*) => {
+        impl Gb {
+            paste! {
+                $(
+                    fn [<add_hl_ $rr>](&mut self) {
+                        let hl: u16 = self.cpu.hl();
+                        let rr: u16 = self.cpu.$rr();
+                        self.cpu.set_hl(hl.wrapping_add(rr));
+                        self.cpu.set_negative(false);
+                        self.cpu.set_half_carry((hl & 0xFFF) + (rr & 0xFFF) & 0x1000 != 0);
+                        self.cpu.set_carry((hl as u32 + rr as u32) & 0x10000 != 0);
+                        self.cpu.advance_pc();
+                    }
+                )*
+            }
+            
+            fn add_hl_sp(&mut self) {
+                let hl: u16 = self.cpu.hl();
+                let rr = self.cpu.sp;
+                self.cpu.set_hl(hl.wrapping_add(rr));
+                self.cpu.set_negative(false);
+                self.cpu.set_half_carry((hl & 0xFFF) + (rr & 0xFFF) & 0x1000 != 0);
+                self.cpu.set_carry((hl as u32 + rr as u32) & 0x10000 != 0);
+                self.cpu.advance_pc();
+            }
+        }
+    }
+}
+
 create_dec_word_instructions!(bc, de, hl);
 create_inc_word_instructions!(bc, de, hl);
 create_dec_byte_instructions!(a, b, c, d, e, h, l);
@@ -1345,6 +1254,7 @@ create_pop_instructions!(af, bc, de, hl);
 create_push_instructions!(af, bc, de, hl);
 create_ld_rra_instructions!(bc, de);
 create_ld_rr_d16_instructions!(bc, de, hl);
+create_add_hl_rr_instructions!(bc, de, hl);
 
 #[cfg(test)]
 mod test {
