@@ -506,7 +506,7 @@ impl Gb {
 
     fn jr_r8(&mut self) {
         let value = self.read_byte(self.cpu.pc.wrapping_add(1)) as i8;
-        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
         self.cpu.pc = ((self.cpu.pc as u32 as i32) + (value as i32)) as u16;
     }
 
@@ -955,7 +955,7 @@ impl Gb {
         let address = 0xFF00 | r;
         let value = self.read_byte(address);
         self.cpu.set_a(value);
-        self.cpu.pc = self.cpu.pc.wrapping_add(1);
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
     }
 
     fn ldh_a8_a(&mut self) {
