@@ -1,7 +1,29 @@
 use rand::prelude::*;
 use mockall::*;
 use mockall::predicate::*;
+use std::fs;
 
+pub fn get_mbc(rom_data: Vec<u8>, header: CartridgeHeader) -> (Box<dyn Mbc>, GbMode) {
+    let gb_mode = match header.cgb_flag {
+        0x80 => GbMode::NonCgbMode,
+        0xC0 => GbMode::CgbMode,
+        _ => GbMode::DmgMode,
+    };
+
+    match header.mbc_type {
+        MBCTypes::RomOnly => (Box::new(RomOnly::new(rom_data, header)), gb_mode),
+        MBCTypes::Mbc1 => (Box::new(Mbc1::new(rom_data, header)), gb_mode),
+        _ => unimplemented!(),
+    }
+}
+
+pub fn load_cartridge(filename: &str) -> Result<(Box<dyn Mbc>, GbMode), &str> {
+    let rom_data = fs::read(filename).expect("Unable to read file contents");
+    match CartridgeHeader::new(&rom_data) {
+        Ok(header) => Ok(get_mbc(rom_data, header)),
+        Err(f) => return Err(f),
+    }
+}
 
 #[allow(unused_variables)]
 #[automock]
@@ -108,20 +130,6 @@ pub struct MbcBase {
 
 pub struct RomOnly {
     mbc: MbcBase,
-}
-
-pub fn get_mbc(rom_data: Vec<u8>, header: CartridgeHeader) -> (Box<dyn Mbc>, GbMode) {
-    let gb_mode = match header.cgb_flag {
-        0x80 => GbMode::NonCgbMode,
-        0xC0 => GbMode::CgbMode,
-        _ => GbMode::DmgMode,
-    };
-
-    match header.mbc_type {
-        MBCTypes::RomOnly => (Box::new(RomOnly::new(rom_data, header)), gb_mode),
-        MBCTypes::Mbc1 => (Box::new(Mbc1::new(rom_data, header)), gb_mode),
-        _ => unimplemented!(),
-    }
 }
 
 impl RomOnly {

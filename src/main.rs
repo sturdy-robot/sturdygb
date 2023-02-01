@@ -1,16 +1,7 @@
 mod core;
 use crate::core::gb::{Gb, GbTypes};
-use crate::core::mbc::{get_mbc, CartridgeHeader, GbMode, Mbc};
+use crate::core::mbc::{GbMode, load_cartridge};
 use std::env;
-use std::fs;
-
-fn load_cartridge(filename: &str) -> Result<(Box<dyn Mbc>, GbMode), &str> {
-    let rom_data = fs::read(filename).expect("Unable to read file contents");
-    match CartridgeHeader::new(&rom_data) {
-        Ok(header) => Ok(get_mbc(rom_data, header)),
-        Err(f) => return Err(f),
-    }
-}
 
 fn main() {
     let args: Vec<String> = env::args().collect();

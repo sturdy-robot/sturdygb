@@ -1357,6 +1357,18 @@ create_push_instructions!(af, bc, de, hl);
 mod test {
     use super::*;
     use crate::core::cpu;
-    use crate::core::gb::Gb;
+    use crate::core::mbc::{load_cartridge, GbMode, Mbc};
+    use crate::core::gb::{Gb, GbTypes};
 
+    fn setup_gb() -> Gb {
+        let (mbc, gb_mode) = load_cartridge("roms/cpu_instrs.gb").unwrap();
+        let gb_type = GbTypes::Dmg;
+        Gb::new(mbc, gb_mode, gb_type)
+    }
+
+    macro_rules! test_ {
+        () => {
+            
+        };
+    }
 }

@@ -10,6 +10,7 @@ pub mod serial;
 pub mod sound;
 pub mod timer;
 pub mod cb_prefix;
+pub mod interrupts;
 
 #[allow(unused_variables)]
 pub trait Memory {
