@@ -516,57 +516,47 @@ impl Gb {
 
     fn alu_add(&mut self, r: u8) {
         let a = self.cpu.a();
-        let (value, did_overflow) = a.overflowing_add(r);
+        let value = a.wrapping_add(r);
         self.cpu.set_a(value);
         self.cpu.set_zero(value == 0);
         self.cpu.set_negative(false);
         self.cpu.set_half_carry((a & 0xF) + (r & 0xF) > 0x0F);
-        self.cpu.set_carry(did_overflow);
+        self.cpu.set_carry((a as u16) + (r as u16) > 0xFF);
         self.cpu.advance_pc();
     }
 
     fn alu_adc(&mut self, r: u8) {
         let a = self.cpu.a();
         let carry = self.cpu.get_carry();
-        let (mut value, mut did_overflow) = a.overflowing_add(carry);
-        if did_overflow {
-            value = value.wrapping_add(r);
-        } else {
-            (value, did_overflow) = value.overflowing_add(r);
-        }
+        let value = a.wrapping_add(r).wrapping_add(carry);
         self.cpu.set_a(value);
         self.cpu.set_zero(value == 0);
         self.cpu.set_negative(false);
         self.cpu.set_half_carry((a & 0xF) + (r & 0xF) + carry > 0x0F);
-        self.cpu.set_carry(did_overflow);
+        self.cpu.set_carry((a as u16) + (r as u16) + (carry as u16) > 0xFF);
         self.cpu.advance_pc();
     }
 
     fn alu_sub(&mut self, r: u8) {
         let a = self.cpu.a();
-        let (value, did_overflow) = a.overflowing_sub(r);
+        let value = a.wrapping_sub(r);
         self.cpu.set_a(value);
         self.cpu.set_zero(value == 0);
         self.cpu.set_negative(true);
         self.cpu.set_half_carry((a & 0xF) < (r & 0xF));
-        self.cpu.set_carry(did_overflow);
+        self.cpu.set_carry((a as u16) < (r as u16));
         self.cpu.advance_pc();
     }
 
     fn alu_sbc(&mut self, r: u8) {
         let a = self.cpu.a();
         let carry = self.cpu.get_carry();
-        let (mut value, mut did_overflow) = a.overflowing_sub(carry);
-        if did_overflow {
-            value = value.wrapping_sub(r);
-        } else {
-            (value, did_overflow) = value.overflowing_sub(r);
-        }
+        let value = a.wrapping_sub(r).wrapping_sub(carry);
         self.cpu.set_a(value);
         self.cpu.set_zero(value == 0);
         self.cpu.set_negative(true);
         self.cpu.set_half_carry((a & 0xF) < (r & 0xF) + carry);
-        self.cpu.set_carry(did_overflow);
+        self.cpu.set_carry((a as u16) < (r as u16) + (carry as u16));
         self.cpu.advance_pc();
     }
 
@@ -1040,8 +1030,9 @@ macro_rules! create_ld_rra_instructions {
             paste! {
                 $(
                     fn [<ld_ $rr _a>](&mut self) {
-                        let a = self.cpu.a() as u16;
-                        self.cpu.[<set_ $rr>](a);
+                        let a = self.cpu.a();
+                        let address = self.cpu.$rr();
+                        self.write_byte(address, a);
                         self.cpu.advance_pc();
                     }
 
@@ -1067,9 +1058,8 @@ create_ld_rra_instructions!(bc, de);
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::core::cpu;
     use crate::core::gb::{Gb, GbTypes};
-    use crate::core::mbc::{load_cartridge, GbMode, Mbc};
+    use crate::core::mbc::{load_cartridge};
 
     fn setup_gb() -> Gb {
         let (mbc, gb_mode) = load_cartridge("roms/cpu_instrs.gb").unwrap();
