@@ -156,11 +156,11 @@ impl Mbc for RomOnly {
         0xFF
     }
 
-    fn write_rom(&mut self, address: u16, value: u8) {
+    fn write_rom(&mut self, _address: u16, value: u8) {
         // Do nothing
     }
 
-    fn write_ram(&mut self, address: u16, value: u8) {
+    fn write_ram(&mut self, _address: u16, value: u8) {
         // Do nothing
     }
 }
@@ -192,8 +192,8 @@ impl Mbc1 {
             },
             external_ram,
             ram_enabled: false,
-            banking_mode: true,
-            current_rom_bank: 0,
+            banking_mode: false,
+            current_rom_bank: 1,
             current_ram_bank: 0,
         }
     }
@@ -201,16 +201,14 @@ impl Mbc1 {
 
 impl Mbc for Mbc1 {
     fn read_rom(&self, address: u16) -> u8 {
-        if address < 0x4000 {
-            self.mbc.rom_data[address as usize]
-        } else {
-            self.mbc.rom_data[self.current_rom_bank * 0x4000 | (address as usize) & 0x3FFF]
-        }
+        let bank = if address < 0x4000 { 0 } else { self.current_rom_bank };
+        self.mbc.rom_data[(bank * 0x4000) | ((address as usize) & 0x3FFF)]
     }
 
     fn read_ram(&self, address: u16) -> u8 {
         if self.ram_enabled {
-            self.external_ram[(self.current_ram_bank * 0x2000) | (address & 0x1FFF) as usize]
+            let bank = if self.banking_mode { self.current_ram_bank } else { 0 };
+            self.external_ram[(bank * 0x2000) | ((address & 0x1FFF) as usize)]
         } else {
             0
         }
@@ -226,15 +224,15 @@ impl Mbc for Mbc1 {
                 self.current_rom_bank = (self.current_rom_bank & 0x60) | r;
             }
             0x4000..=0x5FFF => {
-                if self.banking_mode {
+                if !self.banking_mode {
                     self.current_rom_bank =
-                        self.current_rom_bank & 0x1F | ((value & 3) << 5) as usize;
+                        self.current_rom_bank & 0x1F | (((value as usize) & 0x03) << 5);
                 } else {
-                    self.current_ram_bank = (value & 3) as usize;
+                    self.current_ram_bank = (value as usize) & 0x03;
                 }
             }
             0x6000..=0x7FFF => {
-                self.banking_mode = value & 1 == 1;
+                self.banking_mode = (value & 0x01) == 0x01;
             }
             _ => (),
         };
@@ -242,10 +240,8 @@ impl Mbc for Mbc1 {
 
     fn write_ram(&mut self, address: u16, value: u8) {
         if self.ram_enabled {
-            if !self.banking_mode {
-                self.external_ram[(self.current_ram_bank * 0x2000) | (address & 0x1FFF) as usize] =
-                    value;
-            }
+            let bank = if self.banking_mode { self.current_ram_bank } else { 0 };
+            self.external_ram[(bank * 0x2000) | ((address & 0x1FFF) as usize)] = value;
         }
     }
 }

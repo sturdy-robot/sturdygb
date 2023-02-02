@@ -46,7 +46,6 @@ pub struct Gb {
     pub boot_rom_enabled: u8,
     pub prepare_speed_switch: bool,
     pub speed_mode: SpeedMode,
-    pub undoc_registers: [u8; 4],
 }
 
 impl Gb {
@@ -91,13 +90,12 @@ impl Gb {
             gb_mode,
             wram,
             hram,
-            ram_bank: 0,
+            ram_bank: 1,
             ie_flag: 0,
             if_flag: 0,
             boot_rom_enabled: 0,
             prepare_speed_switch: false,
             speed_mode: SpeedMode::Normal,
-            undoc_registers: [0; 4],
         }
     }
 

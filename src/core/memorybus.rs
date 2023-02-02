@@ -8,8 +8,8 @@ impl Gb {
             0x0000..=0x7FFF => self.mbc.read_rom(address),
             0x8000..=0x9FFF => self.ppu.read_byte(address),
             0xA000..=0xBFFF => self.mbc.read_ram(address),
-            0xC000..=0xCFFF | 0xE000..=0xEFFF => self.wram[(address & 0x1FFF) as usize],
-            0xD000..=0xDFFF | 0xF000..=0xFDFF => self.wram[(self.ram_bank * 0x1000) | (address & 0x1FFF) as usize],
+            0xC000..=0xCFFF | 0xE000..=0xEFFF => self.wram[(address & 0x0FFF) as usize],
+            0xD000..=0xDFFF | 0xF000..=0xFDFF => self.wram[(self.ram_bank * 0x1000) | address as usize & 0x0FFF],
             0xFE00..=0xFE9F => self.ppu.read_byte(address),
             0xFEA0..=0xFEFF => 0xFF, // PROHIBITED AREA
             0xFF00 => self.joypad.read_byte(address),
@@ -26,17 +26,7 @@ impl Gb {
             0xFF56 => 0xFF, // INFRARED COMMS, NOT IMPLEMENTED HERE
             0xFF68..=0xFF6B => self.ppu.read_byte(address),
             0xFF70 => self.ram_bank as u8,
-            0xFF72 => self.undoc_registers[0],
-            0xFF73 => self.undoc_registers[1],
-            0xFF74 => {
-                if self.gb_type == GbTypes::Cgb {
-                    self.undoc_registers[2]
-                } else {
-                    0xFF
-                }
-            }
-            0xFF75 => self.undoc_registers[3] & 0x70,
-            0xFF80..=0xFFFE => self.hram[(address & 0x7F) as usize],
+            0xFF80..=0xFFFE => self.hram[address as usize & 0x007F],
             0xFFFF => self.ie_flag & 0x1F,
             _ => 0xFF,
         }
@@ -47,9 +37,9 @@ impl Gb {
             0x0000..=0x7FFF => self.mbc.write_rom(address, value),
             0x8000..=0x9FFF => self.ppu.write_byte(address, value),
             0xA000..=0xBFFF => self.mbc.write_ram(address, value),
-            0xC000..=0xCFFF | 0xE000..=0xEFFF => self.wram[(address & 0x1FFF) as usize] = value,
+            0xC000..=0xCFFF | 0xE000..=0xEFFF => self.wram[(address & 0x0FFF) as usize] = value,
             0xD000..=0xDFFF | 0xF000..=0xFDFF => {
-                self.wram[(self.ram_bank * 0x1000) | (address & 0x1FFF) as usize] = value
+                self.wram[(self.ram_bank * 0x1000) | address as usize & 0x0FFF] = value
             }
             0xFE00..=0xFE9F => self.ppu.write_byte(address, value),
             0xFEA0..=0xFEFF => {} // PROHIBITED AREA
@@ -78,17 +68,7 @@ impl Gb {
                     };
                 }
             }
-            0xFF72 => self.undoc_registers[0] = value,
-            0xFF73 => self.undoc_registers[1] = value,
-            0xFF74 => {
-                if self.gb_type == GbTypes::Cgb {
-                    self.undoc_registers[2] = value;
-                } else {
-                    self.undoc_registers[2] = 0xFF;
-                }
-            }
-            0xFF75 => self.undoc_registers[3] = value & 0x70,
-            0xFF80..=0xFFFE => self.hram[(address & 0x7F) as usize] = value,
+            0xFF80..=0xFFFE => self.hram[address as usize & 0x007F] = value,
             0xFFFF => self.ie_flag = value & 0x1F,
             _ => {
                 println!("Not implemented memory region {}", address);

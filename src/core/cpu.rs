@@ -156,17 +156,17 @@ impl Cpu {
 
     pub fn set_bc(&mut self, value: u16) {
         self.set_b((value >> 8) as u8);
-        self.set_c(value as u8);
+        self.set_c((value & 0xFF) as u8);
     }
 
     pub fn set_de(&mut self, value: u16) {
         self.set_d((value >> 8) as u8);
-        self.set_e(value as u8);
+        self.set_e((value & 0xFF) as u8);
     }
 
     pub fn set_hl(&mut self, value: u16) {
         self.set_h((value >> 8) as u8);
-        self.set_l(value as u8);
+        self.set_l((value & 0xFF) as u8);
     }
 
     pub fn get_carry(&self) -> u8 {
