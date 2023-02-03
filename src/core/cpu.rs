@@ -119,10 +119,10 @@ impl Cpu {
 
     pub fn set_f(&mut self, value: u8) {
         self.registers[1] = value & 0xF0;
-        self.f_carry = value & 0x10 == 0x10;
-        self.f_half_carry = value & 0x20 == 0x20;
-        self.f_negative = value & 0x40 == 0x40;
-        self.f_zero = value & 0x80 == 0x80;
+        self.f_carry = (value & 0x10) == 0x10;
+        self.f_half_carry = (value & 0x20) == 0x20;
+        self.f_negative = (value & 0x40) == 0x40;
+        self.f_zero = (value & 0x80) == 0x80;
     }
 
     pub fn set_b(&mut self, value: u8) {
@@ -217,10 +217,5 @@ mod test {
 
     fn get_cpu() -> Cpu {
         Cpu::new([0, 0, 0, 0, 0, 0, 0, 0])
-    }
-
-    #[test]
-    fn test_set_flags() {
-        let expected_values: Vec<u8> = vec![0,];
     }
 }

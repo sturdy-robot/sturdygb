@@ -8,8 +8,6 @@ impl Ppu {
     pub fn new() -> Self {
         Self { lcdc: 0 }
     }
-
-    fn vblank(&mut self) {}
 }
 
 impl Memory for Ppu {

@@ -104,7 +104,7 @@ impl Gb {
         while !self.cpu.is_halted {
             self.handle_interrupt();
             self.cpu.current_instruction = self.read_byte(self.cpu.pc);
-            let instr_disasm = self.disassemble();
+            // let instr_disasm = self.disassemble();
             println!(
                 "[{:04X}]: {:04X} \t\tAF: {:04X} BC: {:04X} DE: {:04X} HL: {:04X} SP: {:04X}",
                 self.cpu.pc,

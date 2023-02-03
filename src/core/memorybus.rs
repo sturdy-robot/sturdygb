@@ -13,7 +13,7 @@ impl Gb {
             0xFE00..=0xFE9F => self.ppu.read_byte(address),
             0xFEA0..=0xFEFF => 0xFF, // PROHIBITED AREA
             0xFF00 => self.joypad.read_byte(address),
-            0xFF01 => self.serial.read_byte(address),
+            0xFF01..=0xFF02 => self.serial.read_byte(address),
             0xFF04..=0xFF07 => self.timer.read_byte(address),
             0xFF0F => self.if_flag & 0x1F,
             0xFF10..=0xFF26 => self.sound.read_byte(address),
@@ -37,14 +37,16 @@ impl Gb {
             0x0000..=0x7FFF => self.mbc.write_rom(address, value),
             0x8000..=0x9FFF => self.ppu.write_byte(address, value),
             0xA000..=0xBFFF => self.mbc.write_ram(address, value),
-            0xC000..=0xCFFF | 0xE000..=0xEFFF => self.wram[(address & 0x0FFF) as usize] = value,
+            0xC000..=0xCFFF | 0xE000..=0xEFFF => {
+                self.wram[(address & 0x0FFF) as usize] = value;
+            },
             0xD000..=0xDFFF | 0xF000..=0xFDFF => {
-                self.wram[(self.ram_bank * 0x1000) | address as usize & 0x0FFF] = value
+                self.wram[(self.ram_bank * 0x1000) | address as usize & 0x0FFF] = value;
             }
             0xFE00..=0xFE9F => self.ppu.write_byte(address, value),
             0xFEA0..=0xFEFF => {} // PROHIBITED AREA
             0xFF00 => self.joypad.write_byte(address, value),
-            0xFF01 => self.serial.write_byte(address, value),
+            0xFF01..=0xFF02 => self.serial.write_byte(address, value),
             0xFF04..=0xFF07 => self.timer.write_byte(address, value),
             0xFF0F => self.if_flag = value & 0x1F,
             0xFF10..=0xFF27 => self.sound.write_byte(address, value),
