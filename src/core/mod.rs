@@ -14,8 +14,6 @@ pub mod timer;
 
 #[allow(unused_variables)]
 pub trait Memory {
-    fn read_byte(&self, address: u16) -> u8 {
-        0x00
-    }
+    fn read_byte(&self, address: u16) -> u8 { 0x00 }
     fn write_byte(&mut self, address: u16, value: u8) {}
 }

@@ -21,12 +21,6 @@ pub enum SpeedMode {
     Double,
 }
 
-fn get_gb_type(t: u8) -> GbTypes {
-    match t {
-        _ => GbTypes::Dmg,
-    }
-}
-
 pub struct Gb {
     pub cpu: Cpu,
     pub ppu: Ppu,
@@ -48,30 +42,35 @@ pub struct Gb {
     pub speed_mode: SpeedMode,
 }
 
+fn get_registers_from_gb_type(gb_type: &GbTypes) -> [u8; 8] {
+    match gb_type {
+        GbTypes::Dmg => {
+            [0x01, 0xB0, 0x00, 0x13, 0x00, 0xD8, 0x01, 0x4D]
+        }
+        GbTypes::Mgb => {
+            [0x01, 0xB0, 0x00, 0x13, 0x00, 0xD8, 0x01, 0x4D]
+        }
+        GbTypes::Cgb => {
+            [0x11, 0x80, 0x00, 0x00, 0xFF, 0x56, 0x00, 0x0D]
+        }
+        GbTypes::Sgb => {
+            [0x01, 0x00, 0x00, 0x14, 0x00, 0x00, 0xC0, 0x60]
+        }
+    }
+}
+
+fn get_div_values(gb_type: &GbTypes) -> u8 {
+    match gb_type {
+        GbTypes::Dmg | GbTypes::Mgb => 0xAB,
+        GbTypes::Cgb | GbTypes::Sgb => 0x00,
+    }
+}
+
 impl Gb {
     pub fn new(mbc: Box<dyn Mbc>, gb_mode: GbMode, gb_type: GbTypes) -> Self {
-        let registers: [u8; 8];
-        match gb_type {
-            GbTypes::Dmg => {
-                registers = [0x01, 0x00, 0xFF, 0x13, 0x00, 0xC1, 0x84, 0x03];
-            }
-            GbTypes::Mgb => {
-                registers = [0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-            }
-            GbTypes::Cgb => {
-                registers = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-            }
-            GbTypes::Sgb => {
-                registers = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-            }
-        };
-        let mut wram: Vec<u8>;
-        if gb_mode == GbMode::CgbMode {
-            wram = vec![0; 0x8000];
-        } else {
-            wram = vec![0; 0x2000];
-        }
-
+        let registers: [u8; 8] = get_registers_from_gb_type(&gb_type);
+        let div: u8 = get_div_values(&gb_type);
+        let mut wram: Vec<u8> = if gb_mode == GbMode::CgbMode { vec![0; 0x8000] } else { vec![0; 0x2000] };
         let mut hram = vec![0; 0x7F];
         let mut rng = rand::thread_rng();
         rng.fill_bytes(&mut wram);
@@ -83,7 +82,7 @@ impl Gb {
             serial: Serial::new(),
             joypad: Joypad::new(),
             sound: Sound::new(),
-            timer: Timer::new(),
+            timer: Timer::new(div),
             mbc,
             gb_speed: 0,
             gb_type,

@@ -28,17 +28,13 @@ pub fn load_cartridge(filename: &str) -> Result<(Box<dyn Mbc>, GbMode), &str> {
 #[allow(unused_variables)]
 #[automock]
 pub trait Mbc {
-    fn read_rom(&self, address: u16) -> u8 {
-        0xFF
-    }
+    fn read_rom(&self, address: u16) -> u8;
 
-    fn read_ram(&self, address: u16) -> u8 {
-        0xFF
-    }
+    fn read_ram(&self, address: u16) -> u8 { 0xFF }
 
-    fn write_rom(&mut self, address: u16, value: u8);
+    fn write_rom(&mut self, address: u16, value: u8) { }
 
-    fn write_ram(&mut self, address: u16, value: u8);
+    fn write_ram(&mut self, address: u16, value: u8) { }
 }
 
 pub struct CartridgeHeader {
@@ -79,29 +75,37 @@ fn checksum(rom_data: &Vec<u8>) -> bool {
     x == rom_data[0x014D]
 }
 
+fn get_mbc_type(mbc_type: &u8) -> MBCTypes {
+    match mbc_type {
+        0x00 => MBCTypes::RomOnly,
+        0x01..=0x03 => MBCTypes::Mbc1,
+        0x05..=0x06 => MBCTypes::Mbc2,
+        0x0B..=0x0D => MBCTypes::Mmm01,
+        0x0F..=0x13 => MBCTypes::Mbc3,
+        0x19..=0x1E => MBCTypes::Mbc5,
+        0x20 => MBCTypes::Mbc6,
+        0x22 => MBCTypes::Mbc7,
+        _ => MBCTypes::Unknown,
+    }
+}
+
+fn get_ram_size(ram_size: &u8) -> u32 {
+    match ram_size {
+        0x00 => 0,
+        0x02 => 0x2000,
+        0x03 => 0x8000,
+        0x04 => 0x200000,
+        0x05 => 0x10000,
+        _ => 0,
+    }
+}
+
 impl CartridgeHeader {
     pub fn new(rom_data: &Vec<u8>) -> Result<Self, &'static str> {
         if checksum(&rom_data) {
-            let mbc_type: MBCTypes = match &rom_data[0x0147] {
-                0x00 => MBCTypes::RomOnly,
-                0x01..=0x03 => MBCTypes::Mbc1,
-                0x05..=0x06 => MBCTypes::Mbc2,
-                0x0B..=0x0D => MBCTypes::Mmm01,
-                0x0F..=0x13 => MBCTypes::Mbc3,
-                0x19..=0x1E => MBCTypes::Mbc5,
-                0x20 => MBCTypes::Mbc6,
-                0x22 => MBCTypes::Mbc7,
-                _ => MBCTypes::Unknown,
-            };
+            let mbc_type: MBCTypes = get_mbc_type(&rom_data[0x0147]);
             let rom_size: u32 = 32 * (1 << rom_data[0x0148]);
-            let ram_size: u32 = match rom_data[0x149] {
-                0x00 => 0,
-                0x02 => 0x2000,
-                0x03 => 0x8000,
-                0x04 => 0x200000,
-                0x05 => 0x10000,
-                _ => 0,
-            };
+            let ram_size: u32 = get_ram_size(&rom_data[0x0149]);
             let sgb_flag = rom_data[0x146] == 0x03;
             Ok(Self {
                 entry: rom_data[0x100..=0x103].try_into().unwrap(),
@@ -150,18 +154,6 @@ impl RomOnly {
 impl Mbc for RomOnly {
     fn read_rom(&self, address: u16) -> u8 {
         self.mbc.rom_data[address as usize]
-    }
-
-    fn read_ram(&self, address: u16) -> u8 {
-        0xFF
-    }
-
-    fn write_rom(&mut self, _address: u16, value: u8) {
-        // Do nothing
-    }
-
-    fn write_ram(&mut self, _address: u16, value: u8) {
-        // Do nothing
     }
 }
 

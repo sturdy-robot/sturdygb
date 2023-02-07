@@ -15,7 +15,7 @@ impl Gb {
             self.cpu.interrupt_master = false;
             self.cpu.is_halted = false;
             self.cpu.sp = self.cpu.sp.wrapping_sub(2);
-            self.write_word(self.cpu.sp, self.cpu.pc);
+            self.write_word(self.cpu.sp, self.cpu.pc.wrapping_add(1));
             let interrupt_source = self.get_interrupt_source();
             let address = self.go_interrupt(&interrupt_source);
             self.cpu.pc = address;
