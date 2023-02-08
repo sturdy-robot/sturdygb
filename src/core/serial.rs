@@ -38,10 +38,13 @@ impl Memory for Serial {
         match address {
             0xFF01 => {
                 self.sb = value;
-                self.serial_data.push(value);
             }
             0xFF02 => {
                 self.sc = value;
+                if value == 0x81 {
+                    self.serial_data.push(self.sb);
+                    self.sc = 0;
+                }
             }
             _ => unreachable!(),
         };

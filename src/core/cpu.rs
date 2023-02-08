@@ -2,10 +2,10 @@ pub struct Cpu {
     pub registers: [u8; 8],
     pub sp: u16,
     pub pc: u16,
-    pub f_carry: bool,
-    pub f_half_carry: bool,
-    pub f_negative: bool,
-    pub f_zero: bool,
+    pub carry: bool,
+    pub half_carry: bool,
+    pub negative: bool,
+    pub zero: bool,
     pub current_instruction: u8,
     pub pending_cycles: usize,
     pub interrupt_master: bool,
@@ -46,10 +46,10 @@ impl Cpu {
         let (f_carry, f_half_carry, f_negative, f_zero) = get_initial_flag_states(registers[1]);
         Self {
             registers,
-            f_carry,
-            f_half_carry,
-            f_negative,
-            f_zero,
+            carry: f_carry,
+            half_carry: f_half_carry,
+            negative: f_negative,
+            zero: f_zero,
             sp: 0xFFFE,
             pc: 0x0100,
             current_instruction: 0,
@@ -119,10 +119,10 @@ impl Cpu {
 
     pub fn set_f(&mut self, value: u8) {
         self.registers[1] = value & 0xF0;
-        self.f_carry = (value & 0x10) == 0x10;
-        self.f_half_carry = (value & 0x20) == 0x20;
-        self.f_negative = (value & 0x40) == 0x40;
-        self.f_zero = (value & 0x80) == 0x80;
+        self.carry = (value & 0x10) == 0x10;
+        self.half_carry = (value & 0x20) == 0x20;
+        self.negative = (value & 0x40) == 0x40;
+        self.zero = (value & 0x80) == 0x80;
     }
 
     pub fn set_b(&mut self, value: u8) {
@@ -170,7 +170,7 @@ impl Cpu {
     }
 
     pub fn get_carry(&self) -> u8 {
-        if self.f_carry {
+        if self.carry {
             1
         } else {
             0

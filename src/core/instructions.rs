@@ -235,7 +235,7 @@ impl Gb {
             0xE3 => self.ill(opcode),
             0xE4 => self.ill(opcode),
             0xE5 => self.push_hl(),
-            0xE6 => self.and_d8(),
+            0xE6 => self.and_a_d8(),
             0xE7 => self.rst(opcode),
             0xE8 => self.add_sp_r8(),
             0xE9 => self.jp_hl(),
@@ -243,7 +243,7 @@ impl Gb {
             0xEB => self.ill(opcode),
             0xEC => self.ill(opcode),
             0xED => self.ill(opcode),
-            0xEE => self.xor_d8(),
+            0xEE => self.xor_a_d8(),
             0xEF => self.rst(opcode),
             0xF0 => self.ldh_a_a8(),
             0xF1 => self.pop_af(),
@@ -251,7 +251,7 @@ impl Gb {
             0xF3 => self.di(),
             0xF4 => self.ill(opcode),
             0xF5 => self.push_af(),
-            0xF6 => self.or_d8(),
+            0xF6 => self.or_a_d8(),
             0xF7 => self.rst(opcode),
             0xF8 => self.ld_hl_sp_r8(),
             0xF9 => self.ld_sp_hl(),
@@ -266,10 +266,10 @@ impl Gb {
 
     fn get_flag_condition(&self, opcode: u8) -> bool {
         match (opcode >> 3) & 0x3 {
-            0 => self.cpu.f_zero == false,
-            1 => self.cpu.f_zero == true,
-            2 => self.cpu.f_carry == false,
-            3 => self.cpu.f_carry == true,
+            0 => self.cpu.zero == false,
+            1 => self.cpu.zero == true,
+            2 => self.cpu.carry == false,
+            3 => self.cpu.carry == true,
             _ => false,
         }
     }
@@ -374,7 +374,7 @@ impl Gb {
 
     fn rra(&mut self) {
         let bit1: bool = self.cpu.af() & 0x100 != 0;
-        let carry = self.cpu.f_carry;
+        let carry = self.cpu.carry;
 
         let mut a: u8 = self.cpu.a();
         self.cpu.set_a(a >> 1);
@@ -388,7 +388,7 @@ impl Gb {
 
     fn jr_r8(&mut self) {
         let value = self.read_byte(self.cpu.pc.wrapping_add(1)) as i8;
-        self.cpu.advance_pc();
+        self.cpu.pc = self.cpu.pc.wrapping_add(2);
         self.cpu.pc = ((self.cpu.pc as u32 as i32) + (value as i32)) as u16;
     }
 
@@ -402,17 +402,11 @@ impl Gb {
 
     fn daa(&mut self) {
         let mut a = self.cpu.a();
-        let mut adjust = if self.cpu.f_carry { 0x60 } else { 0 };
-        if self.cpu.f_half_carry {
-            adjust |= 0x06;
-        }
-        if !self.cpu.f_negative {
-            if a & 0x0F > 0x09 {
-                adjust |= 0x06;
-            }
-            if a > 0x99 {
-                adjust |= 0x60;
-            }
+        let mut adjust = if self.cpu.carry { 0x60 } else { 0 };
+        if self.cpu.half_carry { adjust |= 0x06; };
+        if !self.cpu.negative {
+            if a & 0x0F > 0x09 { adjust |= 0x06; };
+            if a > 0x99 { adjust |= 0x60; };
             a = a.wrapping_add(adjust);
         } else {
             a = a.wrapping_sub(adjust);
@@ -441,7 +435,7 @@ impl Gb {
     }
 
     fn ccf(&mut self) {
-        let value = !self.cpu.f_carry;
+        let value = !self.cpu.carry;
         self.cpu.set_carry(value);
         self.cpu.set_negative(false);
         self.cpu.set_half_carry(false);
@@ -482,36 +476,6 @@ impl Gb {
         self.cpu.set_negative(true);
         self.cpu.set_half_carry((value & 0x0F) == 0);
         self.cpu.advance_pc();
-    }
-
-    fn add_dhl(&mut self) {
-        let hl = self.cpu.hl();
-        let r = self.read_byte(hl);
-        self.alu_add(r);
-    }
-
-    fn adc_dhl(&mut self) {
-        let hl = self.cpu.hl();
-        let r = self.read_byte(hl);
-        self.alu_adc(r);
-    }
-
-    fn sub_dhl(&mut self) {
-        let hl = self.cpu.hl();
-        let r = self.read_byte(hl);
-        self.alu_sub(r);
-    }
-
-    fn sbc_dhl(&mut self) {
-        let hl = self.cpu.hl();
-        let r = self.read_byte(hl);
-        self.alu_sbc(r);
-    }
-
-    fn and_dhl(&mut self) {
-        let hl = self.cpu.hl();
-        let r = self.read_byte(hl);
-        self.alu_and(r);
     }
 
     fn alu_add(&mut self, r: u8) {
@@ -600,24 +564,6 @@ impl Gb {
         self.cpu.set_half_carry((a & 0xF) < (r & 0xF));
         self.cpu.set_carry(a < r);
         self.cpu.advance_pc();
-    }
-
-    fn xor_dhl(&mut self) {
-        let hl = self.cpu.hl();
-        let r = self.read_byte(hl);
-        self.alu_xor(r);
-    }
-
-    fn or_dhl(&mut self) {
-        let hl = self.cpu.hl();
-        let r = self.read_byte(hl);
-        self.alu_or(r);
-    }
-
-    fn cp_dhl(&mut self) {
-        let hl = self.cpu.hl();
-        let r = self.read_byte(hl);
-        self.alu_cp(r);
     }
 
     fn ret(&mut self) {
@@ -734,41 +680,6 @@ impl Gb {
     fn jp_hl(&mut self) {
         let hl = self.cpu.hl();
         self.cpu.pc = hl;
-    }
-
-    fn or_d8(&mut self) {
-        let r = self.read_byte(self.cpu.pc.wrapping_add(1));
-        self.alu_or(r);
-    }
-
-    fn and_d8(&mut self) {
-        let r = self.read_byte(self.cpu.pc.wrapping_add(1));
-        self.alu_and(r);
-    }
-
-    fn add_a_d8(&mut self) {
-        let r = self.read_byte(self.cpu.pc.wrapping_add(1));
-        self.alu_add(r);
-    }
-
-    fn adc_a_d8(&mut self) {
-        let r = self.read_byte(self.cpu.pc.wrapping_add(1));
-        self.alu_adc(r);
-    }
-
-    fn xor_d8(&mut self) {
-        let r = self.read_byte(self.cpu.pc.wrapping_add(1));
-        self.alu_xor(r);
-    }
-
-    fn sub_a_d8(&mut self) {
-        let r = self.read_byte(self.cpu.pc.wrapping_add(1));
-        self.alu_sub(r);
-    }
-
-    fn sbc_a_d8(&mut self) {
-        let r = self.read_byte(self.cpu.pc.wrapping_add(1));
-        self.alu_sbc(r);
     }
 
     fn ld_a_dc(&mut self) {
@@ -998,8 +909,6 @@ macro_rules! create_byte_instructions {
     }
 }
 
-
-
 macro_rules! create_push_pop_instructions {
     ($($rr:ident),*) => {
         impl Gb {
@@ -1048,11 +957,44 @@ macro_rules! create_ld_rra_instructions {
     }
 }
 
+macro_rules! create_alu_d8_instructions {
+    ($($alu:ident),*) => {
+        impl Gb {
+            paste! {
+                $(
+                    fn [<$alu _a_d8>](&mut self) {
+                        let d8 = self.read_byte(self.cpu.pc.wrapping_add(1));
+                        self.[<alu_ $alu>](d8);
+                    }
+                )*
+            }
+        }
+    }
+}
+
+macro_rules! create_alu_dhl_instructions {
+    ($($alu:ident),*) => {
+        impl Gb {
+            paste! {
+                $(
+                    fn [<$alu _dhl>](&mut self) {
+                        let hl = self.cpu.hl();
+                        let r = self.read_byte(hl);
+                        self.[<alu_ $alu>](r);
+                    }
+                )*
+            }
+        }
+    }
+}
+
 
 create_alu_ld_word_instructions!(bc, de, hl);
 create_byte_instructions!(a, b, c, d, e, h, l);
 create_push_pop_instructions!(af, bc, de, hl);
 create_ld_rra_instructions!(bc, de);
+create_alu_d8_instructions!(or, xor, and, add, adc, sub, sbc);
+create_alu_dhl_instructions!(or, xor, and, add, adc, sub, sbc, cp);
 
 
 #[cfg(test)]
@@ -1210,8 +1152,6 @@ mod test {
             }
         };
     }
-
-    
 
     test_ld_instructions!(a, b, c, d, e, h, l);
     test_ld_dhl_instructions!(a, b, c, d, e);

@@ -59,17 +59,27 @@ fn get_registers_from_gb_type(gb_type: &GbTypes) -> [u8; 8] {
     }
 }
 
-fn get_div_values(gb_type: &GbTypes) -> u8 {
-    match gb_type {
-        GbTypes::Dmg | GbTypes::Mgb => 0xAB,
-        GbTypes::Cgb | GbTypes::Sgb => 0x00,
+// Values from the Cycle-Accurate Game Boy documentation
+// Pan Docs is not that detailed
+fn get_div_values(gb_type: &GbTypes, gb_mode: &GbMode) -> u16 {
+    if (gb_mode == &GbMode::DmgMode) || (gb_mode == &GbMode::NonCgbMode) {
+        match gb_type {
+            GbTypes::Dmg | GbTypes::Mgb => 0xABCC,
+            GbTypes::Sgb => 0x0000,
+            GbTypes::Cgb => 0x267C,
+        }
+    } else {
+        match gb_type {
+            GbTypes::Cgb => 0x1EA0,
+            _ => panic!("Trying to initialize a GBC game on a non-GBC compatible device."),
+        }
     }
 }
 
 impl Gb {
     pub fn new(mbc: Box<dyn Mbc>, gb_mode: GbMode, gb_type: GbTypes) -> Self {
         let registers: [u8; 8] = get_registers_from_gb_type(&gb_type);
-        let div: u8 = get_div_values(&gb_type);
+        let div: u16 = get_div_values(&gb_type, &gb_mode);
         let mut wram: Vec<u8> = if gb_mode == GbMode::CgbMode { vec![0; 0x8000] } else { vec![0; 0x2000] };
         let mut hram = vec![0; 0x7F];
         let mut rng = rand::thread_rng();

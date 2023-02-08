@@ -11,7 +11,7 @@ impl Gb {
             0xC000..=0xCFFF | 0xE000..=0xEFFF => self.wram[(address & 0x0FFF) as usize],
             0xD000..=0xDFFF | 0xF000..=0xFDFF => self.wram[(self.ram_bank * 0x1000) | address as usize & 0x0FFF],
             0xFE00..=0xFE9F => self.ppu.read_byte(address),
-            0xFEA0..=0xFEFF => 0xFF, // PROHIBITED AREA
+            0xFEA0..=0xFEFF => 0x00, // PROHIBITED AREA
             0xFF00 => self.joypad.read_byte(address),
             0xFF01..=0xFF02 => self.serial.read_byte(address),
             0xFF04..=0xFF07 => self.timer.read_byte(address),
