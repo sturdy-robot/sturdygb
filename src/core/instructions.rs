@@ -1,9 +1,32 @@
 use crate::core::gb::Gb;
 use paste::paste;
 
+//  M-CYCLES
+//  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+const OPCODE_CYCLES: [usize; 256] = [
+    1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1,
+    0, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1,
+    2, 3, 2, 2, 1, 1, 2, 1, 2, 2, 2, 2, 1, 1, 2, 1, 
+    2, 3, 2, 2, 3, 3, 3, 1, 2, 2, 2, 2, 1, 1, 2, 1,
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 
+    2, 2, 2, 2, 2, 2, 0, 2, 1, 1, 1, 1, 1, 1, 2, 1, 
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 
+    2, 3, 3, 4, 3, 4, 2, 4, 2, 4, 3, 0, 3, 6, 2, 4, 
+    2, 3, 3, 0, 3, 4, 2, 4, 2, 4, 3, 0, 3, 0, 2, 4,
+    3, 3, 2, 0, 0, 4, 2, 4, 4, 1, 4, 0, 0, 0, 2, 4, 
+    3, 3, 2, 1, 0, 4, 2, 4, 3, 2, 4, 1, 0, 0, 2, 4,
+];
+
+
 impl Gb {
     pub fn decode(&mut self) {
         let opcode = self.cpu.current_instruction;
+        self.cpu.pending_cycles = OPCODE_CYCLES[opcode as usize];
         match opcode {
             0x00 => self.nop(),
             0x01 => self.ld_bc_d16(),
@@ -394,6 +417,7 @@ impl Gb {
 
     fn jr_cc_r8(&mut self, opcode: u8) {
         if self.get_flag_condition(opcode) {
+            self.cpu.pending_cycles = 3;
             self.jr_r8();
         } else {
             self.cpu.advance_pc();
@@ -574,6 +598,7 @@ impl Gb {
 
     fn ret_cc(&mut self, opcode: u8) {
         if self.get_flag_condition(opcode) {
+            self.cpu.pending_cycles = 5;
             self.ret();
         } else {
             self.cpu.advance_pc();
@@ -592,6 +617,7 @@ impl Gb {
 
     fn jp_cc(&mut self, opcode: u8) {
         if self.get_flag_condition(opcode) {
+            self.cpu.pending_cycles = 4;
             self.jp();
         } else {
             self.cpu.advance_pc();
@@ -606,6 +632,7 @@ impl Gb {
 
     fn call_cc(&mut self, opcode: u8) {
         if self.get_flag_condition(opcode) {
+            self.cpu.pending_cycles = 6;
             self.call_a16();
         } else {
             self.cpu.advance_pc();

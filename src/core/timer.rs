@@ -64,6 +64,7 @@ impl Memory for Timer {
 
 impl Gb {
     pub fn run_timer(&mut self) {
-
+        let old_div = self.timer.div;
+        
     }
 }
