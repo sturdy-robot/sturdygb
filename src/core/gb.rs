@@ -129,6 +129,7 @@ impl Gb {
                 Some(message) => println!("{}", message),
                 None => (),
             };
+            self.run_timer();
         }
     }
 }

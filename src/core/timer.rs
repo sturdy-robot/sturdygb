@@ -1,5 +1,6 @@
 use super::Memory;
 use super::gb::Gb;
+use super::interrupts::Interrupt;
 
 // The PanDocs deals with DIV as a u8 value
 // The Cyle-Accurate Game Boy documentation says it's a u16 value
@@ -62,9 +63,34 @@ impl Memory for Timer {
     }
 }
 
+impl Timer {
+    pub fn get_timer_update(&mut self, prev_div: u16) -> bool {
+        let mut timer_update: bool = false;
+        match self.tac & 0x03 {
+            0 => timer_update = ((prev_div & 0x200) != 0) && !((prev_div & 0x200) != 0),
+            1 => timer_update = ((prev_div & 0x008) != 0) && !((prev_div & 0x008) != 0),
+            2 => timer_update = ((prev_div & 0x020) != 0) && !((prev_div & 0x020) != 0),
+            3 => timer_update = ((prev_div & 0x080) != 0) && !((prev_div & 0x080) != 0),
+            _ => unreachable!(),
+        };
+        timer_update
+    }
+}
+
 impl Gb {
     pub fn run_timer(&mut self) {
         let old_div = self.timer.div;
         
+        self.timer.div = self.timer.div.wrapping_add(1);
+        let timer_update = self.timer.get_timer_update(old_div);
+
+        if timer_update && ((self.timer.tac & 0x04) > 0) {
+            self.timer.tima = self.timer.tima.wrapping_add(1);
+
+            if self.timer.tima == 0xFF {
+                self.timer.tima = self.timer.tma;
+                self.if_flag = self.if_flag | (Interrupt::TIMER as u8);
+            }
+        }
     }
 }
