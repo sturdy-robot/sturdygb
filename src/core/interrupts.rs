@@ -22,7 +22,7 @@ impl Gb {
             self.if_flag &= !(interrupt_source as u8);
         }
         if self.cpu.ime_toggle {
-            self.cpu.interrupt_master = !self.cpu.interrupt_master;
+            self.cpu.interrupt_master = true;
             self.cpu.ime_toggle = false;
         }
         if self.cpu.interrupt_master { self.ie_flag |= 0x1F; } else { self.ie_flag = 0; };
