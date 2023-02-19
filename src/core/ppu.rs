@@ -65,7 +65,7 @@ impl Memory for Ppu {
             0xFF41 => self.stat,
             0xFF42 => self.scy,
             0xFF43 => self.scx,
-            0xFF44 => self.ly,
+            0xFF44 => 0x90,
             0xFF45 => self.lyc,
             0xFF46 => self.dma,
             0xFF47 => self.bgp,

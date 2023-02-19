@@ -115,20 +115,27 @@ impl Gb {
             self.cpu.current_instruction = self.read_byte(self.cpu.pc);
             // let instr_disasm = self.disassemble();
             println!(
-                "[{:04X}]: {:04X} \t\tAF: {:04X} BC: {:04X} DE: {:04X} HL: {:04X} SP: {:04X}",
+                "A:{:02X} F:{:02X} B:{:02X} C:{:02X} D:{:02X} E:{:02X} H:{:02X} L:{:02X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X}",
+                self.cpu.a(),
+                self.cpu.f(),
+                self.cpu.b(),
+                self.cpu.c(),
+                self.cpu.d(),
+                self.cpu.e(),
+                self.cpu.h(),
+                self.cpu.l(),
+                self.cpu.sp,
                 self.cpu.pc,
-                self.cpu.current_instruction,
-                self.cpu.af(),
-                self.cpu.bc(),
-                self.cpu.de(),
-                self.cpu.hl(),
-                self.cpu.sp
+                self.read_byte(self.cpu.pc),
+                self.read_byte(self.cpu.pc.wrapping_add(1)),
+                self.read_byte(self.cpu.pc.wrapping_add(2)),
+                self.read_byte(self.cpu.pc.wrapping_add(3)),
             );
             self.decode();
-            match self.serial.get_serial_message() {
-                Some(message) => println!("{}", message),
-                None => (),
-            };
+            // match self.serial.get_serial_message() {
+            //     Some(message) => println!("{}", message),
+            //     None => (),
+            // };
             self.run_timer();
         }
     }

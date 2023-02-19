@@ -874,9 +874,9 @@ macro_rules! create_byte_instructions {
                     }
 
                     fn [<inc_ $r>](&mut self) {
-                        let value = self.cpu.$r().wrapping_add(1);
-                        self.cpu.[<set_ $r>](value);
-                        self.cpu.set_zero(value == 0);
+                        let value = self.cpu.$r();
+                        self.cpu.[<set_ $r>](value.wrapping_add(1));
+                        self.cpu.set_zero(value.wrapping_add(1) == 0);
                         self.cpu.set_negative(false);
                         self.cpu.set_half_carry((value & 0xF) == 0xF);
                         self.cpu.advance_pc();
