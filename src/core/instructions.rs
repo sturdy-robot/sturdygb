@@ -686,24 +686,24 @@ impl Gb {
 
     fn ld_hl_sp_r8(&mut self) {
         let value = self.read_byte(self.cpu.pc.wrapping_add(1)) as i8 as i16 as u16;
-        let (sp_r8, did_overflow) = self.cpu.sp.overflowing_add(value);
+        let sp_r8 = self.cpu.sp.wrapping_add(value);
         self.cpu.set_hl(sp_r8);
         self.cpu.set_zero(false);
         self.cpu.set_negative(false);
         self.cpu
             .set_half_carry((self.cpu.sp & 0xF) + (value & 0xF) > 0xF);
-        self.cpu.set_carry(did_overflow);
+        self.cpu.set_carry((self.cpu.sp & 0xFF) + (value & 0xFF) > 0xFF);
         self.cpu.advance_pc();
     }
 
     fn add_sp_r8(&mut self) {
         let value = self.read_byte(self.cpu.pc.wrapping_add(1)) as i8 as i16 as u16;
-        let (sp_r8, did_overflow) = self.cpu.sp.overflowing_add(value);
+        let sp_r8 = self.cpu.sp.wrapping_add(value);
         self.cpu.set_zero(false);
         self.cpu.set_negative(false);
         self.cpu
             .set_half_carry((self.cpu.sp & 0xF) + (value & 0xF) > 0xF);
-        self.cpu.set_carry(did_overflow);
+        self.cpu.set_carry((self.cpu.sp & 0xFF) + (value & 0xFF) > 0xFF);
         self.cpu.sp = sp_r8;
         self.cpu.advance_pc();
     }

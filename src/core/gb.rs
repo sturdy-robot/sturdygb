@@ -82,9 +82,9 @@ impl Gb {
         let div: u16 = get_div_values(&gb_type, &gb_mode);
         let mut wram: Vec<u8> = if gb_mode == GbMode::CgbMode { vec![0; 0x8000] } else { vec![0; 0x2000] };
         let mut hram = vec![0; 0x7F];
-        let mut rng = rand::thread_rng();
-        rng.fill_bytes(&mut wram);
-        rng.fill_bytes(&mut hram);
+        // let mut rng = rand::thread_rng();
+        // rng.fill_bytes(&mut wram);
+        // rng.fill_bytes(&mut hram);
 
         Self {
             cpu: Cpu::new(registers),
