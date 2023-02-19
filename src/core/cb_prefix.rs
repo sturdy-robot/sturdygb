@@ -291,84 +291,56 @@ impl Gb {
     fn rlc_common(&mut self, value: u8) -> u8 {
         let carry = value & 0x80 == 0x80;
         let r = (value << 1) | (if carry { 1 } else { 0 });
-        
+        self.change_flags(r, carry);
+        r
+    }
+
+    fn change_flags(&mut self, r: u8, carry: bool) {
         self.cpu.set_zero(r == 0);
         self.cpu.set_negative(false);
         self.cpu.set_half_carry(false);
         self.cpu.set_carry(carry);
-
-        r
     }
 
     fn rl_common(&mut self, value: u8) -> u8 {
         let carry = value & 0x80 == 0x80;
         let r = (value << 1) | (self.cpu.get_carry());
-        
-        self.cpu.set_zero(r == 0);
-        self.cpu.set_negative(false);
-        self.cpu.set_half_carry(false);
-        self.cpu.set_carry(carry);
-
+        self.change_flags(r, carry);
         r
     }
 
     fn rrc_common(&mut self, value: u8) -> u8 {
         let carry = value & 0x01 == 0x01;
         let r = (value >> 1) | (if carry { 0x80 } else { 0x00 });
-        
-        self.cpu.set_zero(r == 0);
-        self.cpu.set_negative(false);
-        self.cpu.set_half_carry(false);
-        self.cpu.set_carry(carry);
-
+        self.change_flags(r, carry);
         r
     }
 
     fn rr_common(&mut self, value: u8) -> u8 {
         let carry = value & 0x01 == 0x01;
-        let r = (value >> 1) | (self.cpu.get_carry());
-        
-        self.cpu.set_zero(r == 0);
-        self.cpu.set_negative(false);
-        self.cpu.set_half_carry(false);
-        self.cpu.set_carry(carry);
-        
+        let r = (value >> 1) | if self.cpu.carry { 0x80 } else { 0 };
+        self.change_flags(r, carry);
         r
     }
 
     fn sla_common(&mut self, value: u8) -> u8 {
         let carry = value & 0x80 == 0x80;
         let r = value << 1;                        
-        
-        self.cpu.set_zero(r == 0);
-        self.cpu.set_negative(false);
-        self.cpu.set_half_carry(false);
-        self.cpu.set_carry(carry);
-
+        self.change_flags(r, carry);
         r
     }
 
     fn sra_common(&mut self, value: u8) -> u8 {
         let carry = value & 0x01 == 0x01;
         let r = (value >> 1) | (value & 0x80);                        
-        
-        self.cpu.set_zero(r == 0);
-        self.cpu.set_negative(false);
-        self.cpu.set_half_carry(false);
-        self.cpu.set_carry(carry);
-
+        self.change_flags(r, carry);
         r
     }
 
     fn srl_common(&mut self, value: u8) -> u8 {
         let carry = value & 0x01 == 0x01;
         let r = value >> 1;                        
-        
-        self.cpu.set_zero(r == 0);
-        self.cpu.set_negative(false);
-        self.cpu.set_half_carry(false);
-        self.cpu.set_carry(carry);
-        
+        self.change_flags(r, carry);
         r
     }
 

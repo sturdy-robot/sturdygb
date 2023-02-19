@@ -62,6 +62,9 @@ impl Cpu {
 
     pub fn advance_pc(&mut self) {
         let adv = OPCODES_SIZE[self.current_instruction as usize];
+        if self.current_instruction == 0xCB {
+            
+        }
         self.pc = self.pc.wrapping_add(adv);
     }
 
