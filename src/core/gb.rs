@@ -132,10 +132,10 @@ impl Gb {
                 self.read_byte(self.cpu.pc.wrapping_add(3)),
             );
             self.decode();
-            // match self.serial.get_serial_message() {
-            //     Some(message) => println!("{}", message),
-            //     None => (),
-            // };
+            match self.serial.get_serial_message() {
+                Some(message) => println!("{}", message),
+                None => (),
+            };
             self.run_timer();
         }
     }

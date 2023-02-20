@@ -338,30 +338,26 @@ impl Gb {
     }
 
     fn rlca(&mut self) {
-        let carry = self.cpu.af() & 0x8000 != 0;
-        let value = self.cpu.af() & 0xFF00 << 1;
-        self.cpu.set_af(value);
-        if carry {
-            let value = self.cpu.af() | 0x10 | 0x0100;
-            self.cpu.set_af(value);
-        }
+        let value = self.cpu.a();
+        let carry = value & 0x80 == 0x80;
+        let r = (value << 1) | (if carry { 1 } else { 0 });
+        self.cpu.set_zero(false);
+        self.cpu.set_negative(false);
+        self.cpu.set_half_carry(false);
+        self.cpu.set_carry(carry);
+        self.cpu.set_a(r);
         self.cpu.advance_pc();
     }
 
     fn rla(&mut self) {
-        let bit7 = (self.cpu.af() & 0x8000) != 0;
-        let carry = self.cpu.af() & 16 != 0;
-
-        let value = self.cpu.af() & 0xFF00 << 1;
-        self.cpu.set_af(value);
-        if carry {
-            let value = self.cpu.af() | 0x0100;
-            self.cpu.set_af(value);
-        }
-        if bit7 {
-            let value = self.cpu.af() | 16;
-            self.cpu.set_af(value);
-        }
+        let value = self.cpu.a();
+        let carry = value & 0x80 == 0x80;
+        let r = (value << 1) | (self.cpu.get_carry());
+        self.cpu.set_zero(false);
+        self.cpu.set_negative(false);
+        self.cpu.set_half_carry(false);
+        self.cpu.set_carry(carry);
+        self.cpu.set_a(r);
         self.cpu.advance_pc();
     }
 
