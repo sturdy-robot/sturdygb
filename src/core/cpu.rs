@@ -212,13 +212,3 @@ impl Cpu {
         });
     }
 }
-
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    fn get_cpu() -> Cpu {
-        Cpu::new([0, 0, 0, 0, 0, 0, 0, 0])
-    }
-}

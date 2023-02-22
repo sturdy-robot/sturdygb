@@ -9,7 +9,7 @@ fn main() {
     match load_cartridge(filename) {
         Ok((mbc, gb_mode)) => {
             let gb_type: GbTypes = if gb_mode == GbMode::CgbMode { GbTypes::Cgb } else { GbTypes::Dmg };
-            let mut gb = Gb::new(mbc, gb_mode, gb_type);
+            let mut gb = Gb::new(mbc, GbMode::DmgMode, GbTypes::Cgb);
             gb.run();
         }
         Err(e) => println!("Error loading ROM: {}", e),

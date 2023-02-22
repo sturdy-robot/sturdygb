@@ -42,21 +42,31 @@ pub struct Gb {
     pub speed_mode: SpeedMode,
 }
 
-fn get_registers_from_gb_type(gb_type: &GbTypes) -> [u8; 8] {
-    match gb_type {
-        GbTypes::Dmg => {
-            [0x01, 0xB0, 0x00, 0x13, 0x00, 0xD8, 0x01, 0x4D]
+fn get_register_values(gb_mode: &GbMode, gb_type: &GbTypes) -> [u8; 8] {
+    if gb_mode == &GbMode::DmgMode || gb_mode == &GbMode::NonCgbMode {
+        match gb_type {
+            GbTypes::Dmg => {
+                [0x01, 0xB0, 0x00, 0x13, 0x00, 0xD8, 0x01, 0x4D]
+            }
+            GbTypes::Mgb => {
+                [0x01, 0xB0, 0x00, 0x13, 0x00, 0xD8, 0x01, 0x4D]
+            }
+            GbTypes::Cgb => {
+                [0x11, 0xB0, 0x43, 0x00, 0x00, 0x08, 0x99, 0x1A]
+            }
+            GbTypes::Sgb => {
+                [0x01, 0x00, 0x00, 0x14, 0x00, 0x00, 0xC0, 0x60]
+            }
         }
-        GbTypes::Mgb => {
-            [0x01, 0xB0, 0x00, 0x13, 0x00, 0xD8, 0x01, 0x4D]
-        }
-        GbTypes::Cgb => {
-            [0x11, 0x80, 0x00, 0x00, 0xFF, 0x56, 0x00, 0x0D]
-        }
-        GbTypes::Sgb => {
-            [0x01, 0x00, 0x00, 0x14, 0x00, 0x00, 0xC0, 0x60]
+    } else {
+        match gb_type {
+            GbTypes::Cgb => {
+                [0x11, 0x80, 0x00, 0x00, 0xFF, 0x56, 0x00, 0x0D]
+            }
+            _ => unimplemented!()
         }
     }
+    
 }
 
 // Values from the Cycle-Accurate Game Boy documentation
@@ -78,7 +88,7 @@ fn get_div_values(gb_type: &GbTypes, gb_mode: &GbMode) -> u16 {
 
 impl Gb {
     pub fn new(mbc: Box<dyn Mbc>, gb_mode: GbMode, gb_type: GbTypes) -> Self {
-        let registers: [u8; 8] = get_registers_from_gb_type(&gb_type);
+        let registers: [u8; 8] = get_register_values(&gb_mode, &gb_type);
         let div: u16 = get_div_values(&gb_type, &gb_mode);
         let mut wram: Vec<u8> = if gb_mode == GbMode::CgbMode { vec![0; 0x8000] } else { vec![0; 0x2000] };
         let mut hram = vec![0; 0x7F];
@@ -112,31 +122,35 @@ impl Gb {
         self.cpu.pc = 0x100;
         while !self.cpu.is_halted {
             self.handle_interrupt();
+            self.run_timer();
             self.cpu.current_instruction = self.read_byte(self.cpu.pc);
             // let instr_disasm = self.disassemble();
-            println!(
-                "A:{:02X} F:{:02X} B:{:02X} C:{:02X} D:{:02X} E:{:02X} H:{:02X} L:{:02X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X}",
-                self.cpu.a(),
-                self.cpu.f(),
-                self.cpu.b(),
-                self.cpu.c(),
-                self.cpu.d(),
-                self.cpu.e(),
-                self.cpu.h(),
-                self.cpu.l(),
-                self.cpu.sp,
-                self.cpu.pc,
-                self.read_byte(self.cpu.pc),
-                self.read_byte(self.cpu.pc.wrapping_add(1)),
-                self.read_byte(self.cpu.pc.wrapping_add(2)),
-                self.read_byte(self.cpu.pc.wrapping_add(3)),
-            );
+            self.debug_message();            
             self.decode();
-            match self.serial.get_serial_message() {
-                Some(message) => println!("{}", message),
-                None => (),
-            };
-            self.run_timer();
+            // match self.serial.get_serial_message() {
+            //     Some(message) => println!("{}", message),
+            //     None => (),
+            // };
         }
+    }
+
+    fn debug_message(&self) {
+        println!(
+            "A:{:02X} F:{:02X} B:{:02X} C:{:02X} D:{:02X} E:{:02X} H:{:02X} L:{:02X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X}",
+            self.cpu.a(),
+            self.cpu.f(),
+            self.cpu.b(),
+            self.cpu.c(),
+            self.cpu.d(),
+            self.cpu.e(),
+            self.cpu.h(),
+            self.cpu.l(),
+            self.cpu.sp,
+            self.cpu.pc,
+            self.read_byte(self.cpu.pc),
+            self.read_byte(self.cpu.pc.wrapping_add(1)),
+            self.read_byte(self.cpu.pc.wrapping_add(2)),
+            self.read_byte(self.cpu.pc.wrapping_add(3)),
+        );
     }
 }
