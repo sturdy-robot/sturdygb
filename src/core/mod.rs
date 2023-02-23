@@ -6,6 +6,7 @@ pub mod instructions;
 pub mod interrupts;
 pub mod joypad;
 pub mod mbc;
+pub mod mbcs;
 pub mod memorybus;
 pub mod ppu;
 pub mod serial;

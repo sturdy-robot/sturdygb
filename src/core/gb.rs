@@ -92,9 +92,9 @@ impl Gb {
         let div: u16 = get_div_values(&gb_type, &gb_mode);
         let mut wram: Vec<u8> = if gb_mode == GbMode::CgbMode { vec![0; 0x8000] } else { vec![0; 0x2000] };
         let mut hram = vec![0; 0x7F];
-        // let mut rng = rand::thread_rng();
-        // rng.fill_bytes(&mut wram);
-        // rng.fill_bytes(&mut hram);
+        let mut rng = rand::thread_rng();
+        rng.fill_bytes(&mut wram);
+        rng.fill_bytes(&mut hram);
 
         Self {
             cpu: Cpu::new(registers),
@@ -119,19 +119,25 @@ impl Gb {
     }
 
     pub fn run(&mut self) {
-        self.cpu.pc = 0x100;
-        while !self.cpu.is_halted {
+        while !self.cpu.is_stopped {
             self.handle_interrupt();
+            if !self.cpu.is_halted {
+                self.run_cpu();
+            } else {
+                self.cpu.pending_cycles = 1;
+            }
+            match self.serial.get_serial_message() {
+                Some(message) => println!("{}", message),
+                None => (),
+            };
+            self.debug_message();
             self.run_timer();
-            self.cpu.current_instruction = self.read_byte(self.cpu.pc);
-            // let instr_disasm = self.disassemble();
-            self.debug_message();            
-            self.decode();
-            // match self.serial.get_serial_message() {
-            //     Some(message) => println!("{}", message),
-            //     None => (),
-            // };
         }
+    }
+
+    fn run_cpu(&mut self) {
+        self.cpu.current_instruction = self.read_byte(self.cpu.pc);      
+        self.decode();
     }
 
     fn debug_message(&self) {

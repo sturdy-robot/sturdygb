@@ -1,5 +1,7 @@
 use crate::core::gb::Gb;
 
+const REGISTER_NAMES: [&str; 5] = ["f", "c", "e", "l", "sp"];
+
 impl Gb {
     fn d_ld_rr_nn(&self, target: &str) -> String {
         let mut result = "ld ".to_string();
@@ -516,23 +518,19 @@ impl Gb {
     }
 
     fn get_reg_name(&self, opcode: u8) -> &str {
-        if opcode & 0x00 == 0x00 || opcode & 0x08 == 0x08 {
-            "b"
-        } else if opcode & 0x01 == 0x01 || opcode & 0x09 == 0x09 {
-            "c"
-        } else if opcode & 0x02 == 0x02 || opcode & 0x0A == 0x0A {
-            "d"
-        } else if opcode & 0x03 == 0x03 || opcode & 0x0B == 0x0B {
-            "e"
-        } else if opcode & 0x04 == 0x04 || opcode & 0x0C == 0x0C {
-            "h"
-        } else if opcode & 0x05 == 0x05 || opcode & 0x0D == 0x0D {
-            "l"
-        } else if opcode & 0x06 == 0x06 || opcode & 0x0E == 0x0E {
-            "(hl)"
-        } else {
-            "a"
+        let register_id: u8 = (opcode >> 1).wrapping_add(1) & 3;
+        let src_low: u8 = opcode & 1;
+        if register_id == 0 {
+            if src_low == 1 {
+                return "a";
+            }
+            return "(hl)";
         }
+        if src_low == 1 {
+            return REGISTER_NAMES[register_id as usize];
+        }
+        const HIGH_REGISTER: [&str; 4] = ["a", "b", "d", "h"];
+        return HIGH_REGISTER[register_id as usize];
     }
 
     fn d_rlc_r(&self, prefix: u8) -> String {

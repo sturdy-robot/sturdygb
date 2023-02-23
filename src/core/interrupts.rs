@@ -13,19 +13,34 @@ impl Gb {
     pub fn handle_interrupt(&mut self) {
         if self.check_interrupts() {
             self.cpu.interrupt_master = false;
-            self.cpu.is_halted = false;
             self.cpu.sp = self.cpu.sp.wrapping_sub(2);
-            self.write_word(self.cpu.sp, self.cpu.pc);
+            if self.cpu.is_halted {
+                self.write_word(self.cpu.sp, self.cpu.pc.wrapping_add(1));
+                self.cpu.pending_cycles = 5;                
+            } else {
+                self.write_word(self.cpu.sp, self.cpu.pc);
+                self.cpu.pending_cycles = 5;
+            }
             let interrupt_source = self.get_interrupt_source();
             let address = self.go_interrupt(&interrupt_source);
             self.cpu.pc = address;
             self.if_flag &= !(interrupt_source as u8);
+            self.cpu.is_halted = false;
         }
+
+        if self.cpu.is_halted {
+            if !self.cpu.interrupt_master {
+                if self.ie_flag & self.if_flag != 0 { // Halt Bug
+                    self.cpu.is_halted = false;
+                    // TODO: Implement the halt bug
+                }
+            }
+        }
+
         if self.cpu.ime_toggle {
             self.cpu.interrupt_master = true;
             self.cpu.ime_toggle = false;
         }
-        if self.cpu.interrupt_master { self.ie_flag |= 0x1F; } else { self.ie_flag = 0; };
     }
 
     fn check_interrupts(&mut self) -> bool {

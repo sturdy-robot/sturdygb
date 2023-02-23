@@ -65,12 +65,12 @@ impl Memory for Timer {
 
 impl Timer {
     pub fn get_timer_update(&mut self, prev_div: u16) -> bool {
-        let mut timer_update: bool = false;
+        let timer_update: bool;
         match self.tac & 0x03 {
-            0 => timer_update = ((prev_div & 0x200) != 0) && !((prev_div & 0x200) != 0),
-            1 => timer_update = ((prev_div & 0x008) != 0) && !((prev_div & 0x008) != 0),
-            2 => timer_update = ((prev_div & 0x020) != 0) && !((prev_div & 0x020) != 0),
-            3 => timer_update = ((prev_div & 0x080) != 0) && !((prev_div & 0x080) != 0),
+            0 => timer_update = ((prev_div & (1 << 9)) != 0) && (!(prev_div & (1 << 9)) != 0),
+            1 => timer_update = ((prev_div & (1 << 3)) != 0) && (!(prev_div & (1 << 3)) != 0),
+            2 => timer_update = ((prev_div & (1 << 5)) != 0) && (!(prev_div & (1 << 5)) != 0),
+            3 => timer_update = ((prev_div & (1 << 7)) != 0) && (!(prev_div & (1 << 7)) != 0),
             _ => unreachable!(),
         };
         timer_update

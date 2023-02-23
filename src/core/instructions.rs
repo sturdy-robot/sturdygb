@@ -307,6 +307,8 @@ impl Gb {
     }
 
     fn stop(&mut self) {
+        // TODO: implement this! (Or not)
+        //self.cpu.is_stopped = true;
         self.cpu.advance_pc();
     }
 
@@ -656,9 +658,7 @@ impl Gb {
     }
 
     fn ei(&mut self) {
-        if !self.cpu.interrupt_master && !self.cpu.ime_toggle {
-            self.cpu.ime_toggle = true;
-        }
+        self.cpu.ime_toggle = true;
         self.cpu.advance_pc();
     }
 
