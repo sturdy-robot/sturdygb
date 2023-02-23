@@ -10,7 +10,7 @@ Checklist of (not yet) implemented features:
 
 - [x] CPU
 - [ ] GPU
-- [ ] Timer
+- [x] Timer
 - [ ] Emulate all versions of the GameBoy (DMG, SGB, MGB, GBC)
 - [x] Cartridge
     - [x] ROMONLY
@@ -49,7 +49,8 @@ Thanks to all the following documentation and repos, I was able to test and debu
 - [**mGBA**](https://github.com/mgba-emu/mgba): mGBA is not only a GBA emulator, but it also contains a GameBoy core inside it, and it was pretty helpful overall.
 - [**BGB**](https://bgb.bircd.org/): the BGB emulator, although not open source, has an awesome debugger. Not only it can emulate several GameBoy versions, but the debugger allows me to see every register and values in real-time. It was an awesome resource for comparing implementations and testing my emulator's accuracy.
 - [**GameBoy-Online**](https://github.com/taisel/GameBoy-Online): I discovered this emulator when looking at the [GB-Studio](https://github.com/chrismaltby/gb-studio) project. This is the emulator they used for GB-Studio, and when I was implementing some opcodes originally, I was looking at this implementation to understand what the hell I was doing.
-
+- [**LLD GameBoy development series**](https://www.youtube.com/watch?v=e87qKixKFME&list=PLVxiWMqQvhg_yk4qy2cSC3457wZJga_e5&ab_channel=LowLevelDevel): The implementation and explanations of some GameBoy features here were very useful. It helped me a lot with Timer.
+- [**GameBoy Doctor**](https://github.com/robert/gameboy-doctor): This utility helped me to debug my wrong implementations. It's a God's sent tool for someone that is developing a GameBoy emulator for the first time.
 
 ## License
 
