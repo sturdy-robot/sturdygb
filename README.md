@@ -9,9 +9,10 @@ The plan is to be a fully compatible GameBoy emulator that runs GB and GBC games
 Checklist of (not yet) implemented features:
 
 - [x] CPU
-- [ ] GPU
+- [ ] PPU
 - [x] Timer
 - [ ] Emulate all versions of the GameBoy (DMG, SGB, MGB, GBC)
+- [x] Disassembly
 - [x] Cartridge
     - [x] ROMONLY
     - [x] MBC1
@@ -21,13 +22,14 @@ Checklist of (not yet) implemented features:
     - [ ] MBC5
     - [ ] MBC7
 - [x] Memory Bus
+- [x] Serial
+- [x] Interrupts
 - [ ] Audio
 - [ ] Joystick and input
-- [ ] Load/Save
+- [ ] Save states
 - [ ] Windowing and display
 - [ ] Debugger
 - [ ] Cheats and GameShark
-- [ ] SaveStates
 - [ ] Rewind
 - [ ] Libretro core
 - [ ] Android port
