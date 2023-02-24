@@ -46,7 +46,7 @@ pub enum MBCTypes {
     Unknown,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Copy, Clone)]
 pub enum GbMode {
     DmgMode,
     NonCgbMode,

@@ -22,7 +22,7 @@ impl Gb {
             0xFF4D => self.gb_speed,
             0xFF4F => self.ppu.read_byte(address),
             0xFF50 => self.boot_rom_enabled,
-            0xFF51..=0xFF55 => self.ppu.read_byte(address),
+            0xFF51..=0xFF55 => self.hdma_read(address),
             0xFF56 => 0xFF, // INFRARED COMMS, NOT IMPLEMENTED HERE
             0xFF68..=0xFF6B => self.ppu.read_byte(address),
             0xFF70 => self.ram_bank as u8,
@@ -60,7 +60,7 @@ impl Gb {
             }
             0xFF4F => self.ppu.write_byte(address, value),
             0xFF50 => self.boot_rom_enabled = value,
-            0xFF51..=0xFF55 => self.ppu.write_byte(address, value),
+            0xFF51..=0xFF55 => self.hdma_write(address, value),
             0xFF68..=0xFF69 => self.ppu.write_byte(address, value),
             0xFF70 => {
                 if self.gb_mode == GbMode::CgbMode {
@@ -85,5 +85,27 @@ impl Gb {
     pub fn write_word(&mut self, address: u16, value: u16) {
         self.write_byte(address, (value & 0xFF) as u8);
         self.write_byte(address.wrapping_add(1), (value >> 8) as u8);
+    }
+
+    fn hdma_read(&self, address: u16) -> u8 {
+        match address {
+            0xFF51 => self.hdma1,
+            0xFF52 => self.hdma2 & 0xF0,
+            0xFF53 => self.hdma3 & 0x1F,
+            0xFF54 => self.hdma4 & 0xF0,
+            0xFF55 => self.hdma5,
+            _ => unreachable!(),
+        }
+    }
+
+    fn hdma_write(&mut self, address: u16, value: u8) {
+        match address {
+            0xFF51 => self.hdma1 = value,
+            0xFF52 => self.hdma2 = value & 0xF0,
+            0xFF53 => self.hdma3 = value & 0x1F,
+            0xFF54 => self.hdma4 = value & 0xF0,
+            0xFF55 => self.hdma5 = value,
+            _ => unreachable!(),
+        };
     }
 }
