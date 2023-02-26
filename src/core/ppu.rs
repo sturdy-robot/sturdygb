@@ -75,7 +75,7 @@ impl Memory for Ppu {
             0xFF43 => self.scx,
             0xFF44 => self.ly,
             0xFF45 => self.lyc,
-            0xFF46 => 0, // DMA is not readable
+            0xFF46 => self.dma,
             0xFF47 => self.bgp,
             0xFF48 => self.obp0,
             0xFF49 => self.obp1,
@@ -101,6 +101,9 @@ impl Memory for Ppu {
                     self.vram[(address & 0x1FFF) as usize] = value;
                 }
             },
+            0xFE00..=0xFE9F => {
+
+            }
             0xFF40 => self.lcdc = value,
             0xFF41 => self.stat = value,
             0xFF42 => self.scy = value,
