@@ -22,7 +22,7 @@ impl Gb {
             0xFF4D => self.gb_speed,
             0xFF4F => self.ppu.read_byte(address),
             0xFF50 => self.boot_rom_enabled,
-            0xFF51..=0xFF55 => self.hdma_read(address),
+            0xFF51..=0xFF55 => 0xFF, // TCAGB says it always returns 0xFF when read
             0xFF56 => 0xFF, // INFRARED COMMS, NOT IMPLEMENTED HERE
             0xFF68..=0xFF6B => self.ppu.read_byte(address),
             0xFF70 => self.ram_bank as u8,
@@ -51,7 +51,9 @@ impl Gb {
             0xFF0F => self.if_flag = value & 0x1F,
             0xFF10..=0xFF27 => self.sound.write_byte(address, value),
             0xFF30..=0xFF3F => self.sound.write_byte(address, value),
-            0xFF40..=0xFF4B => self.ppu.write_byte(address, value),
+            0xFF40..=0xFF45 => self.ppu.write_byte(address, value),
+            0xFF46 => self.dma_transfer(value),
+            0xFF47..=0xFF4B => self.ppu.write_byte(address, value),
             0xFF4D => {
                 self.gb_speed = value;
                 if self.gb_type == GbTypes::Cgb {
@@ -87,15 +89,9 @@ impl Gb {
         self.write_byte(address.wrapping_add(1), (value >> 8) as u8);
     }
 
-    fn hdma_read(&self, address: u16) -> u8 {
-        match address {
-            0xFF51 => self.hdma1,
-            0xFF52 => self.hdma2 & 0xF0,
-            0xFF53 => self.hdma3 & 0x1F,
-            0xFF54 => self.hdma4 & 0xF0,
-            0xFF55 => self.hdma5,
-            _ => unreachable!(),
-        }
+    fn dma_transfer(&mut self, value: u8) {
+        
+
     }
 
     fn hdma_write(&mut self, address: u16, value: u8) {

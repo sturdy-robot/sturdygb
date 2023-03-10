@@ -1,5 +1,5 @@
-use super::Memory;
 use super::mbc::GbMode;
+use super::Memory;
 
 pub struct Ppu {
     lcdc: u8,
@@ -23,6 +23,7 @@ pub struct Ppu {
     svbk: u8,
     vram: Vec<u8>,
     oam: [u8; 0xA0],
+    oam_corruption_bug: bool,
 }
 
 impl Ppu {
@@ -55,6 +56,7 @@ impl Ppu {
             svbk: 0xFF,
             vram,
             oam,
+            oam_corruption_bug: false,
         }
     }
 }
@@ -62,20 +64,20 @@ impl Ppu {
 impl Memory for Ppu {
     fn read_byte(&self, address: u16) -> u8 {
         match address {
-            0x8000..=0x9FFF=> {
+            0x8000..=0x9FFF => {
                 if self.vram.len() == 0x4000 {
                     self.vram[((self.vbk as usize & 1) * 0x2000) | ((address & 0x1FFF) as usize)]
                 } else {
                     self.vram[(address & 0x1FFF) as usize]
                 }
-            },
+            }
+            0xFE00..=0xFE9F => todo!(),
             0xFF40 => self.lcdc,
             0xFF41 => self.stat,
             0xFF42 => self.scy,
             0xFF43 => self.scx,
             0xFF44 => self.ly,
             0xFF45 => self.lyc,
-            0xFF46 => self.dma,
             0xFF47 => self.bgp,
             0xFF48 => self.obp0,
             0xFF49 => self.obp1,
@@ -94,16 +96,22 @@ impl Memory for Ppu {
 
     fn write_byte(&mut self, address: u16, value: u8) {
         match address {
-            0x8000..=0x9FFF=> {
-                if self.vram.len() == 0x4000 {
-                    self.vram[((self.vbk as usize & 1) * 0x2000) | ((address & 0x1FFF) as usize)] = value;
-                } else {
-                    self.vram[(address & 0x1FFF) as usize] = value;
+            0x8000..=0x9FFF => match self.stat & 0x03 {
+                0..=2 => {
+                    if self.vram.len() == 0x4000 {
+                        self.vram
+                            [((self.vbk as usize & 1) * 0x2000) | ((address & 0x1FFF) as usize)] =
+                            value;
+                    } else {
+                        self.vram[(address & 0x1FFF) as usize] = value;
+                    }
                 }
+                _ => { },
             },
-            0xFE00..=0xFE9F => {
-
-            }
+            0xFE00..=0xFE9F => match self.stat & 0x03 {
+                0 | 1 => self.oam[(address & 0x9F) as usize] = value,
+                _ => { },
+            },
             0xFF40 => self.lcdc = value,
             0xFF41 => self.stat = value,
             0xFF42 => self.scy = value,
@@ -123,7 +131,7 @@ impl Memory for Ppu {
             0xFF6A => self.ocps = value,
             0xFF6B => self.ocpd = value,
             0xFF70 => self.svbk = value,
-            _ => {},
+            _ => {}
         };
     }
 }
