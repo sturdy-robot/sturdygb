@@ -90,8 +90,8 @@ impl Gb {
     }
 
     fn dma_transfer(&mut self, value: u8) {
+        let address = (value << 8) as u16 | 0x00;
         
-
     }
 
     fn hdma_write(&mut self, address: u16, value: u8) {

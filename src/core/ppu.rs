@@ -1,5 +1,6 @@
 use super::mbc::GbMode;
 use super::Memory;
+use super::gb::Gb;
 
 pub struct Ppu {
     lcdc: u8,
@@ -33,7 +34,7 @@ impl Ppu {
             GbMode::CgbMode => vram = vec![0; 0x4000],
             _ => vram = vec![0; 0x2000],
         }
-        let oam = [0; 0xA0];
+        let oam: [u8; 0xA0] = [0; 0xA0];
         Self {
             lcdc: 0x91,
             stat: 0x81,
@@ -133,5 +134,11 @@ impl Memory for Ppu {
             0xFF70 => self.svbk = value,
             _ => {}
         };
+    }
+}
+
+impl Gb {
+    pub fn trigger_oam_corruption_bug(&mut self, address: u16, value: u8) {
+        
     }
 }
