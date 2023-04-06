@@ -1,4 +1,3 @@
-// Totally inspired on SameBoy's decoding prefix algorithm
 use crate::core::gb::Gb;
 use paste::paste;
 

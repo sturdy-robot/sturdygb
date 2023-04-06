@@ -750,6 +750,8 @@ impl Gb {
 }
 
 
+// Macros to create several instructions
+
 macro_rules! create_alu_ld_word_instructions {
     ($($rr:ident),*) => {
         impl Gb {
