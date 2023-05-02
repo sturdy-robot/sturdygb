@@ -89,8 +89,7 @@ impl Gb {
         self.write_byte(address.wrapping_add(1), (value >> 8) as u8);
     }
 
-    fn dma_transfer(&mut self, value: u8) {
-        let address = (value << 8) as u16 | 0x00;
+    pub fn dma_transfer(&mut self, value: u8) {
         
     }
 

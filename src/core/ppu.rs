@@ -2,6 +2,14 @@ use super::mbc::GbMode;
 use super::Memory;
 use super::gb::Gb;
 
+pub enum PpuMode {
+    Hblank,
+    Vblank,
+    SearchingOAM,
+    Transferring,
+}
+
+
 pub struct Ppu {
     lcdc: u8,
     stat: u8,
@@ -22,9 +30,10 @@ pub struct Ppu {
     ocps: u8,
     ocpd: u8,
     svbk: u8,
-    vram: Vec<u8>,
-    oam: [u8; 0xA0],
-    oam_corruption_bug: bool,
+    pub vram: Vec<u8>,
+    pub oam: [u8; 0xA0],
+    pub oam_corruption_bug: bool,
+    pub cycles: u32,
 }
 
 impl Ppu {
@@ -58,6 +67,7 @@ impl Ppu {
             vram,
             oam,
             oam_corruption_bug: false,
+            cycles: 0,
         }
     }
 }
@@ -137,8 +147,41 @@ impl Memory for Ppu {
     }
 }
 
-impl Gb {
-    pub fn trigger_oam_corruption_bug(&mut self, address: u16, value: u8) {
-        
+impl Ppu {
+    pub fn run(&self) {
+        let gpu_mode = self.get_gpu_mode();
+        match gpu_mode {
+            PpuMode::Hblank => {
+
+            }
+            PpuMode::Vblank => {
+
+            }
+            PpuMode::SearchingOAM => {
+
+            }
+            PpuMode::Transferring => {
+
+            }
+        }
+
     }
+
+    fn check_stat_interrupt(&self) -> bool {
+        todo!()
+    }
+
+    fn get_gpu_mode(&self) -> PpuMode {
+        match self.stat & 0x03 {
+            0 => PpuMode::Hblank,
+            1 => PpuMode::Vblank,
+            2 => PpuMode::SearchingOAM,
+            3 => PpuMode::Transferring,
+            _ => unreachable!()
+        }
+    }
+}
+
+impl Gb {
+    
 }
