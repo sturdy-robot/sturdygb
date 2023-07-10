@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2023 Pedrenrique G. Guimarães <pedrenriquegg@hotmail.com>
+
+SPDX-License-Identifier: MIT
+-->
+
 # SturdyGB
 
 An experimental GameBoy emulator written in Rust.

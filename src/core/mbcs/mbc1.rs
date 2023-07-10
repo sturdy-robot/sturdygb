@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Pedrenrique G. Guimarães
+//
+// SPDX-License-Identifier: MIT
+
 use crate::core::mbc::{MbcBase, CartridgeHeader, Mbc};
 use rand::prelude::*;
 
@@ -12,11 +16,20 @@ pub struct Mbc1 {
 
 impl Mbc1 {
     pub fn new(rom_data: Vec<u8>, header: CartridgeHeader) -> Self {
-        let has_ram = header.ram_size > 0;
+        let has_ram = match rom_data[0x147] {
+            0x00 => false,
+            0x01..=0x03 => true,
+            _ => unreachable!(),
+        };
         let has_battery = rom_data[0x147] == 0x03;
-        let mut external_ram: Vec<u8> = vec![0; header.ram_size as usize];
-        let mut rng = rand::thread_rng();
-        rng.fill_bytes(&mut external_ram);
+        let mut external_ram: Vec<u8>;
+        if has_ram {
+            external_ram = vec![0; header.ram_size as usize];
+            let mut rng = rand::thread_rng();
+            rng.fill_bytes(&mut external_ram);
+        } else {
+            external_ram = Vec::new();
+        }
 
         Self {
             mbc: MbcBase {

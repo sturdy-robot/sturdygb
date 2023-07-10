@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Pedrenrique G. Guimarães
+//
+// SPDX-License-Identifier: MIT
+
 mod romonly;
 mod mbc1;
 mod mbc2;

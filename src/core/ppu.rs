@@ -1,14 +1,18 @@
+// SPDX-FileCopyrightText: 2023 Pedrenrique G. Guimarães
+//
+// SPDX-License-Identifier: MIT
+
 use super::mbc::GbMode;
 use super::Memory;
 use super::gb::Gb;
+use super::dma::Dma;
 
 pub enum PpuMode {
-    Hblank,
-    Vblank,
+    HBlank,
+    VBlank,
     SearchingOAM,
     Transferring,
 }
-
 
 pub struct Ppu {
     lcdc: u8,
@@ -17,7 +21,6 @@ pub struct Ppu {
     scx: u8,
     ly: u8,
     lyc: u8,
-    dma: u8,
     bgp: u8,
     obp0: u8,
     obp1: u8,
@@ -33,6 +36,7 @@ pub struct Ppu {
     pub vram: Vec<u8>,
     pub oam: [u8; 0xA0],
     pub oam_corruption_bug: bool,
+    pub dma: Dma,
     pub cycles: u32,
 }
 
@@ -51,7 +55,6 @@ impl Ppu {
             scx: 0,
             ly: 0x91,
             lyc: 0,
-            dma: 0xFF,
             bgp: 0xFC,
             obp0: 0,
             obp1: 0,
@@ -67,6 +70,7 @@ impl Ppu {
             vram,
             oam,
             oam_corruption_bug: false,
+            dma: Dma::new(),
             cycles: 0,
         }
     }
@@ -82,13 +86,20 @@ impl Memory for Ppu {
                     self.vram[(address & 0x1FFF) as usize]
                 }
             }
-            0xFE00..=0xFE9F => todo!(),
+            0xFE00..=0xFE9F => {
+                if self.dma.active {
+                    0xFF
+                } else {
+                    self.oam[address as usize - 0xFE00]
+                }
+            },
             0xFF40 => self.lcdc,
             0xFF41 => self.stat,
             0xFF42 => self.scy,
             0xFF43 => self.scx,
             0xFF44 => self.ly,
             0xFF45 => self.lyc,
+            0xFF46 => 0xFF,
             0xFF47 => self.bgp,
             0xFF48 => self.obp0,
             0xFF49 => self.obp1,
@@ -107,8 +118,8 @@ impl Memory for Ppu {
 
     fn write_byte(&mut self, address: u16, value: u8) {
         match address {
-            0x8000..=0x9FFF => match self.stat & 0x03 {
-                0..=2 => {
+            0x8000..=0x9FFF => match self.get_gpu_mode() {
+                PpuMode:: HBlank | PpuMode::VBlank | PpuMode::SearchingOAM => {
                     if self.vram.len() == 0x4000 {
                         self.vram
                             [((self.vbk as usize & 1) * 0x2000) | ((address & 0x1FFF) as usize)] =
@@ -119,9 +130,12 @@ impl Memory for Ppu {
                 }
                 _ => { },
             },
-            0xFE00..=0xFE9F => match self.stat & 0x03 {
-                0 | 1 => self.oam[(address & 0x9F) as usize] = value,
-                _ => { },
+            0xFE00..=0xFE9F => {
+                if self.dma.active {
+                    return;
+                }
+
+                self.oam[address as usize - 0xFE00] = value;
             },
             0xFF40 => self.lcdc = value,
             0xFF41 => self.stat = value,
@@ -129,7 +143,12 @@ impl Memory for Ppu {
             0xFF43 => self.scx = value,
             0xFF44 => self.ly = value,
             0xFF45 => self.lyc = value,
-            0xFF46 => self.dma = value,
+            0xFF46 => {
+                if self.dma.active {
+                    return;
+                }
+                self.dma.start_transfer(value)
+            },
             0xFF47 => self.bgp = value,
             0xFF48 => self.obp0 = value,
             0xFF49 => self.obp1 = value,
@@ -151,10 +170,10 @@ impl Ppu {
     pub fn run(&self) {
         let gpu_mode = self.get_gpu_mode();
         match gpu_mode {
-            PpuMode::Hblank => {
+            PpuMode::HBlank => {
 
             }
-            PpuMode::Vblank => {
+            PpuMode::VBlank => {
 
             }
             PpuMode::SearchingOAM => {
@@ -173,8 +192,8 @@ impl Ppu {
 
     fn get_gpu_mode(&self) -> PpuMode {
         match self.stat & 0x03 {
-            0 => PpuMode::Hblank,
-            1 => PpuMode::Vblank,
+            0 => PpuMode::HBlank,
+            1 => PpuMode::VBlank,
             2 => PpuMode::SearchingOAM,
             3 => PpuMode::Transferring,
             _ => unreachable!()

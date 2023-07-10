@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Pedrenrique G. Guimarães
+//
+// SPDX-License-Identifier: MIT
+
 use crate::core::mbc::{MbcBase, CartridgeHeader, Mbc};
 
 pub struct Mbc2 {
@@ -30,21 +34,21 @@ impl Mbc2 {
 }
 
 impl Mbc for Mbc2 {
-    fn read_rom(&self,address:u16) -> u8 {
+    fn read_rom(&self, address:u16) -> u8 {
         let bank = if address < 0x4000 { 0 } else { self.current_rom_bank };
         self.mbc.rom_data[(bank * 0x4000) | ((address as usize) & 0x3FFF)]
     }
 
-    fn read_ram(&self,address:u16) -> u8 {
+    fn read_ram(&self, address: u16) -> u8 {
         0xFF
     }
 
     
-    fn write_rom(&mut self,address:u16,value:u8) {
+    fn write_rom(&mut self, address: u16, value: u8) {
         
     }
 
-    fn write_ram(&mut self,address:u16,value:u8) {
+    fn write_ram(&mut self, address: u16, value: u8) {
         
     }
 

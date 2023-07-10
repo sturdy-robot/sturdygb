@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Pedrenrique G. Guimarães
+//
+// SPDX-License-Identifier: MIT
+
 use super::Memory;
 
 pub struct Joypad {}

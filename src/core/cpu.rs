@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Pedrenrique G. Guimarães
+//
+// SPDX-License-Identifier: MIT
+
 pub struct Cpu {
     pub registers: [u8; 8],
     pub sp: u16,
@@ -12,7 +16,7 @@ pub struct Cpu {
     pub is_halted: bool,
     pub ime_toggle: bool,
     pub is_stopped: bool,
-    pub ticks: u32,
+    pub ticks: i32,
 }
 
 //  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F

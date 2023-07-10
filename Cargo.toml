@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2023 Pedrenrique G. Guimarães <pedrenriquegg@hotmail.com>
+#
+# SPDX-License-Identifier: MIT
+
 [package]
 name = "sturdygb"
 version = "0.1.0"
@@ -10,3 +14,4 @@ license = "MIT"
 rand = "0.8.5"
 paste = "1.0.11"
 mockall = "0.11.3"
+glium = "0.32.1"
