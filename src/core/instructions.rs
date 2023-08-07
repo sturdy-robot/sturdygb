@@ -27,11 +27,10 @@ const OPCODE_CYCLES: [usize; 256] = [
     3, 3, 2, 1, 0, 4, 2, 4, 3, 2, 4, 1, 0, 0, 2, 4,
 ];
 
-
 impl Gb {
     pub fn decode(&mut self) {
         let opcode = self.cpu.current_instruction;
-        self.cpu.pending_cycles = OPCODE_CYCLES[opcode as usize];
+        self.cpu.instruction_cycles = OPCODE_CYCLES[opcode as usize];
         match opcode {
             0x00 => self.nop(),
             0x01 => self.ld_bc_d16(),
@@ -87,7 +86,7 @@ impl Gb {
             0x33 => self.inc_sp(),
             0x34 => self.inc_dhl(),
             0x35 => self.dec_dhl(),
-            0x36 => self.ld_dhl_d8(), 
+            0x36 => self.ld_dhl_d8(),
             0x37 => self.scf(),
             0x38 => self.jr_cc_r8(opcode),
             0x39 => self.add_hl_sp(),
@@ -422,7 +421,7 @@ impl Gb {
 
     fn jr_cc_r8(&mut self, opcode: u8) {
         if self.get_flag_condition(opcode) {
-            self.cpu.pending_cycles = 3;
+            self.cpu.instruction_cycles = 3;
             self.jr_r8();
         } else {
             self.cpu.advance_pc();
@@ -432,10 +431,16 @@ impl Gb {
     fn daa(&mut self) {
         let mut a = self.cpu.a();
         let mut adjust = if self.cpu.carry { 0x60 } else { 0 };
-        if self.cpu.half_carry { adjust |= 0x06; };
+        if self.cpu.half_carry {
+            adjust |= 0x06;
+        };
         if !self.cpu.negative {
-            if a & 0x0F > 0x09 { adjust |= 0x06; };
-            if a > 0x99 { adjust |= 0x60; };
+            if a & 0x0F > 0x09 {
+                adjust |= 0x06;
+            };
+            if a > 0x99 {
+                adjust |= 0x60;
+            };
             a = a.wrapping_add(adjust);
         } else {
             a = a.wrapping_sub(adjust);
@@ -527,8 +532,10 @@ impl Gb {
         self.cpu.set_a(value);
         self.cpu.set_zero(value == 0);
         self.cpu.set_negative(false);
-        self.cpu.set_half_carry((a & 0xF) + (r & 0xF) + carry > 0x0F);
-        self.cpu.set_carry((a as u16) + (r as u16) + (carry as u16) > 0xFF);
+        self.cpu
+            .set_half_carry((a & 0xF) + (r & 0xF) + carry > 0x0F);
+        self.cpu
+            .set_carry((a as u16) + (r as u16) + (carry as u16) > 0xFF);
         self.cpu.advance_pc();
     }
 
@@ -605,7 +612,7 @@ impl Gb {
 
     fn ret_cc(&mut self, opcode: u8) {
         if self.get_flag_condition(opcode) {
-            self.cpu.pending_cycles = 5;
+            self.cpu.instruction_cycles = 5;
             self.ret();
         } else {
             self.cpu.advance_pc();
@@ -624,7 +631,7 @@ impl Gb {
 
     fn jp_cc(&mut self, opcode: u8) {
         if self.get_flag_condition(opcode) {
-            self.cpu.pending_cycles = 4;
+            self.cpu.instruction_cycles = 4;
             self.jp();
         } else {
             self.cpu.advance_pc();
@@ -639,7 +646,7 @@ impl Gb {
 
     fn call_cc(&mut self, opcode: u8) {
         if self.get_flag_condition(opcode) {
-            self.cpu.pending_cycles = 6;
+            self.cpu.instruction_cycles = 6;
             self.call_a16();
         } else {
             self.cpu.advance_pc();
@@ -693,7 +700,8 @@ impl Gb {
         self.cpu.set_negative(false);
         self.cpu
             .set_half_carry((self.cpu.sp & 0xF) + (value & 0xF) > 0xF);
-        self.cpu.set_carry((self.cpu.sp & 0xFF) + (value & 0xFF) > 0xFF);
+        self.cpu
+            .set_carry((self.cpu.sp & 0xFF) + (value & 0xFF) > 0xFF);
         self.cpu.advance_pc();
     }
 
@@ -704,7 +712,8 @@ impl Gb {
         self.cpu.set_negative(false);
         self.cpu
             .set_half_carry((self.cpu.sp & 0xF) + (value & 0xF) > 0xF);
-        self.cpu.set_carry((self.cpu.sp & 0xFF) + (value & 0xFF) > 0xFF);
+        self.cpu
+            .set_carry((self.cpu.sp & 0xFF) + (value & 0xFF) > 0xFF);
         self.cpu.sp = sp_r8;
         self.cpu.advance_pc();
     }
@@ -753,7 +762,6 @@ impl Gb {
         self.cpu.advance_pc();
     }
 }
-
 
 // Macros to create several instructions
 
@@ -804,7 +812,6 @@ macro_rules! create_alu_ld_word_instructions {
         }
     }
 }
-
 
 macro_rules! create_byte_instructions {
     ($($r:ident),*) => {
@@ -1024,7 +1031,6 @@ macro_rules! create_alu_dhl_instructions {
     }
 }
 
-
 create_alu_ld_word_instructions!(bc, de, hl);
 create_byte_instructions!(a, b, c, d, e, h, l);
 create_push_pop_instructions!(af, bc, de, hl);
@@ -1032,12 +1038,11 @@ create_ld_rra_instructions!(bc, de);
 create_alu_d8_instructions!(or, xor, and, add, adc, sub, sbc);
 create_alu_dhl_instructions!(or, xor, and, add, adc, sub, sbc, cp);
 
-
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::core::gb::{Gb, GbTypes};
-    use crate::core::mbc::{load_cartridge};
+    use crate::core::mbc::load_cartridge;
 
     fn setup_gb() -> Gb {
         let (mbc, gb_mode) = load_cartridge("roms/cpu_instrs.gb").unwrap();

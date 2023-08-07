@@ -13,7 +13,9 @@ impl Gb {
             0x8000..=0x9FFF => self.ppu.read_byte(address),
             0xA000..=0xBFFF => self.mbc.read_ram(address),
             0xC000..=0xCFFF | 0xE000..=0xEFFF => self.wram[(address & 0x0FFF) as usize],
-            0xD000..=0xDFFF | 0xF000..=0xFDFF => self.wram[(self.ram_bank * 0x1000) | address as usize & 0x0FFF],
+            0xD000..=0xDFFF | 0xF000..=0xFDFF => {
+                self.wram[(self.ram_bank * 0x1000) | address as usize & 0x0FFF]
+            }
             0xFE00..=0xFE9F => self.ppu.read_byte(address),
             0xFEA0..=0xFEFF => 0x00, // PROHIBITED AREA
             0xFF00 => self.joypad.read_byte(address),
@@ -26,7 +28,7 @@ impl Gb {
             0xFF4D => self.gb_speed,
             0xFF4F => self.ppu.read_byte(address),
             0xFF50 => self.boot_rom_enabled,
-            0xFF51..=0xFF55 => self.hdma.read_byte(address),
+            0xFF51..=0xFF55 => self.ppu.read_byte(address),
             0xFF56 => 0xFF, // INFRARED COMMS, NOT IMPLEMENTED HERE
             0xFF68..=0xFF6B => self.ppu.read_byte(address),
             0xFF70 => self.ram_bank as u8,
@@ -43,7 +45,7 @@ impl Gb {
             0xA000..=0xBFFF => self.mbc.write_ram(address, value),
             0xC000..=0xCFFF | 0xE000..=0xEFFF => {
                 self.wram[(address & 0x0FFF) as usize] = value;
-            },
+            }
             0xD000..=0xDFFF | 0xF000..=0xFDFF => {
                 self.wram[(self.ram_bank * 0x1000) | address as usize & 0x0FFF] = value;
             }
@@ -64,7 +66,7 @@ impl Gb {
             }
             0xFF4F => self.ppu.write_byte(address, value),
             0xFF50 => self.boot_rom_enabled = value,
-            0xFF51..=0xFF55 => self.hdma.write_byte(address, value),
+            0xFF51..=0xFF55 => self.ppu.write_byte(address, value),
             0xFF68..=0xFF69 => self.ppu.write_byte(address, value),
             0xFF70 => {
                 if self.gb_mode == GbMode::CgbMode {

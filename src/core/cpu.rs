@@ -11,12 +11,13 @@ pub struct Cpu {
     pub negative: bool,
     pub zero: bool,
     pub current_instruction: u8,
+    pub instruction_cycles: usize,
     pub pending_cycles: usize,
     pub interrupt_master: bool,
     pub is_halted: bool,
     pub ime_toggle: bool,
     pub is_stopped: bool,
-    pub ticks: i32,
+    pub ticks: u32,
 }
 
 //  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
@@ -60,6 +61,7 @@ impl Cpu {
             sp: 0xFFFE,
             pc: 0x0100,
             current_instruction: 0,
+            instruction_cycles: 0,
             pending_cycles: 0,
             interrupt_master: true,
             is_halted: false,
@@ -71,9 +73,6 @@ impl Cpu {
 
     pub fn advance_pc(&mut self) {
         let adv = OPCODES_SIZE[self.current_instruction as usize];
-        if self.current_instruction == 0xCB {
-            
-        }
         self.pc = self.pc.wrapping_add(adv);
     }
 
@@ -114,15 +113,15 @@ impl Cpu {
     }
 
     pub fn bc(&self) -> u16 {
-        ((self.b() as u16) << 8) | (self.c() as u16) 
+        ((self.b() as u16) << 8) | (self.c() as u16)
     }
 
     pub fn de(&self) -> u16 {
-        ((self.d() as u16) << 8)| (self.e() as u16) 
+        ((self.d() as u16) << 8) | (self.e() as u16)
     }
 
     pub fn hl(&self) -> u16 {
-        ((self.h() as u16) << 8) | (self.l()as u16)
+        ((self.h() as u16) << 8) | (self.l() as u16)
     }
 
     pub fn set_a(&mut self, value: u8) {

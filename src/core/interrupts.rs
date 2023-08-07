@@ -5,25 +5,29 @@
 use crate::core::gb::Gb;
 
 pub enum Interrupt {
-    VBLANK = 0x01,
-    LCDSTAT = 0x02,
-    TIMER = 0x04,
-    SERIAL = 0x08,
-    JOYPAD = 0x10,
-    INVALID,
+    Vblank = 0x01,
+    LcdStat = 0x02,
+    Timer = 0x04,
+    Serial = 0x08,
+    Joypad = 0x10,
+    Invalid,
 }
 
 impl Gb {
+    pub fn request_interrupt(&mut self, interrupt: Interrupt) {
+        self.if_flag |= interrupt as u8;
+    }
+    
     pub fn handle_interrupt(&mut self) {
         if self.check_interrupts() {
             self.cpu.interrupt_master = false;
             self.cpu.sp = self.cpu.sp.wrapping_sub(2);
             if self.cpu.is_halted {
                 self.write_word(self.cpu.sp, self.cpu.pc.wrapping_add(1));
-                self.cpu.pending_cycles = 5;                
+                self.cpu.pending_cycles += 5;
             } else {
                 self.write_word(self.cpu.sp, self.cpu.pc);
-                self.cpu.pending_cycles = 5;
+                self.cpu.pending_cycles += 5;
             }
             let interrupt_source = self.get_interrupt_source();
             let address = self.go_interrupt(&interrupt_source);
@@ -52,29 +56,29 @@ impl Gb {
     }
 
     fn get_interrupt_source(&mut self) -> Interrupt {
-        if self.if_flag & (Interrupt::VBLANK as u8) != 0 {
-            Interrupt::VBLANK
-        } else if self.if_flag & (Interrupt::LCDSTAT as u8) != 0 {
-            Interrupt::LCDSTAT
-        } else if self.if_flag & (Interrupt::TIMER as u8) != 0 {
-            Interrupt::TIMER
-        } else if self.if_flag & (Interrupt::SERIAL as u8) != 0 {
-            Interrupt::SERIAL
-        } else if self.if_flag & (Interrupt::JOYPAD as u8) != 0 {
-            Interrupt::JOYPAD
+        if self.if_flag & (Interrupt::Vblank as u8) != 0 {
+            Interrupt::Vblank
+        } else if self.if_flag & (Interrupt::LcdStat as u8) != 0 {
+            Interrupt::LcdStat
+        } else if self.if_flag & (Interrupt::Timer as u8) != 0 {
+            Interrupt::Timer
+        } else if self.if_flag & (Interrupt::Serial as u8) != 0 {
+            Interrupt::Serial
+        } else if self.if_flag & (Interrupt::Joypad as u8) != 0 {
+            Interrupt::Joypad
         } else {
-            Interrupt::INVALID
+            Interrupt::Invalid
         }
     }
 
     fn go_interrupt(&mut self, interrupt: &Interrupt) -> u16 {
         match interrupt {
-            Interrupt::VBLANK => 0x40,
-            Interrupt::LCDSTAT => 0x48,
-            Interrupt::TIMER => 0x50,
-            Interrupt::SERIAL => 0x58,
-            Interrupt::JOYPAD => 0x60,
-            Interrupt::INVALID => panic!("Invalid interrupt called!"),
+            Interrupt::Vblank => 0x40,
+            Interrupt::LcdStat => 0x48,
+            Interrupt::Timer => 0x50,
+            Interrupt::Serial => 0x58,
+            Interrupt::Joypad => 0x60,
+            Interrupt::Invalid => panic!("Invalid interrupt called!"),
         }
     }
 }

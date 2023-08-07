@@ -2,10 +2,10 @@
 //
 // SPDX-License-Identifier: MIT
 
+use crate::core::mbcs::get_mbc;
 use mockall::predicate::*;
 use mockall::*;
 use std::fs;
-use crate::core::mbcs::get_mbc;
 
 pub fn load_cartridge(filename: &str) -> Result<(Box<dyn Mbc>, GbMode), &str> {
     let rom_data = fs::read(filename).expect("Unable to read file contents");
@@ -20,11 +20,13 @@ pub fn load_cartridge(filename: &str) -> Result<(Box<dyn Mbc>, GbMode), &str> {
 pub trait Mbc {
     fn read_rom(&self, address: u16) -> u8;
 
-    fn read_ram(&self, address: u16) -> u8 { 0xFF }
+    fn read_ram(&self, address: u16) -> u8 {
+        0xFF
+    }
 
-    fn write_rom(&mut self, address: u16, value: u8) { }
+    fn write_rom(&mut self, address: u16, value: u8) {}
 
-    fn write_ram(&mut self, address: u16, value: u8) { }
+    fn write_ram(&mut self, address: u16, value: u8) {}
 }
 
 pub struct CartridgeHeader {
@@ -92,7 +94,7 @@ fn get_ram_size(ram_size: &u8) -> u32 {
 
 impl CartridgeHeader {
     pub fn new(rom_data: &Vec<u8>) -> Result<Self, &'static str> {
-        if checksum(&rom_data) {
+        if checksum(rom_data) {
             let mbc_type: MBCTypes = get_mbc_type(&rom_data[0x0147]);
             let rom_size: u32 = 32 * (1 << rom_data[0x0148]);
             let ram_size: u32 = get_ram_size(&rom_data[0x0149]);
@@ -101,7 +103,7 @@ impl CartridgeHeader {
                 entry: rom_data[0x100..=0x103].try_into().unwrap(),
                 logo: rom_data[0x104..=0x133].try_into().unwrap(),
                 title: rom_data[0x134..=0x143].escape_ascii().to_string(),
-                cgb_flag: rom_data[0x143].try_into().unwrap(),
+                cgb_flag: rom_data[0x143],
                 sgb_flag,
                 mbc_type,
                 rom_size,

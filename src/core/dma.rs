@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: MIT
 use super::gb::Gb;
 
-
 pub struct Dma {
     pub active: bool,
     pub byte: u8,
@@ -20,8 +19,11 @@ impl Dma {
             delay: 0,
         }
     }
-    
+
     pub fn start_transfer(&mut self, value: u8) {
+        if self.active {
+            return;
+        }
         self.active = true;
         self.value = value;
         self.byte = 0;
@@ -30,7 +32,7 @@ impl Dma {
 }
 
 impl Gb {
-    pub fn run_dma(&mut self) {
+    pub fn dma_tick(&mut self) {
         if self.ppu.dma.active {
             self.dma_transfer()
         }
@@ -41,16 +43,11 @@ impl Gb {
             self.ppu.dma.delay -= 1;
             return;
         }
-        
+
         let address = self.ppu.dma.value as u16 * 0x100 + self.ppu.dma.byte as u16;
         let value = self.read_byte(address);
         self.write_byte(address, value);
         self.ppu.dma.byte = self.ppu.dma.byte.wrapping_add(1);
         self.ppu.dma.active = self.ppu.dma.byte < 0xA0;
-        if !self.ppu.dma.active {
-            self.ppu.dma.byte = 0;
-            self.ppu.dma.delay = 2;
-            self.ppu.dma.value = 0;
-        }
     }
 }

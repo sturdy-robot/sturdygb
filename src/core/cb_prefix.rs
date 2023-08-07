@@ -30,7 +30,7 @@ const CB_CYCLES: [usize; 256] = [
 impl Gb {
     pub fn decode_cb_prefix(&mut self) {
         let prefix = self.read_byte(self.cpu.pc.wrapping_add(1));
-        self.cpu.pending_cycles = CB_CYCLES[prefix as usize];
+        self.cpu.instruction_cycles = CB_CYCLES[prefix as usize];
         match prefix {
             0x00 => self.rlc_b(),
             0x01 => self.rlc_c(),

@@ -2,10 +2,12 @@
 //
 // SPDX-License-Identifier: MIT
 
+use super::dma::Dma;
+use super::gb::Gb;
+use super::hdma::Hdma;
+use super::interrupts::Interrupt;
 use super::mbc::GbMode;
 use super::Memory;
-use super::gb::Gb;
-use super::dma::Dma;
 
 pub enum PpuMode {
     HBlank,
@@ -36,17 +38,18 @@ pub struct Ppu {
     pub vram: Vec<u8>,
     pub oam: [u8; 0xA0],
     pub oam_corruption_bug: bool,
+    pub mode: PpuMode,
     pub dma: Dma,
-    pub cycles: u32,
+    pub hdma: Hdma,
+    pub mode_clock: u32,
 }
 
 impl Ppu {
     pub fn new(gb_mode: &GbMode) -> Self {
-        let vram: Vec<u8>;
-        match gb_mode {
-            GbMode::CgbMode => vram = vec![0; 0x4000],
-            _ => vram = vec![0; 0x2000],
-        }
+        let vram: Vec<u8> = match gb_mode {
+            GbMode::CgbMode => vec![0; 0x4000],
+            _ => vec![0; 0x2000],
+        };
         let oam: [u8; 0xA0] = [0; 0xA0];
         Self {
             lcdc: 0x91,
@@ -70,8 +73,20 @@ impl Ppu {
             vram,
             oam,
             oam_corruption_bug: false,
+            mode: PpuMode::SearchingOAM,
             dma: Dma::new(),
-            cycles: 0,
+            hdma: Hdma::new(),
+            mode_clock: 0,
+        }
+    }
+
+    pub fn get_ppu_mode(&self) -> PpuMode {
+        match self.stat & 0x03 {
+            0 => PpuMode::HBlank,
+            1 => PpuMode::VBlank,
+            2 => PpuMode::SearchingOAM,
+            3 => PpuMode::Transferring,
+            _ => unreachable!(),
         }
     }
 }
@@ -92,7 +107,7 @@ impl Memory for Ppu {
                 } else {
                     self.oam[address as usize - 0xFE00]
                 }
-            },
+            }
             0xFF40 => self.lcdc,
             0xFF41 => self.stat,
             0xFF42 => self.scy,
@@ -107,6 +122,7 @@ impl Memory for Ppu {
             0xFF4B => self.wx,
             0xFF4D => self.key1,
             0xFF4F => self.vbk,
+            0xFF51..=0xFF55 => self.hdma.read_byte(address),
             0xFF68 => self.bcps,
             0xFF69 => self.bcpd,
             0xFF6A => self.ocps,
@@ -118,8 +134,8 @@ impl Memory for Ppu {
 
     fn write_byte(&mut self, address: u16, value: u8) {
         match address {
-            0x8000..=0x9FFF => match self.get_gpu_mode() {
-                PpuMode:: HBlank | PpuMode::VBlank | PpuMode::SearchingOAM => {
+            0x8000..=0x9FFF => match self.get_ppu_mode() {
+                PpuMode::HBlank | PpuMode::VBlank | PpuMode::SearchingOAM => {
                     if self.vram.len() == 0x4000 {
                         self.vram
                             [((self.vbk as usize & 1) * 0x2000) | ((address & 0x1FFF) as usize)] =
@@ -128,7 +144,7 @@ impl Memory for Ppu {
                         self.vram[(address & 0x1FFF) as usize] = value;
                     }
                 }
-                _ => { },
+                _ => {}
             },
             0xFE00..=0xFE9F => {
                 if self.dma.active {
@@ -136,19 +152,20 @@ impl Memory for Ppu {
                 }
 
                 self.oam[address as usize - 0xFE00] = value;
-            },
+            }
             0xFF40 => self.lcdc = value,
-            0xFF41 => self.stat = value,
+            0xFF41 => {
+                // Bit 7 is always set
+                let v = value & 0b0111_1000;
+                self.stat &= 0b1000_0111;
+                self.stat |= v;
+                self.mode = self.get_ppu_mode();
+            }
             0xFF42 => self.scy = value,
             0xFF43 => self.scx = value,
             0xFF44 => self.ly = value,
             0xFF45 => self.lyc = value,
-            0xFF46 => {
-                if self.dma.active {
-                    return;
-                }
-                self.dma.start_transfer(value)
-            },
+            0xFF46 => self.dma.start_transfer(value),
             0xFF47 => self.bgp = value,
             0xFF48 => self.obp0 = value,
             0xFF49 => self.obp1 = value,
@@ -156,6 +173,7 @@ impl Memory for Ppu {
             0xFF4B => self.wx = value,
             0xFF4D => self.key1 = value,
             0xFF4F => self.vbk = value,
+            0xFF51..=0xFF55 => self.hdma.write_byte(address, value),
             0xFF68 => self.bcps = value,
             0xFF69 => self.bcpd = value,
             0xFF6A => self.ocps = value,
@@ -166,41 +184,66 @@ impl Memory for Ppu {
     }
 }
 
-impl Ppu {
-    pub fn run(&self) {
-        let gpu_mode = self.get_gpu_mode();
-        match gpu_mode {
+impl Gb {
+    pub fn ppu_tick(&mut self) {
+        match self.ppu.mode {
             PpuMode::HBlank => {
+                if self.ppu.mode_clock >= 204 {
+                    self.ppu.mode_clock = 0;
+                    // Update the LY register
+                    self.ppu.ly += 1;
 
+                    // Check for LY=LYC coincidence and request LCD STAT interrupt if necessary
+                    if self.ppu.ly == self.ppu.lyc {
+                        self.ppu.stat |= 0x04; // Set coincidence flag
+                        if (self.ppu.stat & 0x40) != 0 {
+                            self.request_interrupt(Interrupt::LcdStat);
+                        }
+                    } else {
+                        self.ppu.stat &= !0x04; // Clear coincidence flag
+                    }
+
+                    // Check if HBlank period has ended and switch to the next mode
+                    if self.ppu.ly == 143 {
+                        self.ppu.mode = PpuMode::VBlank;
+                        // Request VBlank interrupt
+                        self.request_interrupt(Interrupt::Vblank);
+                    } else {
+                        self.ppu.mode = PpuMode::SearchingOAM;
+                        // Request LCD STAT interrupt if necessary
+                        if (self.ppu.stat & 0x20) != 0 {
+                            self.request_interrupt(Interrupt::LcdStat);
+                        }
+                    }
+                }
             }
             PpuMode::VBlank => {
+                if self.ppu.mode_clock >= 456 {
+                    // Update the LY register
+                    self.ppu.ly += 1;
 
+                    // Check if VBlank period has ended and switch to the next mode
+                    if self.ppu.ly > 153 {
+                        self.ppu.mode = PpuMode::SearchingOAM;
+                        self.ppu.ly = 0;
+                    }
+                }
             }
             PpuMode::SearchingOAM => {
-
+                // Check if Searching OAM period has ended and switch to the next mode
+                if self.ppu.mode_clock >= 80 {
+                    self.ppu.mode = PpuMode::Transferring;
+                    self.ppu.mode_clock = 0;
+                } else {
+                    self.ppu.mode_clock += 1;
+                }
             }
             PpuMode::Transferring => {
-
+                if self.ppu.mode_clock >= 172 {
+                    self.ppu.mode_clock = 0;
+                    self.ppu.mode = PpuMode::HBlank;
+                }
             }
         }
-
     }
-
-    fn check_stat_interrupt(&self) -> bool {
-        todo!()
-    }
-
-    fn get_gpu_mode(&self) -> PpuMode {
-        match self.stat & 0x03 {
-            0 => PpuMode::HBlank,
-            1 => PpuMode::VBlank,
-            2 => PpuMode::SearchingOAM,
-            3 => PpuMode::Transferring,
-            _ => unreachable!()
-        }
-    }
-}
-
-impl Gb {
-    
 }
