@@ -7,6 +7,7 @@ mod ui;
 use crate::core::gb::{Gb, GbTypes};
 use crate::core::mbc::{load_cartridge, GbMode};
 use std::env;
+use crate::ui::Renderer;
 
 fn get_gb_instance(filename: &str) -> Result<Gb, ()> {
     let gb_type: GbTypes;
@@ -30,8 +31,11 @@ fn main() {
     } else {
         &args[1]
     };
-    match get_gb_instance(filename) {
-        Ok(mut gb) => gb.run(),
+    let mut gb = match get_gb_instance(filename) {
+        Ok(mut gb) => gb,
         _ => panic!(""),
-    }
+    };
+
+    let mut sdl_renderer = ui::sdl::SdlRenderer::new();
+    sdl_renderer.run(&mut gb);
 }

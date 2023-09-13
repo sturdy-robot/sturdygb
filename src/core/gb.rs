@@ -113,13 +113,25 @@ impl Gb {
         }
     }
 
-    pub fn run(&mut self) {
+    pub fn headless_run(&mut self) {
         while !self.cpu.is_stopped {
-            self.handle_interrupt();
-            self.cpu_tick();
-            self.print_serial_message();
-            self.debug_message();
+            self.run();
         }
+    }
+
+    pub fn run(&mut self) {
+        self.handle_interrupt();
+        self.cpu_tick();
+        self.components_tick();
+        self.print_serial_message();
+        self.debug_message();
+    }
+
+    pub fn components_tick(&mut self) {
+        self.ppu_tick(self.cpu.pending_cycles as u32 * 4);
+        self.timer_tick(self.cpu.pending_cycles as u32 * 4);
+        self.dma_tick(self.cpu.pending_cycles as u32);
+        self.cpu.pending_cycles = 0;
     }
 
     fn cpu_tick(&mut self) {
@@ -130,7 +142,6 @@ impl Gb {
         } else {
             self.cpu.pending_cycles = 1;
         }
-        self.timer_tick(self.cpu.pending_cycles as u32);
     }
 
     fn print_serial_message(&mut self) {

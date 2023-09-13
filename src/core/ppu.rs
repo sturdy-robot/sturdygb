@@ -185,65 +185,67 @@ impl Memory for Ppu {
 }
 
 impl Gb {
-    pub fn ppu_tick(&mut self) {
-        match self.ppu.mode {
-            PpuMode::HBlank => {
-                if self.ppu.mode_clock >= 204 {
-                    self.ppu.mode_clock = 0;
-                    // Update the LY register
-                    self.ppu.ly += 1;
-
-                    // Check for LY=LYC coincidence and request LCD STAT interrupt if necessary
-                    if self.ppu.ly == self.ppu.lyc {
-                        self.ppu.stat |= 0x04; // Set coincidence flag
-                        if (self.ppu.stat & 0x40) != 0 {
-                            self.request_interrupt(Interrupt::LcdStat);
+    pub fn ppu_tick(&mut self, ticks: u32) {
+        for _ in 0..ticks {
+            match self.ppu.mode {
+                PpuMode::HBlank => {
+                    if self.ppu.mode_clock >= 204 {
+                        self.ppu.mode_clock = 0;
+                        // Update the LY register
+                        self.ppu.ly += 1;
+    
+                        // Check for LY=LYC coincidence and request LCD STAT interrupt if necessary
+                        if self.ppu.ly == self.ppu.lyc {
+                            self.ppu.stat |= 0x04; // Set coincidence flag
+                            if (self.ppu.stat & 0x40) != 0 {
+                                self.request_interrupt(Interrupt::LcdStat);
+                            }
+                        } else {
+                            self.ppu.stat &= !0x04; // Clear coincidence flag
                         }
-                    } else {
-                        self.ppu.stat &= !0x04; // Clear coincidence flag
-                    }
-
-                    // Check if HBlank period has ended and switch to the next mode
-                    if self.ppu.ly == 143 {
-                        self.ppu.mode = PpuMode::VBlank;
-                        // Request VBlank interrupt
-                        self.request_interrupt(Interrupt::Vblank);
-                    } else {
-                        self.ppu.mode = PpuMode::SearchingOAM;
-                        // Request LCD STAT interrupt if necessary
-                        if (self.ppu.stat & 0x20) != 0 {
-                            self.request_interrupt(Interrupt::LcdStat);
+    
+                        // Check if HBlank period has ended and switch to the next mode
+                        if self.ppu.ly == 143 {
+                            self.ppu.mode = PpuMode::VBlank;
+                            // Request VBlank interrupt
+                            self.request_interrupt(Interrupt::Vblank);
+                        } else {
+                            self.ppu.mode = PpuMode::SearchingOAM;
+                            // Request LCD STAT interrupt if necessary
+                            if (self.ppu.stat & 0x20) != 0 {
+                                self.request_interrupt(Interrupt::LcdStat);
+                            }
                         }
                     }
                 }
-            }
-            PpuMode::VBlank => {
-                if self.ppu.mode_clock >= 456 {
-                    // Update the LY register
-                    self.ppu.ly += 1;
-
-                    // Check if VBlank period has ended and switch to the next mode
-                    if self.ppu.ly > 153 {
-                        self.ppu.mode = PpuMode::SearchingOAM;
-                        self.ppu.ly = 0;
+                PpuMode::VBlank => {
+                    if self.ppu.mode_clock >= 456 {
+                        // Update the LY register
+                        self.ppu.ly += 1;
+    
+                        // Check if VBlank period has ended and switch to the next mode
+                        if self.ppu.ly > 153 {
+                            self.ppu.mode = PpuMode::SearchingOAM;
+                            self.ppu.ly = 0;
+                        }
                     }
                 }
-            }
-            PpuMode::SearchingOAM => {
-                // Check if Searching OAM period has ended and switch to the next mode
-                if self.ppu.mode_clock >= 80 {
-                    self.ppu.mode = PpuMode::Transferring;
-                    self.ppu.mode_clock = 0;
-                } else {
-                    self.ppu.mode_clock += 1;
+                PpuMode::SearchingOAM => {
+                    // Check if Searching OAM period has ended and switch to the next mode
+                    if self.ppu.mode_clock >= 80 {
+                        self.ppu.mode = PpuMode::Transferring;
+                        self.ppu.mode_clock = 0;
+                    } else {
+                        self.ppu.mode_clock += 1;
+                    }
                 }
-            }
-            PpuMode::Transferring => {
-                if self.ppu.mode_clock >= 172 {
-                    self.ppu.mode_clock = 0;
-                    self.ppu.mode = PpuMode::HBlank;
+                PpuMode::Transferring => {
+                    if self.ppu.mode_clock >= 172 {
+                        self.ppu.mode_clock = 0;
+                        self.ppu.mode = PpuMode::HBlank;
+                    }
                 }
-            }
+            }   
         }
     }
 }

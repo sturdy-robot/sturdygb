@@ -32,22 +32,24 @@ impl Dma {
 }
 
 impl Gb {
-    pub fn dma_tick(&mut self) {
+    pub fn dma_tick(&mut self, ticks: u32) {
         if self.ppu.dma.active {
-            self.dma_transfer()
+            self.dma_transfer(ticks)
         }
     }
 
-    pub fn dma_transfer(&mut self) {
-        if self.ppu.dma.delay > 0 {
-            self.ppu.dma.delay -= 1;
-            return;
+    pub fn dma_transfer(&mut self, ticks: u32) {
+        for _ in 0..ticks {
+            if self.ppu.dma.delay > 0 {
+                self.ppu.dma.delay -= 1;
+                return;
+            }
+    
+            let address = self.ppu.dma.value as u16 * 0x100 + self.ppu.dma.byte as u16;
+            let value = self.read_byte(address);
+            self.write_byte(address, value);
+            self.ppu.dma.byte = self.ppu.dma.byte.wrapping_add(1);
+            self.ppu.dma.active = self.ppu.dma.byte < 0xA0;
         }
-
-        let address = self.ppu.dma.value as u16 * 0x100 + self.ppu.dma.byte as u16;
-        let value = self.read_byte(address);
-        self.write_byte(address, value);
-        self.ppu.dma.byte = self.ppu.dma.byte.wrapping_add(1);
-        self.ppu.dma.active = self.ppu.dma.byte < 0xA0;
     }
 }
