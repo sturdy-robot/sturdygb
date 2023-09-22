@@ -2,23 +2,18 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::core::mbc::{MbcBase, CartridgeHeader, Mbc};
-
+use crate::core::mbc::{CartridgeHeader, Mbc};
 
 pub struct RomOnly {
-    mbc: MbcBase,
+    header: CartridgeHeader,
+    rom_data: Vec<u8>,
 }
 
 impl RomOnly {
     pub fn new(rom_data: Vec<u8>, header: CartridgeHeader) -> Self {
         Self {
-            mbc: MbcBase {
-                header,
-                rom_data,
-                has_ram: false,
-                has_battery: false,
-                has_rtc: false,
-            },
+            header,
+            rom_data,
         }
     }
 }
@@ -26,6 +21,6 @@ impl RomOnly {
 #[allow(unused_variables)]
 impl Mbc for RomOnly {
     fn read_rom(&self, address: u16) -> u8 {
-        self.mbc.rom_data[address as usize]
+        self.rom_data[address as usize]
     }
 }

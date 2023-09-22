@@ -2,11 +2,13 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::core::mbc::{MbcBase, CartridgeHeader, Mbc};
 use rand::prelude::*;
 
+use crate::core::mbc::{CartridgeHeader, Mbc};
+
 pub struct Mbc1 {
-    mbc: MbcBase,
+    header: CartridgeHeader,
+    rom_data: Vec<u8>,
     external_ram: Vec<u8>,
     ram_enabled: bool,
     banking_mode: bool,
@@ -15,30 +17,19 @@ pub struct Mbc1 {
 }
 
 impl Mbc1 {
-    pub fn new(rom_data: Vec<u8>, header: CartridgeHeader) -> Self {
-        let has_ram = match rom_data[0x147] {
-            0x00 => false,
-            0x01..=0x03 => true,
-            _ => unreachable!(),
-        };
-        let has_battery = rom_data[0x147] == 0x03;
+    pub fn new(rom_data: Vec<u8>, header: CartridgeHeader, has_ram: bool, has_battery: bool) -> Self {
         let mut external_ram: Vec<u8>;
         if has_ram {
             external_ram = vec![0; header.ram_size as usize];
-            let mut rng = rand::thread_rng();
+            let mut rng = thread_rng();
             rng.fill_bytes(&mut external_ram);
         } else {
             external_ram = Vec::new();
         }
 
         Self {
-            mbc: MbcBase {
-                header,
-                rom_data,
-                has_ram,
-                has_battery,
-                has_rtc: false,
-            },
+            header,
+            rom_data,
             external_ram,
             ram_enabled: false,
             banking_mode: false,
@@ -51,7 +42,7 @@ impl Mbc1 {
 impl Mbc for Mbc1 {
     fn read_rom(&self, address: u16) -> u8 {
         let bank = if address < 0x4000 { 0 } else { self.current_rom_bank };
-        self.mbc.rom_data[(bank * 0x4000) | ((address as usize) & 0x3FFF)]
+        self.rom_data[(bank * 0x4000) | ((address as usize) & 0x3FFF)]
     }
 
     fn read_ram(&self, address: u16) -> u8 {

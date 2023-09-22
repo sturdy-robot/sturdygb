@@ -2,10 +2,12 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::core::mbcs::get_mbc;
-use mockall::predicate::*;
-use mockall::*;
 use std::fs;
+
+use mockall::*;
+use mockall::predicate::*;
+
+use crate::core::mbcs::get_mbc;
 
 pub fn load_cartridge(filename: &str) -> Result<(Box<dyn Mbc>, GbMode), &str> {
     let rom_data = fs::read(filename).expect("Unable to read file contents");
@@ -42,11 +44,28 @@ pub struct CartridgeHeader {
 
 pub enum MBCTypes {
     RomOnly,
-    Mbc1,
-    Mmm01,
-    Mbc2,
-    Mbc3,
-    Mbc5,
+    Mbc1 {
+        ram: bool,
+        battery: bool,
+    },
+    Mmm01 {
+        ram: bool,
+        battery: bool,
+    },
+    Mbc2 {
+        ram: bool,
+        battery: bool,
+    },
+    Mbc3 {
+        ram: bool,
+        timer: bool,
+        battery: bool,
+    },
+    Mbc5 {
+        ram: bool,
+        battery: bool,
+        rumble: bool,
+    },
     Mbc6,
     Mbc7,
     Unknown,
@@ -70,11 +89,25 @@ fn checksum(rom_data: &Vec<u8>) -> bool {
 fn get_mbc_type(mbc_type: &u8) -> MBCTypes {
     match mbc_type {
         0x00 => MBCTypes::RomOnly,
-        0x01..=0x03 => MBCTypes::Mbc1,
-        0x05..=0x06 => MBCTypes::Mbc2,
-        0x0B..=0x0D => MBCTypes::Mmm01,
-        0x0F..=0x13 => MBCTypes::Mbc3,
-        0x19..=0x1E => MBCTypes::Mbc5,
+        0x01 => MBCTypes::Mbc1 { ram: false, battery: false },
+        0x02 => MBCTypes::Mbc1 { ram: true, battery: false },
+        0x03 => MBCTypes::Mbc1 { ram: true, battery: true },
+        0x05 => MBCTypes::Mbc2 { ram: false, battery: false },
+        0x06 => MBCTypes::Mbc2 { ram: false, battery: true },
+        0x0B => MBCTypes::Mmm01 { ram: false, battery: false },
+        0x0C => MBCTypes::Mmm01 { ram: true, battery: false },
+        0x0D => MBCTypes::Mmm01 { ram: true, battery: true },
+        0x0F => MBCTypes::Mbc3 { ram: false, timer: true, battery: true },
+        0x10 => MBCTypes::Mbc3 { ram: true, timer: true, battery: true },
+        0x11 => MBCTypes::Mbc3 { ram: false, timer: false, battery: false },
+        0x12 => MBCTypes::Mbc3 { ram: true, timer: false, battery: false },
+        0x13 => MBCTypes::Mbc3 { ram: true, timer: false, battery: true },
+        0x19 => MBCTypes::Mbc5 { ram: false, battery: false, rumble: false },
+        0x1A => MBCTypes::Mbc5 { ram: true, battery: false, rumble: false },
+        0x1B => MBCTypes::Mbc5 { ram: true, battery: true, rumble: false },
+        0x1C => MBCTypes::Mbc5 { ram: false, battery: false, rumble: true },
+        0x1D => MBCTypes::Mbc5 { ram: true, battery: false, rumble: true },
+        0x1E => MBCTypes::Mbc5 { ram: true, battery: true, rumble: true },
         0x20 => MBCTypes::Mbc6,
         0x22 => MBCTypes::Mbc7,
         _ => MBCTypes::Unknown,
@@ -113,13 +146,4 @@ impl CartridgeHeader {
             Err("Cartridge is not a valid GB ROM")
         }
     }
-}
-
-#[allow(dead_code)]
-pub struct MbcBase {
-    pub header: CartridgeHeader,
-    pub rom_data: Vec<u8>,
-    pub has_ram: bool,
-    pub has_battery: bool,
-    pub has_rtc: bool,
 }

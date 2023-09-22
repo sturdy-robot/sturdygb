@@ -6,7 +6,6 @@ use super::gb::Gb;
 use super::interrupts::Interrupt;
 use super::Memory;
 
-
 pub struct Timer {
     div: u8,
     tima: u8,

@@ -193,7 +193,7 @@ impl Gb {
                         self.ppu.mode_clock = 0;
                         // Update the LY register
                         self.ppu.ly += 1;
-    
+
                         // Check for LY=LYC coincidence and request LCD STAT interrupt if necessary
                         if self.ppu.ly == self.ppu.lyc {
                             self.ppu.stat |= 0x04; // Set coincidence flag
@@ -203,7 +203,7 @@ impl Gb {
                         } else {
                             self.ppu.stat &= !0x04; // Clear coincidence flag
                         }
-    
+
                         // Check if HBlank period has ended and switch to the next mode
                         if self.ppu.ly == 143 {
                             self.ppu.mode = PpuMode::VBlank;
@@ -222,7 +222,7 @@ impl Gb {
                     if self.ppu.mode_clock >= 456 {
                         // Update the LY register
                         self.ppu.ly += 1;
-    
+
                         // Check if VBlank period has ended and switch to the next mode
                         if self.ppu.ly > 153 {
                             self.ppu.mode = PpuMode::SearchingOAM;
@@ -245,7 +245,7 @@ impl Gb {
                         self.ppu.mode = PpuMode::HBlank;
                     }
                 }
-            }   
+            }
         }
     }
 }

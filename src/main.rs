@@ -2,12 +2,14 @@
 //
 // SPDX-License-Identifier: MIT
 
+use std::env;
+
+use crate::core::gb::{Gb, GbTypes};
+use crate::core::mbc::{GbMode, load_cartridge};
+use crate::ui::Renderer;
+
 mod core;
 mod ui;
-use crate::core::gb::{Gb, GbTypes};
-use crate::core::mbc::{load_cartridge, GbMode};
-use std::env;
-use crate::ui::Renderer;
 
 fn get_gb_instance(filename: &str) -> Result<Gb, ()> {
     let gb_type: GbTypes;
@@ -33,9 +35,8 @@ fn main() {
     };
     let mut gb = match get_gb_instance(filename) {
         Ok(mut gb) => gb,
-        _ => panic!(""),
+        _ => panic!("Unable to open GameBoy game!"),
     };
 
-    let mut sdl_renderer = ui::sdl::SdlRenderer::new();
-    sdl_renderer.run(&mut gb);
+    gb.headless_run();
 }

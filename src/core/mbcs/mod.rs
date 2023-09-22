@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: 2023 Pedrenrique G. Guimarães
 //
 // SPDX-License-Identifier: MIT
-
 mod romonly;
 mod mbc1;
 mod mbc2;
@@ -10,10 +9,12 @@ mod mbc5;
 mod mbc6;
 mod mbc7;
 
-use super::mbc::{ Mbc, CartridgeHeader, MBCTypes, GbMode };
-use romonly::RomOnly;
-use mbc1::Mbc1;
 
+use mbc1::Mbc1;
+use mbc2::Mbc2;
+use romonly::RomOnly;
+
+use super::mbc::{CartridgeHeader, GbMode, Mbc, MBCTypes};
 
 pub fn get_mbc(rom_data: Vec<u8>, header: CartridgeHeader) -> (Box<dyn Mbc>, GbMode) {
     let gb_mode = match header.cgb_flag {
@@ -24,7 +25,12 @@ pub fn get_mbc(rom_data: Vec<u8>, header: CartridgeHeader) -> (Box<dyn Mbc>, GbM
 
     match header.mbc_type {
         MBCTypes::RomOnly => (Box::new(RomOnly::new(rom_data, header)), gb_mode),
-        MBCTypes::Mbc1 => (Box::new(Mbc1::new(rom_data, header)), gb_mode),
+        MBCTypes::Mbc1 { ram, battery } => {
+            (Box::new(Mbc1::new(rom_data, header, ram, battery)), gb_mode)
+        }
+        MBCTypes::Mbc2 {battery, ram} => {
+            (Box::new(Mbc2::new(rom_data, header, battery, ram)), gb_mode)
+        }
         _ => unimplemented!(),
     }
 }

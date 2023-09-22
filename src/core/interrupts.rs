@@ -17,7 +17,7 @@ impl Gb {
     pub fn request_interrupt(&mut self, interrupt: Interrupt) {
         self.if_flag |= interrupt as u8;
     }
-    
+
     pub fn handle_interrupt(&mut self) {
         if self.check_interrupts() {
             self.cpu.interrupt_master = false;

@@ -44,7 +44,7 @@ impl Gb {
                 self.ppu.dma.delay -= 1;
                 return;
             }
-    
+
             let address = self.ppu.dma.value as u16 * 0x100 + self.ppu.dma.byte as u16;
             let value = self.read_byte(address);
             self.write_byte(address, value);

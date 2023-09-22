@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: MIT
 
+use rand::prelude::*;
+
 use crate::core::cpu::Cpu;
 use crate::core::joypad::Joypad;
 use crate::core::mbc::{GbMode, Mbc};
@@ -9,7 +11,6 @@ use crate::core::ppu::Ppu;
 use crate::core::serial::Serial;
 use crate::core::sound::Sound;
 use crate::core::timer::Timer;
-use rand::prelude::*;
 
 #[allow(dead_code)]
 #[derive(PartialEq, Eq)]
@@ -86,7 +87,7 @@ impl Gb {
             vec![0; 0x2000]
         };
         let mut hram = vec![0; 0x7F];
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
         rng.fill_bytes(&mut wram);
         rng.fill_bytes(&mut hram);
 
@@ -128,9 +129,9 @@ impl Gb {
     }
 
     pub fn components_tick(&mut self) {
+        self.dma_tick(self.cpu.pending_cycles as u32);
         self.ppu_tick(self.cpu.pending_cycles as u32 * 4);
         self.timer_tick(self.cpu.pending_cycles as u32 * 4);
-        self.dma_tick(self.cpu.pending_cycles as u32);
         self.cpu.pending_cycles = 0;
     }
 

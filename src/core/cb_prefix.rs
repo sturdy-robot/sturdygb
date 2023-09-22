@@ -2,8 +2,9 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::core::gb::Gb;
 use paste::paste;
+
+use crate::core::gb::Gb;
 
 //  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
 #[rustfmt::skip]
@@ -329,21 +330,21 @@ impl Gb {
 
     fn sla_common(&mut self, value: u8) -> u8 {
         let carry = value & 0x80 == 0x80;
-        let r = value << 1;                        
+        let r = value << 1;
         self.change_flags(r, carry);
         r
     }
 
     fn sra_common(&mut self, value: u8) -> u8 {
         let carry = value & 0x01 == 0x01;
-        let r = (value >> 1) | (value & 0x80);                        
+        let r = (value >> 1) | (value & 0x80);
         self.change_flags(r, carry);
         r
     }
 
     fn srl_common(&mut self, value: u8) -> u8 {
         let carry = value & 0x01 == 0x01;
-        let r = value >> 1;                        
+        let r = value >> 1;
         self.change_flags(r, carry);
         r
     }
