@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::core::gb::Gb;
+use crate::gb::Gb;
 
 pub enum Interrupt {
     Vblank = 0x01,

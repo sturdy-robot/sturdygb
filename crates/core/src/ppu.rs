@@ -6,7 +6,7 @@ use super::dma::Dma;
 use super::gb::Gb;
 use super::hdma::Hdma;
 use super::interrupts::Interrupt;
-use super::mbc::GbMode;
+use super::cartridge::GbMode;
 use super::Memory;
 
 pub enum PpuMode {

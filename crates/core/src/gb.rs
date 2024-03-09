@@ -4,13 +4,13 @@
 
 use rand::prelude::*;
 
-use crate::core::cpu::Cpu;
-use crate::core::joypad::Joypad;
-use crate::core::mbc::{GbMode, Mbc};
-use crate::core::ppu::Ppu;
-use crate::core::serial::Serial;
-use crate::core::sound::Sound;
-use crate::core::timer::Timer;
+use crate::cpu::Cpu;
+use crate::joypad::Joypad;
+use crate::cartridge::{GbMode, Mbc};
+use crate::ppu::Ppu;
+use crate::serial::Serial;
+use crate::sound::Sound;
+use crate::timer::Timer;
 
 #[allow(dead_code)]
 #[derive(PartialEq, Eq)]

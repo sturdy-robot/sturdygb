@@ -4,7 +4,7 @@
 
 use paste::paste;
 
-use crate::core::gb::Gb;
+use crate::gb::Gb;
 
 //  M-CYCLES
 //  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
@@ -1042,13 +1042,13 @@ create_alu_dhl_instructions!(or, xor, and, add, adc, sub, sbc, cp);
 
 #[cfg(test)]
 mod test {
-    use crate::core::gb::{Gb, GbTypes};
-    use crate::core::mbc::load_cartridge;
+    use crate::gb::{Gb, GbTypes};
+    use crate::cartridge::load_cartridge;
 
     use super::*;
 
     fn setup_gb() -> Gb {
-        let (mbc, gb_mode) = load_cartridge("roms/cpu_instrs.gb").unwrap();
+        let (mbc, gb_mode) = load_cartridge("../../roms/cpu_instrs.gb").unwrap();
         let gb_type = GbTypes::Dmg;
         Gb::new(mbc, gb_mode, gb_type)
     }

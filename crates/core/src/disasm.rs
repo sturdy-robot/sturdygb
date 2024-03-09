@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::core::gb::Gb;
+use crate::gb::Gb;
 
 const REGISTER_NAMES: [&str; 5] = ["f", "c", "e", "l", "sp"];
 

@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-use crate::core::mbc::{CartridgeHeader, Mbc};
+use crate::cartridge::{CartridgeHeader, Mbc};
 
 pub struct Mbc3 {
     header: CartridgeHeader,

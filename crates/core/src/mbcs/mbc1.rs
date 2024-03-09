@@ -4,7 +4,7 @@
 
 use rand::prelude::*;
 
-use crate::core::mbc::{CartridgeHeader, Mbc};
+use crate::cartridge::{CartridgeHeader, Mbc};
 
 pub struct Mbc1 {
     header: CartridgeHeader,

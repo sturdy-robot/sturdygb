@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: 2023 Pedrenrique G. Guimarães <pedrenriquegg@hotmail.com>
+#
+# SPDX-License-Identifier: MIT
+
+[package]
+name = "sturdygb"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "sturdygb_core"
+
+
+[dependencies]
+rand = "0.8.5"
+paste = "1.0.14"

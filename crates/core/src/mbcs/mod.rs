@@ -14,7 +14,7 @@ use mbc1::Mbc1;
 use mbc2::Mbc2;
 use romonly::RomOnly;
 
-use super::mbc::{CartridgeHeader, GbMode, Mbc, MBCTypes};
+use super::cartridge::{CartridgeHeader, GbMode, Mbc, MBCTypes};
 
 pub fn get_mbc(rom_data: Vec<u8>, header: CartridgeHeader) -> (Box<dyn Mbc>, GbMode) {
     let gb_mode = match header.cgb_flag {

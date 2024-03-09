@@ -3,11 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 use std::fs;
-
-use mockall::*;
-use mockall::predicate::*;
-
-use crate::core::mbcs::get_mbc;
+use crate::mbcs::get_mbc;
 
 pub fn load_cartridge(filename: &str) -> Result<(Box<dyn Mbc>, GbMode), &str> {
     let rom_data = fs::read(filename).expect("Unable to read file contents");
@@ -18,7 +14,6 @@ pub fn load_cartridge(filename: &str) -> Result<(Box<dyn Mbc>, GbMode), &str> {
 }
 
 #[allow(unused_variables)]
-#[automock]
 pub trait Mbc {
     fn read_rom(&self, address: u16) -> u8;
 

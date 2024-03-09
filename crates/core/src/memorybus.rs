@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 use super::gb::{Gb, GbTypes};
-use super::mbc::GbMode;
+use super::cartridge::GbMode;
 use super::Memory;
 
 impl Gb {
