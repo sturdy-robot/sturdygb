@@ -7,7 +7,7 @@ use super::gb::Gb;
 use super::hdma::Hdma;
 use super::interrupts::Interrupt;
 use super::cartridge::GbMode;
-use super::Memory;
+use super::memory::Memory;
 
 pub enum PpuMode {
     HBlank,

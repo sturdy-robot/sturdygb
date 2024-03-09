@@ -4,7 +4,7 @@
 
 use super::gb::{Gb, GbTypes};
 use super::cartridge::GbMode;
-use super::Memory;
+use super::memory::Memory;
 
 impl Gb {
     pub fn read_byte(&self, address: u16) -> u8 {

@@ -23,7 +23,7 @@ impl Gb {
     }
 
     fn d_ld_nn_sp(&self) -> String {
-        let mut result = "ld".to_string();
+        let mut result = "ld ".to_string();
         let value = self.read_word(self.cpu.pc.wrapping_add(1));
         result.push_str(&format!(" {:#x}h, ", value));
         result.push_str("sp");
@@ -473,7 +473,6 @@ impl Gb {
             0xD0 => "ret nc".to_string(),
             0xD1 => self.d_pop_nn("de"),
             0xD2 => self.d_jp_f_nn("nc"),
-            0xD3 => "ill".to_string(),
             0xD4 => self.d_call_f_nn("nc"),
             0xD5 => self.d_push_nn("de"),
             0xD6 => self.d_sub_n(),
@@ -481,32 +480,24 @@ impl Gb {
             0xD8 => "ret c".to_string(),
             0xD9 => "reti".to_string(),
             0xDA => self.d_jp_f_nn("c"),
-            0xDB => "ill".to_string(),
             0xDC => self.d_call_f_nn("c"),
-            0xDD => "ill".to_string(),
             0xDE => self.d_sbc_n(),
             0xDF => "rst 18h".to_string(),
             0xE0 => self.d_ldh_n_r("a"),
             0xE1 => self.d_pop_nn("hl"),
             0xE2 => self.d_ld_r_r("0xff00 + c", "a"),
-            0xE3 => "ill".to_string(),
-            0xE4 => "ill".to_string(),
             0xE5 => self.d_push_nn("hl"),
             0xE6 => self.d_and_n(),
             0xE7 => "rst 20h".to_string(),
             0xE8 => self.d_add_sp_n(),
             0xE9 => "jp (hl)".to_string(),
             0xEA => self.d_ld_nn_rr("a"),
-            0xEB => "ill".to_string(),
-            0xEC => "ill".to_string(),
-            0xED => "ill".to_string(),
             0xEE => self.d_xor_n(),
             0xEF => "rst 28h".to_string(),
             0xF0 => self.d_ldh_r_n("a"),
             0xF1 => self.d_pop_nn("af"),
             0xF2 => self.d_ld_r_r("a", "0xff00 + c"),
             0xF3 => "di".to_string(),
-            0xF4 => "ill".to_string(),
             0xF5 => self.d_push_nn("af"),
             0xF6 => self.d_or_n(),
             0xF7 => "rst 30h".to_string(),
@@ -514,10 +505,9 @@ impl Gb {
             0xF9 => "ld sp, hl".to_string(),
             0xFA => self.d_ld_rr_nn("a"),
             0xFB => "ei".to_string(),
-            0xFC => "ill".to_string(),
-            0xFD => "ill".to_string(),
             0xFE => self.d_cp_n(),
             0xFF => "rst 38h".to_string(),
+            _ => "ill".to_string()
         }
     }
 

@@ -4,7 +4,7 @@
 
 use super::gb::Gb;
 use super::interrupts::Interrupt;
-use super::Memory;
+use super::memory::Memory;
 
 pub struct Timer {
     div: u8,

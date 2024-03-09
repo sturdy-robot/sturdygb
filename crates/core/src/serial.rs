@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-use super::Memory;
+use super::memory::Memory;
 
 pub struct Serial {
     sb: u8,

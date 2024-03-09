@@ -2,25 +2,20 @@
 //
 // SPDX-License-Identifier: MIT
 
-pub mod cb_prefix;
-pub mod cpu;
-pub mod disasm;
-pub mod gb;
-pub mod instructions;
-pub mod interrupts;
-pub mod joypad;
-pub mod cartridge;
-pub mod mbcs;
-pub mod memorybus;
-pub mod ppu;
-pub mod serial;
-pub mod sound;
-pub mod timer;
-pub mod dma;
-pub mod hdma;
-
-#[allow(unused_variables)]
-pub trait Memory {
-    fn read_byte(&self, address: u16) -> u8 { 0x00 }
-    fn write_byte(&mut self, address: u16, value: u8) {}
-}
+mod cb_prefix;
+mod cpu;
+mod disasm;
+mod gb;
+mod instructions;
+mod interrupts;
+mod joypad;
+mod cartridge;
+mod mbcs;
+mod memorybus;
+mod ppu;
+mod serial;
+mod sound;
+mod timer;
+mod dma;
+mod hdma;
+mod memory;

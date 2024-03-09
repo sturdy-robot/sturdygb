@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-use super::Memory;
+use super::memory::Memory;
 
 pub struct Joypad {
     data: u8,
