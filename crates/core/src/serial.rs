@@ -33,7 +33,7 @@ impl Memory for Serial {
     fn read_byte(&self, address: u16) -> u8 {
         match address {
             0xFF01 => self.sb,
-            0xF002 => self.sc,
+            0xFF02 => self.sc,
             _ => unreachable!(),
         }
     }
