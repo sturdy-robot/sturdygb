@@ -5,7 +5,7 @@
 mod cb_prefix;
 mod cpu;
 mod disasm;
-mod gb;
+pub mod gb;
 mod instructions;
 mod interrupts;
 mod joypad;
@@ -19,3 +19,4 @@ mod timer;
 mod dma;
 mod hdma;
 mod memory;
+pub mod prelude;
