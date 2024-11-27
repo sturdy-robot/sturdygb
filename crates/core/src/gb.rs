@@ -46,7 +46,6 @@ pub struct Gb {
     pub boot_rom_enabled: u8,
     pub prepare_speed_switch: bool,
     pub speed_mode: SpeedMode,
-    pub active_dma_transfer: bool,
 }
 
 fn get_register_values(gb_mode: &GbMode, gb_type: &GbTypes) -> [u8; 8] {
@@ -110,7 +109,6 @@ impl Gb {
             boot_rom_enabled: 0,
             prepare_speed_switch: false,
             speed_mode: SpeedMode::Normal,
-            active_dma_transfer: false,
         }
     }
 

@@ -22,13 +22,13 @@ impl Gb {
         if self.check_interrupts() {
             self.cpu.interrupt_master = false;
             self.cpu.sp = self.cpu.sp.wrapping_sub(2);
-            if self.cpu.is_halted {
-                self.write_word(self.cpu.sp, self.cpu.pc.wrapping_add(1));
-                self.cpu.pending_cycles += 5;
+            let pc = if self.cpu.is_halted {
+                self.cpu.pc.wrapping_add(1)
             } else {
-                self.write_word(self.cpu.sp, self.cpu.pc);
-                self.cpu.pending_cycles += 5;
-            }
+                self.cpu.pc
+            };
+            self.write_word(self.cpu.sp, pc);
+            self.cpu.pending_cycles += 5;
             let interrupt_source = self.get_interrupt_source();
             let address = self.go_interrupt(&interrupt_source);
             self.cpu.pc = address;
