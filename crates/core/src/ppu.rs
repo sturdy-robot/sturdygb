@@ -10,10 +10,10 @@ use super::cartridge::GbMode;
 use super::memory::Memory;
 
 pub enum PpuMode {
-    HBlank,
-    VBlank,
-    SearchingOAM,
-    Transferring,
+    HBlank = 0,
+    VBlank = 1,
+    SearchingOAM = 2,
+    Transferring = 3,
 }
 
 pub struct Ppu {
@@ -42,6 +42,7 @@ pub struct Ppu {
     pub dma: Dma,
     pub hdma: Hdma,
     pub mode_clock: u32,
+    screen: [[u8; 160]; 144],
 }
 
 impl Ppu {
@@ -77,17 +78,29 @@ impl Ppu {
             dma: Dma::new(),
             hdma: Hdma::new(),
             mode_clock: 0,
+            screen: [[0; 160]; 144],
         }
     }
 
     pub fn get_ppu_mode(&self) -> PpuMode {
-        match self.stat & 0x03 {
+        let mode = self.stat & 0x03;
+        match mode {
             0 => PpuMode::HBlank,
             1 => PpuMode::VBlank,
             2 => PpuMode::SearchingOAM,
             3 => PpuMode::Transferring,
-            _ => unreachable!(),
+            _ => PpuMode::HBlank,
         }
+    }
+
+    pub fn set_mode(&mut self, mode: PpuMode) {
+        self.stat &= !0x03;
+        self.stat |= mode as u8;
+        self.mode_clock = 0;
+    }
+
+    pub fn render_scanline(&mut self) {
+        
     }
 }
 
@@ -191,47 +204,26 @@ impl Gb {
                 PpuMode::HBlank => {
                     if self.ppu.mode_clock >= 204 {
                         self.ppu.mode_clock = 0;
-                        // Update the LY register
                         self.ppu.ly += 1;
-
-                        // Check for LY=LYC coincidence and request LCD STAT interrupt if necessary
-                        if self.ppu.ly == self.ppu.lyc {
-                            self.ppu.stat |= 0x04; // Set coincidence flag
-                            if (self.ppu.stat & 0x40) != 0 {
-                                self.request_interrupt(Interrupt::LcdStat);
-                            }
+                        if self.ppu.ly == 144 {
+                            self.ppu.set_mode(PpuMode::VBlank);
                         } else {
-                            self.ppu.stat &= !0x04; // Clear coincidence flag
-                        }
-
-                        // Check if HBlank period has ended and switch to the next mode
-                        if self.ppu.ly == 143 {
-                            self.ppu.mode = PpuMode::VBlank;
-                            // Request VBlank interrupt
-                            self.request_interrupt(Interrupt::Vblank);
-                        } else {
-                            self.ppu.mode = PpuMode::SearchingOAM;
-                            // Request LCD STAT interrupt if necessary
-                            if (self.ppu.stat & 0x20) != 0 {
-                                self.request_interrupt(Interrupt::LcdStat);
-                            }
+                            self.ppu.set_mode(PpuMode::SearchingOAM);
                         }
                     }
                 }
                 PpuMode::VBlank => {
                     if self.ppu.mode_clock >= 456 {
-                        // Update the LY register
+                        self.ppu.mode_clock = 0;
                         self.ppu.ly += 1;
 
-                        // Check if VBlank period has ended and switch to the next mode
                         if self.ppu.ly > 153 {
-                            self.ppu.mode = PpuMode::SearchingOAM;
+                            self.ppu.set_mode(PpuMode::Transferring);
                             self.ppu.ly = 0;
                         }
                     }
                 }
                 PpuMode::SearchingOAM => {
-                    // Check if Searching OAM period has ended and switch to the next mode
                     if self.ppu.mode_clock >= 80 {
                         self.ppu.mode = PpuMode::Transferring;
                         self.ppu.mode_clock = 0;
@@ -243,6 +235,8 @@ impl Gb {
                     if self.ppu.mode_clock >= 172 {
                         self.ppu.mode_clock = 0;
                         self.ppu.mode = PpuMode::HBlank;
+
+                        self.ppu.render_scanline();
                     }
                 }
             }
