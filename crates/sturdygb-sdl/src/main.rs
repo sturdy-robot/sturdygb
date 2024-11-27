@@ -48,7 +48,7 @@ pub fn main() {
         let frame_time = Duration::new(0, 1_000_000_000 / 60);
         let fps = frame_time - start.elapsed();
         println!("Frame time: {} ms", fps.as_millis());
-        std::thread::sleep(frame_time - start.elapsed());
+        std::thread::sleep(fps);
         start = Instant::now();
     }
 }
