@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 Pedrenrique G. Guimarães
+//
+// SPDX-License-Identifier: MIT
+
 use notan::prelude::*;
 use std::env;
 use sturdygb_core::prelude::GbInstance;
@@ -12,7 +16,8 @@ fn main() -> Result<(), String> {
     };
     let mut gb = match GbInstance::build(filename) {
         Ok(gb) => gb,
-        Err(_) => panic!("Unable to get a valid instance of a GameBoy game.")
+        Err(_) => panic!("Unable to get a valid instance of a GameBoy game."),
     };
     notan::init().build()
 }
+
