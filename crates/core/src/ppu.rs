@@ -2,13 +2,14 @@
 //
 // SPDX-License-Identifier: MIT
 
+use super::cartridge::GbMode;
 use super::dma::Dma;
 use super::gb::Gb;
 use super::hdma::Hdma;
 use super::interrupts::Interrupt;
-use super::cartridge::GbMode;
 use super::memory::Memory;
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum PpuMode {
     HBlank = 0,
     VBlank = 1,
@@ -42,6 +43,7 @@ pub struct Ppu {
     pub dma: Dma,
     pub hdma: Hdma,
     pub mode_clock: u32,
+    pub frame_ready: bool,
     screen: [[u8; 160]; 144],
 }
 
@@ -75,6 +77,7 @@ impl Ppu {
             oam,
             oam_corruption_bug: false,
             mode: PpuMode::SearchingOAM,
+            frame_ready: false,
             dma: Dma::new(),
             hdma: Hdma::new(),
             mode_clock: 0,
@@ -96,11 +99,19 @@ impl Ppu {
     pub fn set_mode(&mut self, mode: PpuMode) {
         self.stat &= !0x03;
         self.stat |= mode as u8;
-        self.mode_clock = 0;
     }
 
     pub fn render_scanline(&mut self) {
-        
+        let current_line = self.ly as usize;
+    }
+
+    pub fn get_screen(&mut self) -> &[[u8; 160]; 144] {
+        self.frame_ready = false;
+        &self.screen
+    }
+
+    pub fn get_ly(&self) -> u8 {
+        self.ly
     }
 }
 
@@ -200,7 +211,7 @@ impl Memory for Ppu {
 impl Gb {
     pub fn ppu_tick(&mut self, ticks: u32) {
         for _ in 0..ticks {
-            match self.ppu.mode {
+            match self.ppu.get_ppu_mode() {
                 PpuMode::HBlank => {
                     if self.ppu.mode_clock >= 204 {
                         self.ppu.mode_clock = 0;
@@ -210,22 +221,28 @@ impl Gb {
                         } else {
                             self.ppu.set_mode(PpuMode::SearchingOAM);
                         }
+                    } else {
+                        self.ppu.mode_clock += 1;
                     }
                 }
                 PpuMode::VBlank => {
+                    self.request_interrupt(Interrupt::Vblank);
                     if self.ppu.mode_clock >= 456 {
                         self.ppu.mode_clock = 0;
                         self.ppu.ly += 1;
 
                         if self.ppu.ly > 153 {
-                            self.ppu.set_mode(PpuMode::Transferring);
+                            self.ppu.frame_ready = true;
+                            self.ppu.set_mode(PpuMode::SearchingOAM);
                             self.ppu.ly = 0;
                         }
+                    } else {
+                        self.ppu.mode_clock += 1;
                     }
                 }
                 PpuMode::SearchingOAM => {
                     if self.ppu.mode_clock >= 80 {
-                        self.ppu.mode = PpuMode::Transferring;
+                        self.ppu.set_mode(PpuMode::Transferring);
                         self.ppu.mode_clock = 0;
                     } else {
                         self.ppu.mode_clock += 1;
@@ -234,9 +251,10 @@ impl Gb {
                 PpuMode::Transferring => {
                     if self.ppu.mode_clock >= 172 {
                         self.ppu.mode_clock = 0;
-                        self.ppu.mode = PpuMode::HBlank;
-
+                        self.ppu.set_mode(PpuMode::HBlank);
                         self.ppu.render_scanline();
+                    } else {
+                        self.ppu.mode_clock += 1;
                     }
                 }
             }

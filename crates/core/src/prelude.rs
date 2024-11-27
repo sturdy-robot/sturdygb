@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2023 Pedrenrique G. Guimarães
 //
 // SPDX-License-Identifier: MIT
-use super::gb::{Gb, GbTypes};
 use super::cartridge::{load_cartridge, GbMode};
+use super::gb::{Gb, GbTypes};
 
 pub struct GbInstance;
 
@@ -22,3 +22,4 @@ impl GbInstance {
         }
     }
 }
+

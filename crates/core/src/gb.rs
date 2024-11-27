@@ -4,10 +4,10 @@
 
 use rand::prelude::*;
 
+use crate::cartridge::{GbMode, Mbc};
 use crate::cpu::Cpu;
 use crate::joypad::Joypad;
-use crate::cartridge::{GbMode, Mbc};
-use crate::ppu::Ppu;
+use crate::ppu::{Ppu, PpuMode};
 use crate::serial::Serial;
 use crate::sound::Sound;
 use crate::timer::Timer;
@@ -121,11 +121,21 @@ impl Gb {
     }
 
     pub fn run(&mut self) {
+        //self.debug_message();
         self.handle_interrupt();
         self.cpu_tick();
         self.components_tick();
-        self.print_serial_message();
-        self.debug_message();
+        //self.print_serial_message();
+    }
+
+    pub fn run_one_frame(&mut self) {
+        while !self.ppu.frame_ready {
+            self.run();
+        }
+    }
+
+    pub fn get_screen_data(&mut self) -> &[[u8; 160]; 144] {
+        self.ppu.get_screen()
     }
 
     pub fn components_tick(&mut self) {
