@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2023 Pedrenrique G. Guimarães <pedrenriquegg@hotmail.com>
+SPDX-FileCopyrightText: 2024 Pedrenrique G. Guimarães <pedrenriquegg@hotmail.com>
 
 SPDX-License-Identifier: MIT
 -->
@@ -15,7 +15,7 @@ The plan is to be a fully compatible GameBoy emulator that runs GB and GBC games
 Checklist of (not yet) implemented features:
 
 - [x] CPU
-- [ ] PPU
+- [x] PPU
 - [x] Timer
 - [ ] Emulate all versions of the GameBoy (DMG, SGB, MGB, GBC)
 - [x] Disassembly
@@ -23,15 +23,15 @@ Checklist of (not yet) implemented features:
     - [x] ROMONLY
     - [x] MBC1
     - [ ] MM01
-    - [ ] MBC2
-    - [ ] MBC3
-    - [ ] MBC5
-    - [ ] MBC7
+    - [x] MBC2
+    - [x] MBC3
+    - [x] MBC5
+    - [x] MBC7
 - [x] Memory Bus
 - [x] Serial
 - [x] Interrupts
 - [ ] Audio
-- [ ] Joystick and input
+- [x] Joystick and input
 - [ ] Save states
 - [ ] Windowing and display
 - [ ] Debugger
@@ -62,7 +62,7 @@ Thanks to all the following documentation and repos, I was able to test and debu
 
 ## License
 
-    Copyright © 2022-2023 Pedrenrique G. Guimarães
+    Copyright © 2022-2024 Pedrenrique G. Guimarães
 
     Permission is hereby granted, free of charge, to any person
     obtaining a copy of this software and associated documentation
