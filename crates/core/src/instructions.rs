@@ -1042,8 +1042,8 @@ create_alu_dhl_instructions!(or, xor, and, add, adc, sub, sbc, cp);
 
 #[cfg(test)]
 mod test {
-    use crate::gb::{Gb, GbTypes};
     use crate::cartridge::load_cartridge;
+    use crate::gb::{Gb, GbTypes};
 
     use super::*;
 

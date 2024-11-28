@@ -11,10 +11,7 @@ pub struct RomOnly {
 
 impl RomOnly {
     pub fn new(rom_data: Vec<u8>, header: CartridgeHeader) -> Self {
-        Self {
-            header,
-            rom_data,
-        }
+        Self { header, rom_data }
     }
 }
 

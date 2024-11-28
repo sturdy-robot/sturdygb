@@ -38,7 +38,8 @@ impl Gb {
 
         if self.cpu.is_halted {
             if !self.cpu.interrupt_master {
-                if self.ie_flag & self.if_flag != 0 { // Halt Bug
+                if self.ie_flag & self.if_flag != 0 {
+                    // Halt Bug
                     self.cpu.is_halted = false;
                     // TODO: Implement the halt bug
                 }

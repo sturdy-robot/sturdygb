@@ -507,7 +507,7 @@ impl Gb {
             0xFB => "ei".to_string(),
             0xFE => self.d_cp_n(),
             0xFF => "rst 38h".to_string(),
-            _ => "ill".to_string()
+            _ => "ill".to_string(),
         }
     }
 

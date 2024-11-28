@@ -443,7 +443,6 @@ impl Gb {
     }
 }
 
-
 macro_rules! create_cb_prefix_instructions {
     ($($r:ident),*) => {
         impl Gb {

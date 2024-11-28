@@ -69,7 +69,6 @@ impl Memory for Timer {
     }
 }
 
-
 impl Gb {
     pub fn timer_tick(&mut self, cycles: u32) {
         self.timer.cycles += cycles;

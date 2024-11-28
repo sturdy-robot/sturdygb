@@ -16,7 +16,12 @@ pub struct Mbc2 {
 }
 
 impl Mbc2 {
-    pub fn new(rom_data: Vec<u8>, header: CartridgeHeader, has_ram: bool, has_battery: bool) -> Self {
+    pub fn new(
+        rom_data: Vec<u8>,
+        header: CartridgeHeader,
+        has_ram: bool,
+        has_battery: bool,
+    ) -> Self {
         let mut external_ram = [0; 0x2000];
         let mut rng = thread_rng();
         rng.fill_bytes(&mut external_ram);
@@ -34,14 +39,17 @@ impl Mbc2 {
 
 impl Mbc for Mbc2 {
     fn read_rom(&self, address: u16) -> u8 {
-        let bank = if address < 0x4000 { 0 } else { self.current_rom_bank };
+        let bank = if address < 0x4000 {
+            0
+        } else {
+            self.current_rom_bank
+        };
         self.rom_data[(bank * 0x4000) | ((address as usize) & 0x3FFF)]
     }
 
     fn read_ram(&self, address: u16) -> u8 {
         0xFF
     }
-
 
     fn write_rom(&mut self, address: u16, value: u8) {}
 

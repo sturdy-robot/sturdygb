@@ -56,14 +56,14 @@ impl Ppu {
         let oam: [u8; 0xA0] = [0; 0xA0];
         Self {
             lcdc: 0x91,
-            stat: 0x85,  // Mode 2 (OAM Search), LYC=LY interrupt enabled
+            stat: 0x85, // Mode 2 (OAM Search), LYC=LY interrupt enabled
             scy: 0,
             scx: 0,
-            ly: 0,       // Start at scanline 0
+            ly: 0, // Start at scanline 0
             lyc: 0,
-            bgp: 0xFC,   // Default background palette
-            obp0: 0xFF,  // Default sprite palette 0
-            obp1: 0xFF,  // Default sprite palette 1
+            bgp: 0xFC,  // Default background palette
+            obp0: 0xFF, // Default sprite palette 0
+            obp1: 0xFF, // Default sprite palette 1
             wy: 0,
             wx: 0,
             key1: 0xFF,
@@ -102,10 +102,10 @@ impl Ppu {
 
         // Check if we should trigger STAT interrupt for this mode
         let mode_int_flag = match mode {
-            PpuMode::HBlank => self.stat & 0x08,     // Mode 0
-            PpuMode::VBlank => self.stat & 0x10,     // Mode 1
+            PpuMode::HBlank => self.stat & 0x08,       // Mode 0
+            PpuMode::VBlank => self.stat & 0x10,       // Mode 1
             PpuMode::SearchingOAM => self.stat & 0x20, // Mode 2
-            PpuMode::Transferring => 0,              // Mode 3 doesn't trigger interrupt
+            PpuMode::Transferring => 0,                // Mode 3 doesn't trigger interrupt
         };
 
         if mode_int_flag != 0 {
@@ -116,9 +116,10 @@ impl Ppu {
     pub fn check_lyc(&mut self) {
         // Update LY=LYC flag
         if self.ly == self.lyc {
-            self.stat |= 0x04;  // Set coincidence flag
-            if self.stat & 0x40 != 0 {  // LY=LYC interrupt enabled
-                self.stat |= 0x04;  // Request STAT interrupt
+            self.stat |= 0x04; // Set coincidence flag
+            if self.stat & 0x40 != 0 {
+                // LY=LYC interrupt enabled
+                self.stat |= 0x04; // Request STAT interrupt
             }
         } else {
             self.stat &= !0x04; // Clear coincidence flag
@@ -138,13 +139,25 @@ impl Ppu {
 
         // Background rendering
         let bg_enabled = self.lcdc & 0x01 != 0;
-        let bg_tile_map = if self.lcdc & 0x08 != 0 { 0x9C00 } else { 0x9800 };
-        let bg_tile_data = if self.lcdc & 0x10 != 0 { 0x8000 } else { 0x8800 };
+        let bg_tile_map = if self.lcdc & 0x08 != 0 {
+            0x9C00
+        } else {
+            0x9800
+        };
+        let bg_tile_data = if self.lcdc & 0x10 != 0 {
+            0x8000
+        } else {
+            0x8800
+        };
         let signed_tile_numbers = bg_tile_data == 0x8800;
 
         // Window rendering
         let window_enabled = self.lcdc & 0x20 != 0;
-        let window_tile_map = if self.lcdc & 0x40 != 0 { 0x9C00 } else { 0x9800 };
+        let window_tile_map = if self.lcdc & 0x40 != 0 {
+            0x9C00
+        } else {
+            0x9800
+        };
         let window_y = self.wy as usize;
         let window_x = self.wx.wrapping_sub(7) as usize;
 
@@ -226,7 +239,8 @@ impl Ppu {
         }
 
         // Sprite rendering
-        if self.lcdc & 0x02 != 0 {  // Sprites enabled
+        if self.lcdc & 0x02 != 0 {
+            // Sprites enabled
             let tall_sprites = self.lcdc & 0x04 != 0;
             let sprite_height = if tall_sprites { 16 } else { 8 };
 
@@ -239,14 +253,24 @@ impl Ppu {
                 let attributes = self.oam[oam_addr + 3];
 
                 // Check if sprite is visible on this scanline
-                if (current_line as u8) >= sprite_y && (current_line as u8) < sprite_y.wrapping_add(sprite_height as u8) {
-                    let palette = if attributes & 0x10 != 0 { self.obp1 } else { self.obp0 };
+                if (current_line as u8) >= sprite_y
+                    && (current_line as u8) < sprite_y.wrapping_add(sprite_height as u8)
+                {
+                    let palette = if attributes & 0x10 != 0 {
+                        self.obp1
+                    } else {
+                        self.obp0
+                    };
                     let flip_x = attributes & 0x20 != 0;
                     let flip_y = attributes & 0x40 != 0;
                     let behind_bg = attributes & 0x80 != 0;
 
                     let line = (current_line as u8).wrapping_sub(sprite_y);
-                    let actual_line = if flip_y { sprite_height - 1 - (line as usize) } else { line as usize };
+                    let actual_line = if flip_y {
+                        sprite_height - 1 - (line as usize)
+                    } else {
+                        line as usize
+                    };
 
                     // Get tile data for sprite
                     let tile_addr = if tall_sprites {

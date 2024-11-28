@@ -20,4 +20,3 @@ fn main() -> Result<(), String> {
     };
     notan::init().build()
 }
-

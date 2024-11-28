@@ -33,8 +33,8 @@ impl Joypad {
     pub fn new() -> Self {
         Self {
             data: 0xCF,         // Initial state: no buttons selected or pressed
-            button_states: 0xF,  // All buttons unpressed
-            dpad_states: 0xF,    // All d-pad unpressed
+            button_states: 0xF, // All buttons unpressed
+            dpad_states: 0xF,   // All d-pad unpressed
         }
     }
 
@@ -73,7 +73,7 @@ impl Joypad {
     fn update_joyp(&mut self) {
         // Keep the upper bits (4-5) which select button type
         let selection = self.data & 0x30;
-        
+
         // Default state when neither is selected
         if selection == 0x30 {
             self.data = 0x3F;
@@ -81,15 +81,17 @@ impl Joypad {
         }
 
         // Combine the selection bits with the appropriate button states
-        self.data = selection | if selection & 0x20 == 0 {
-            // Action buttons selected
-            self.button_states
-        } else if selection & 0x10 == 0 {
-            // Direction buttons selected
-            self.dpad_states
-        } else {
-            0x0F // Both selected (shouldn't happen)
-        } | 0xC0; // Set unused bits
+        self.data = selection
+            | if selection & 0x20 == 0 {
+                // Action buttons selected
+                self.button_states
+            } else if selection & 0x10 == 0 {
+                // Direction buttons selected
+                self.dpad_states
+            } else {
+                0x0F // Both selected (shouldn't happen)
+            }
+            | 0xC0; // Set unused bits
     }
 }
 
@@ -97,7 +99,7 @@ impl Memory for Joypad {
     fn read_byte(&self, address: u16) -> u8 {
         match address {
             0xFF00 => self.data,
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
@@ -108,7 +110,7 @@ impl Memory for Joypad {
                 self.data = (value & 0x30) | (self.data & 0xCF);
                 self.update_joyp();
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }

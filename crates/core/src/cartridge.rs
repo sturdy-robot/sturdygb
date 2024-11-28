@@ -2,8 +2,8 @@
 //
 // SPDX-License-Identifier: MIT
 
-use std::fs;
 use crate::mbcs::get_mbc;
+use std::fs;
 
 pub fn load_cartridge(filename: &str) -> Result<(Box<dyn Mbc>, GbMode), &str> {
     let rom_data = fs::read(filename).expect("Unable to read file contents");
@@ -84,25 +84,93 @@ fn checksum(rom_data: &Vec<u8>) -> bool {
 fn get_mbc_type(mbc_type: &u8) -> MBCTypes {
     match mbc_type {
         0x00 => MBCTypes::RomOnly,
-        0x01 => MBCTypes::Mbc1 { ram: false, battery: false },
-        0x02 => MBCTypes::Mbc1 { ram: true, battery: false },
-        0x03 => MBCTypes::Mbc1 { ram: true, battery: true },
-        0x05 => MBCTypes::Mbc2 { ram: false, battery: false },
-        0x06 => MBCTypes::Mbc2 { ram: false, battery: true },
-        0x0B => MBCTypes::Mmm01 { ram: false, battery: false },
-        0x0C => MBCTypes::Mmm01 { ram: true, battery: false },
-        0x0D => MBCTypes::Mmm01 { ram: true, battery: true },
-        0x0F => MBCTypes::Mbc3 { ram: false, timer: true, battery: true },
-        0x10 => MBCTypes::Mbc3 { ram: true, timer: true, battery: true },
-        0x11 => MBCTypes::Mbc3 { ram: false, timer: false, battery: false },
-        0x12 => MBCTypes::Mbc3 { ram: true, timer: false, battery: false },
-        0x13 => MBCTypes::Mbc3 { ram: true, timer: false, battery: true },
-        0x19 => MBCTypes::Mbc5 { ram: false, battery: false, rumble: false },
-        0x1A => MBCTypes::Mbc5 { ram: true, battery: false, rumble: false },
-        0x1B => MBCTypes::Mbc5 { ram: true, battery: true, rumble: false },
-        0x1C => MBCTypes::Mbc5 { ram: false, battery: false, rumble: true },
-        0x1D => MBCTypes::Mbc5 { ram: true, battery: false, rumble: true },
-        0x1E => MBCTypes::Mbc5 { ram: true, battery: true, rumble: true },
+        0x01 => MBCTypes::Mbc1 {
+            ram: false,
+            battery: false,
+        },
+        0x02 => MBCTypes::Mbc1 {
+            ram: true,
+            battery: false,
+        },
+        0x03 => MBCTypes::Mbc1 {
+            ram: true,
+            battery: true,
+        },
+        0x05 => MBCTypes::Mbc2 {
+            ram: false,
+            battery: false,
+        },
+        0x06 => MBCTypes::Mbc2 {
+            ram: false,
+            battery: true,
+        },
+        0x0B => MBCTypes::Mmm01 {
+            ram: false,
+            battery: false,
+        },
+        0x0C => MBCTypes::Mmm01 {
+            ram: true,
+            battery: false,
+        },
+        0x0D => MBCTypes::Mmm01 {
+            ram: true,
+            battery: true,
+        },
+        0x0F => MBCTypes::Mbc3 {
+            ram: false,
+            timer: true,
+            battery: true,
+        },
+        0x10 => MBCTypes::Mbc3 {
+            ram: true,
+            timer: true,
+            battery: true,
+        },
+        0x11 => MBCTypes::Mbc3 {
+            ram: false,
+            timer: false,
+            battery: false,
+        },
+        0x12 => MBCTypes::Mbc3 {
+            ram: true,
+            timer: false,
+            battery: false,
+        },
+        0x13 => MBCTypes::Mbc3 {
+            ram: true,
+            timer: false,
+            battery: true,
+        },
+        0x19 => MBCTypes::Mbc5 {
+            ram: false,
+            battery: false,
+            rumble: false,
+        },
+        0x1A => MBCTypes::Mbc5 {
+            ram: true,
+            battery: false,
+            rumble: false,
+        },
+        0x1B => MBCTypes::Mbc5 {
+            ram: true,
+            battery: true,
+            rumble: false,
+        },
+        0x1C => MBCTypes::Mbc5 {
+            ram: false,
+            battery: false,
+            rumble: true,
+        },
+        0x1D => MBCTypes::Mbc5 {
+            ram: true,
+            battery: false,
+            rumble: true,
+        },
+        0x1E => MBCTypes::Mbc5 {
+            ram: true,
+            battery: true,
+            rumble: true,
+        },
         0x20 => MBCTypes::Mbc6,
         0x22 => MBCTypes::Mbc7,
         _ => MBCTypes::Unknown,

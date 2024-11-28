@@ -50,4 +50,3 @@ impl Memory for Hdma {
         };
     }
 }
-
