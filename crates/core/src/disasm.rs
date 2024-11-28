@@ -4,262 +4,226 @@
 
 use crate::gb::Gb;
 
-const REGISTER_NAMES: [&str; 5] = ["f", "c", "e", "l", "sp"];
+// Register name constants for better maintainability and consistency
+const REGISTER_NAMES: [&str; 8] = ["b", "c", "d", "e", "h", "l", "a", "f"];
+const REGISTER_PAIRS: [&str; 4] = ["bc", "de", "hl", "sp"];
+
+/// Formats a byte value as a hexadecimal string with proper padding
+fn format_byte(value: u8) -> String {
+    format!("{:02x}h", value)
+}
+
+/// Formats a word value as a hexadecimal string with proper padding
+fn format_word(value: u16) -> String {
+    format!("{:04x}h", value)
+}
 
 impl Gb {
+    /// Disassembles a load instruction with an immediate word value
     fn d_ld_rr_nn(&self, target: &str) -> String {
-        let mut result = "ld ".to_string();
-        result.push_str(target);
         let value = self.read_word(self.cpu.pc.wrapping_add(1));
-        result.push_str(&format!(" {:#x}h", value));
-        result
+        format!("ld {}, {}", target, format_word(value))
     }
 
+    /// Disassembles a load instruction that adds SP to an immediate byte
     fn d_ld_hl_sp_n(&self) -> String {
-        let mut result = "ld hl, sp + ".to_string();
         let value = self.read_byte(self.cpu.pc.wrapping_add(1)) as i8;
-        result.push_str(&format!("{:#x}h", value));
-        result
+        format!("ld hl, sp + {}", format_byte(value as u8))
     }
 
+    /// Disassembles a store SP to memory instruction
     fn d_ld_nn_sp(&self) -> String {
-        let mut result = "ld ".to_string();
-        let value = self.read_word(self.cpu.pc.wrapping_add(1));
-        result.push_str(&format!(" {:#x}h, ", value));
-        result.push_str("sp");
-        result
+        let addr = self.read_word(self.cpu.pc.wrapping_add(1));
+        format!("ld [{}], sp", format_word(addr))
     }
 
+    /// Disassembles a load immediate byte to register instruction
     fn d_ld_r_n(&self, target: &str) -> String {
-        let mut result = "ld ".to_string();
-        result.push_str(target);
-        result.push_str(",");
         let value = self.read_byte(self.cpu.pc.wrapping_add(1));
-        result.push_str(&format!(" {:#x}h", value));
-        result
+        format!("ld {}, {}", target, format_byte(value))
     }
 
+    /// Disassembles a load register to register instruction
     fn d_ld_r_r(&self, target: &str, value: &str) -> String {
-        let mut result = "ld ".to_string();
-        result.push_str(target);
-        result.push_str(", ");
-        result.push_str(value);
-        result
+        format!("ld {}, {}", target, value)
     }
 
+    /// Disassembles a load immediate word to register pair instruction
     fn d_ld_nn_rr(&self, target: &str) -> String {
-        let mut result = "ld ".to_string();
         let value = self.read_word(self.cpu.pc.wrapping_add(1));
-        result.push_str(&format!(", {:#x}h", value));
-        result.push_str(target);
-        result
+        format!("ld {}, {}", format_word(value), target)
     }
 
+    /// Disassembles a load high memory instruction with register
     fn d_ldh_n_r(&self, target: &str) -> String {
-        let mut result = "ldh ".to_string();
-        let value = 0xFF00 | self.read_byte(self.cpu.pc.wrapping_add(1)) as u16;
-        result.push_str(&format!("{:#x}h, ", value));
-        result.push_str(target);
-        result
+        let addr = 0xFF00 | self.read_byte(self.cpu.pc.wrapping_add(1)) as u16;
+        format!("ldh [{}], {}", format_word(addr), target)
     }
 
+    /// Disassembles a load register from high memory instruction
     fn d_ldh_r_n(&self, target: &str) -> String {
-        let mut result = "ldh ".to_string();
-        result.push_str(target);
-        result.push_str(", ");
-        let value = 0xFF0 | self.read_byte(self.cpu.pc.wrapping_add(1)) as u16;
-        result.push_str(&format!("{:#x}h, ", value));
-        result
+        let addr = 0xFF00 | self.read_byte(self.cpu.pc.wrapping_add(1)) as u16;
+        format!("ldh {}, [{}]", target, format_word(addr))
     }
 
+    /// Disassembles a push register pair instruction
     fn d_push_nn(&self, target: &str) -> String {
-        let mut result = "push ".to_string();
-        result.push_str(target);
-        result
+        format!("push {}", target)
     }
 
+    /// Disassembles a pop register pair instruction
     fn d_pop_nn(&self, target: &str) -> String {
-        let mut result = "pop ".to_string();
-        result.push_str(target);
-        result
+        format!("pop {}", target)
     }
 
+    /// Disassembles an increment register instruction
     fn d_inc(&self, target: &str) -> String {
-        let mut result = "inc ".to_string();
-        result.push_str(target);
-        result
+        format!("inc {}", target)
     }
 
+    /// Disassembles a decrement register instruction
     fn d_dec(&self, target: &str) -> String {
-        let mut result = "dec ".to_string();
-        result.push_str(target);
-        result
+        format!("dec {}", target)
     }
 
+    /// Disassembles an add HL to register pair instruction
     fn d_add_hl_r(&self, target: &str) -> String {
-        let mut result = "add hl, ".to_string();
-        result.push_str(target);
-        result
+        format!("add hl, {}", target)
     }
 
+    /// Disassembles an add SP to immediate byte instruction
     fn d_add_sp_n(&self) -> String {
-        let mut result = "add sp, ".to_string();
         let value = self.read_byte(self.cpu.pc.wrapping_add(1)) as i8;
-        result.push_str(&format!("{:#x}h, ", value));
-        result
+        format!("add sp, {}", format_byte(value as u8))
     }
 
+    /// Disassembles an add A to immediate byte instruction
     fn d_add_a_n(&self) -> String {
-        let mut result = "add a, ".to_string();
         let value = self.read_byte(self.cpu.pc.wrapping_add(1));
-        result.push_str(&format!("{:#x}h, ", value));
-        result
+        format!("add a, {}", format_byte(value))
     }
 
+    /// Disassembles an add A to register instruction
     fn d_add_a_r(&self, value: &str) -> String {
-        let mut result = "add a, ".to_string();
-        result.push_str(value);
-        result
+        format!("add a, {}", value)
     }
 
+    /// Disassembles an ADC A to immediate byte instruction
     fn d_adc_n(&self) -> String {
-        let mut result = "adc ".to_string();
         let value = self.read_byte(self.cpu.pc.wrapping_add(1));
-        result.push_str(&format!("{:#x}h", value));
-        result
+        format!("adc {}", format_byte(value))
     }
 
+    /// Disassembles an ADC A to register instruction
     fn d_adc_r(&self, value: &str) -> String {
-        let mut result = "adc ".to_string();
-        result.push_str(value);
-        result
+        format!("adc {}", value)
     }
 
+    /// Disassembles a SUB register instruction
     fn d_sub_r(&self, value: &str) -> String {
-        let mut result = "sub ".to_string();
-        result.push_str(value);
-        result
+        format!("sub {}", value)
     }
 
+    /// Disassembles a SUB immediate byte instruction
     fn d_sub_n(&self) -> String {
-        let mut result = "sub ".to_string();
         let value = self.read_byte(self.cpu.pc.wrapping_add(1));
-        result.push_str(&format!("{:#x}h", value));
-        result
+        format!("sub {}", format_byte(value))
     }
 
+    /// Disassembles a SBC register instruction
     fn d_sbc_r(&self, value: &str) -> String {
-        let mut result = "sbc ".to_string();
-        result.push_str(value);
-        result
+        format!("sbc {}", value)
     }
 
+    /// Disassembles a SBC immediate byte instruction
     fn d_sbc_n(&self) -> String {
-        let mut result = "sbc ".to_string();
         let value = self.read_byte(self.cpu.pc.wrapping_add(1));
-        result.push_str(&format!("{:#x}h", value));
-        result
+        format!("sbc {}", format_byte(value))
     }
 
+    /// Disassembles an AND register instruction
     fn d_and_r(&self, value: &str) -> String {
-        let mut result = "and ".to_string();
-        result.push_str(value);
-        result
+        format!("and {}", value)
     }
 
+    /// Disassembles an AND immediate byte instruction
     fn d_and_n(&self) -> String {
-        let mut result = "and ".to_string();
         let value = self.read_byte(self.cpu.pc.wrapping_add(1));
-        result.push_str(&format!("{:#x}h", value));
-        result
+        format!("and {}", format_byte(value))
     }
 
+    /// Disassembles an OR register instruction
     fn d_or_r(&self, value: &str) -> String {
-        let mut result = "or ".to_string();
-        result.push_str(value);
-        result
+        format!("or {}", value)
     }
 
+    /// Disassembles an OR immediate byte instruction
     fn d_or_n(&self) -> String {
-        let mut result = "or ".to_string();
         let value = self.read_byte(self.cpu.pc.wrapping_add(1));
-        result.push_str(&format!("{:#x}h", value));
-        result
+        format!("or {}", format_byte(value))
     }
 
+    /// Disassembles an XOR register instruction
     fn d_xor_r(&self, value: &str) -> String {
-        let mut result = "xor ".to_string();
-        result.push_str(value);
-        result
+        format!("xor {}", value)
     }
 
+    /// Disassembles an XOR immediate byte instruction
     fn d_xor_n(&self) -> String {
-        let mut result = "xor ".to_string();
         let value = self.read_byte(self.cpu.pc.wrapping_add(1));
-        result.push_str(&format!("{:#x}h", value));
-        result
+        format!("xor {}", format_byte(value))
     }
 
+    /// Disassembles a CP register instruction
     fn d_cp_r(&self, value: &str) -> String {
-        let mut result = "cp ".to_string();
-        result.push_str(value);
-        result
+        format!("cp {}", value)
     }
 
+    /// Disassembles a CP immediate byte instruction
     fn d_cp_n(&self) -> String {
-        let mut result = "cp ".to_string();
         let value = self.read_byte(self.cpu.pc.wrapping_add(1));
-        result.push_str(&format!("{:#x}h", value));
-        result
+        format!("cp {}", format_byte(value))
     }
 
+    /// Disassembles a JP immediate word instruction
     fn d_jp_nn(&self) -> String {
-        let mut result = "jp ".to_string();
         let value = self.read_word(self.cpu.pc.wrapping_add(1));
-        result.push_str(&format!("{:#x}h", value));
-        result
+        format!("jp {}", format_word(value))
     }
 
+    /// Disassembles a JP flag immediate word instruction
     fn d_jp_f_nn(&self, flag: &str) -> String {
-        let mut result = "jp ".to_string();
-        result.push_str(flag);
-        let value = self.read_byte(self.cpu.pc.wrapping_add(1));
-        result.push_str(&format!(", {:#x}h", value));
-        result
+        let value = self.read_word(self.cpu.pc.wrapping_add(1));
+        format!("jp {}, {}", flag, format_word(value))
     }
 
+    /// Disassembles a JR immediate byte instruction
     fn d_jr_n(&self) -> String {
-        let mut result = "jr ".to_string();
         let value = ((self.cpu.pc as u32 as i32)
             + (self.read_byte(self.cpu.pc.wrapping_add(1)) as i8 as i32))
             as u16;
-        result.push_str(&format!("{:#x}h", value));
-        result
+        format!("jr {}", format_word(value))
     }
 
+    /// Disassembles a JR flag immediate byte instruction
     fn d_jr_f_n(&self, flag: &str) -> String {
-        let mut result = "jr ".to_string();
-        result.push_str(flag);
         let value = self.read_byte(self.cpu.pc.wrapping_add(1)) as i8;
-        result.push_str(&format!(", {:#x}h", value));
-        result
+        format!("jr {}, {}", flag, format_byte(value as u8))
     }
 
+    /// Disassembles a CALL flag immediate word instruction
     fn d_call_f_nn(&self, flag: &str) -> String {
-        let mut result = "call ".to_string();
-        result.push_str(flag);
         let value = self.read_word(self.cpu.pc.wrapping_add(1));
-        result.push_str(&format!(", {:#x}h", value));
-        result
+        format!("call {}, {}", flag, format_word(value))
     }
 
+    /// Disassembles a CALL immediate word instruction
     fn d_call_nn(&self) -> String {
-        let mut result = "call ".to_string();
         let value = self.read_word(self.cpu.pc.wrapping_add(1));
-        result.push_str(&format!("{:#x}h", value));
-        result
+        format!("call {}", format_word(value))
     }
 
+    /// Disassembles the current instruction
     pub fn disassemble(&self) -> String {
         match self.cpu.current_instruction {
             0x00 => "nop".to_string(),
@@ -374,12 +338,12 @@ impl Gb {
             0x6D => self.d_ld_r_r("l", "l"),
             0x6E => self.d_ld_r_r("l", "(hl)"),
             0x6F => self.d_ld_r_r("l", "a"),
-            0x70 => self.d_ld_r_r("hl", "b"),
-            0x71 => self.d_ld_r_r("hl", "c"),
-            0x72 => self.d_ld_r_r("hl", "d"),
-            0x73 => self.d_ld_r_r("hl", "e"),
-            0x74 => self.d_ld_r_r("hl", "h"),
-            0x75 => self.d_ld_r_r("hl", "l"),
+            0x70 => self.d_ld_r_r("(hl)", "b"),
+            0x71 => self.d_ld_r_r("(hl)", "c"),
+            0x72 => self.d_ld_r_r("(hl)", "d"),
+            0x73 => self.d_ld_r_r("(hl)", "e"),
+            0x74 => self.d_ld_r_r("(hl)", "h"),
+            0x75 => self.d_ld_r_r("(hl)", "l"),
             0x76 => "halt".to_string(),
             0x77 => self.d_ld_r_r("(hl)", "a"),
             0x78 => self.d_ld_r_r("a", "b"),
@@ -511,22 +475,27 @@ impl Gb {
         }
     }
 
+    /// Gets the register name based on the opcode bits
     fn get_reg_name(&self, opcode: u8) -> &str {
-        let register_id: u8 = (opcode >> 1).wrapping_add(1) & 3;
-        let src_low: u8 = opcode & 1;
-        if register_id == 0 {
-            if src_low == 1 {
-                return "a";
-            }
-            return "(hl)";
+        let reg_idx = (opcode & 0x07) as usize;
+        if reg_idx < REGISTER_NAMES.len() {
+            REGISTER_NAMES[reg_idx]
+        } else {
+            "invalid"
         }
-        if src_low == 1 {
-            return REGISTER_NAMES[register_id as usize];
-        }
-        const HIGH_REGISTER: [&str; 4] = ["a", "b", "d", "h"];
-        return HIGH_REGISTER[register_id as usize];
     }
 
+    /// Gets the register pair name based on the opcode bits
+    fn get_reg_pair_name(&self, opcode: u8) -> &str {
+        let pair_idx = ((opcode >> 4) & 0x03) as usize;
+        if pair_idx < REGISTER_PAIRS.len() {
+            REGISTER_PAIRS[pair_idx]
+        } else {
+            "invalid"
+        }
+    }
+
+    /// Disassembles a RLC register instruction
     fn d_rlc_r(&self, prefix: u8) -> String {
         let mut result = "rlc ".to_string();
         let register: &str = self.get_reg_name(prefix);
@@ -534,6 +503,7 @@ impl Gb {
         result
     }
 
+    /// Disassembles a RRC register instruction
     fn d_rrc_r(&self, prefix: u8) -> String {
         let mut result = "rrc ".to_string();
         let register: &str = self.get_reg_name(prefix);
@@ -541,6 +511,7 @@ impl Gb {
         result
     }
 
+    /// Disassembles a RL register instruction
     fn d_rl_r(&self, prefix: u8) -> String {
         let mut result = "rl ".to_string();
         let register: &str = self.get_reg_name(prefix);
@@ -548,6 +519,7 @@ impl Gb {
         result
     }
 
+    /// Disassembles a RR register instruction
     fn d_rr_r(&self, prefix: u8) -> String {
         let mut result = "rr ".to_string();
         let register: &str = self.get_reg_name(prefix);
@@ -555,6 +527,7 @@ impl Gb {
         result
     }
 
+    /// Disassembles a SLA register instruction
     fn d_sla_r(&self, prefix: u8) -> String {
         let mut result = "sla ".to_string();
         let register: &str = self.get_reg_name(prefix);
@@ -562,6 +535,7 @@ impl Gb {
         result
     }
 
+    /// Disassembles a SRA register instruction
     fn d_sra_r(&self, prefix: u8) -> String {
         let mut result = "sra ".to_string();
         let register: &str = self.get_reg_name(prefix);
@@ -569,6 +543,7 @@ impl Gb {
         result
     }
 
+    /// Disassembles a SWAP register instruction
     fn d_swap_r(&self, prefix: u8) -> String {
         let mut result = "swap ".to_string();
         let register: &str = self.get_reg_name(prefix);
@@ -576,6 +551,7 @@ impl Gb {
         result
     }
 
+    /// Disassembles a SRL register instruction
     fn d_srl_r(&self, prefix: u8) -> String {
         let mut result = "srl ".to_string();
         let register: &str = self.get_reg_name(prefix);
@@ -583,6 +559,7 @@ impl Gb {
         result
     }
 
+    /// Disassembles a BIT/RES/SET register instruction
     fn d_bit_res_set_r(&self, prefix: u8) -> String {
         let bit = (prefix >> 3) & 7;
         let mut result: String;
@@ -599,6 +576,7 @@ impl Gb {
         result
     }
 
+    /// Disassembles a CB prefix instruction
     fn disassemble_cb(&self) -> String {
         let prefix = self.read_byte(self.cpu.pc.wrapping_add(1));
         match prefix >> 3 {
