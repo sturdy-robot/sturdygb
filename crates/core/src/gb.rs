@@ -105,7 +105,7 @@ impl Gb {
             hram,
             ram_bank: 1,
             ie_flag: 0,
-            if_flag: 0,
+            if_flag: 0xE1,
             boot_rom_enabled: 0,
             prepare_speed_switch: false,
             speed_mode: SpeedMode::Normal,
@@ -144,35 +144,37 @@ impl Gb {
     }
 
     fn cpu_tick(&mut self) {
-        if !self.cpu.is_halted {
-            self.cpu.current_instruction = self.read_byte(self.cpu.pc);
+        if self.cpu.is_halted {
+            self.cpu.pending_cycles += 1;
             
-            if self.cpu.halt_bug {
-                // For HALT bug, execute the instruction but don't increment PC
-                self.decode();
-                self.cpu.halt_bug = false;
-                // PC increment will be skipped since halt_bug is true
-            } else {
-                self.decode();
-            }
-            
-            self.cpu.pending_cycles += self.cpu.instruction_cycles;
-        } else {
-            // When halted, we still need to check for interrupts
-            // HALT always consumes 4 T-cycles (1 M-cycle)
-            self.cpu.pending_cycles = 4;
-            
-            // Check if we should exit HALT
-            if (self.ie_flag & self.if_flag) != 0 {
-                if self.cpu.interrupt_master {
-                    // Normal interrupt handling will resume execution
-                    self.cpu.is_halted = false;
-                } else {
-                    // Exit HALT but don't handle interrupt since IME=0
-                    self.cpu.is_halted = false;
+            // Check for pending interrupts
+            let pending_interrupts = self.ie_flag & self.if_flag;
+            if pending_interrupts != 0 {
+                // Exit HALT regardless of IME
+                self.cpu.is_halted = false;
+                // If IME=0 and interrupts pending, trigger HALT bug
+                if !self.cpu.interrupt_master {
+                    self.cpu.halt_bug = true;
                 }
             }
+            return;
         }
+
+        self.cpu.current_instruction = self.read_byte(self.cpu.pc);
+        
+        if self.cpu.halt_bug {
+            // Execute instruction without incrementing PC
+            self.decode();
+            self.cpu.pending_cycles += self.cpu.instruction_cycles;
+            self.cpu.halt_bug = false;
+        }
+        
+        // Execute instruction normally (with PC increment)
+        self.decode();
+        self.cpu.pending_cycles += self.cpu.instruction_cycles;
+        
+        // Handle any pending interrupts
+        self.handle_interrupt();
     }
 
     fn print_serial_message(&mut self) {
@@ -183,7 +185,7 @@ impl Gb {
 
     fn debug_message(&self) {
         println!(
-            "A:{:02X} F:{:02X} B:{:02X} C:{:02X} D:{:02X} E:{:02X} H:{:02X} L:{:02X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X}",
+            "A:{:02X} F:{:02X} B:{:02X} C:{:02X} D:{:02X} E:{:02X} H:{:02X} L:{:02X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X} LY:{:02X} STAT: {:02X}",
             self.cpu.a(),
             self.cpu.f(),
             self.cpu.b(),
@@ -198,6 +200,8 @@ impl Gb {
             self.read_byte(self.cpu.pc.wrapping_add(1)),
             self.read_byte(self.cpu.pc.wrapping_add(2)),
             self.read_byte(self.cpu.pc.wrapping_add(3)),
+            self.ppu.get_ly(),
+            self.ppu.stat,
         );
     }
 

@@ -19,7 +19,7 @@ pub enum PpuMode {
 
 pub struct Ppu {
     lcdc: u8,
-    stat: u8,
+    pub stat: u8,
     scy: u8,
     scx: u8,
     ly: u8,
@@ -59,7 +59,7 @@ impl Ppu {
             stat: 0x85, // Mode 2 (OAM Search), LYC=LY interrupt enabled
             scy: 0,
             scx: 0,
-            ly: 0, // Start at scanline 0
+            ly: 0,
             lyc: 0,
             bgp: 0xFC,  // Default background palette
             obp0: 0xFF, // Default sprite palette 0

@@ -14,7 +14,7 @@ impl Serial {
     pub fn new() -> Self {
         Self {
             sb: 0,
-            sc: 0,
+            sc: 0x7E,
             serial_data: Vec::new(),
         }
     }
