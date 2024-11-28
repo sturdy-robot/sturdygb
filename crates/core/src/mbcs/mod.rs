@@ -13,6 +13,8 @@ use mbc1::Mbc1;
 use mbc2::Mbc2;
 use mbc3::Mbc3;
 use mbc5::Mbc5;
+use mbc6::Mbc6;
+use mbc7::Mbc7;
 use romonly::RomOnly;
 
 use super::cartridge::{CartridgeHeader, GbMode, MBCTypes, Mbc};
@@ -37,6 +39,12 @@ pub fn get_mbc(rom_data: Vec<u8>, header: CartridgeHeader) -> (Box<dyn Mbc>, GbM
         }
         MBCTypes::Mbc5 { ram, battery, rumble } => {
             (Box::new(Mbc5::new(rom_data, header, ram, battery, rumble)), gb_mode)
+        }
+        MBCTypes::Mbc6 => {
+            (Box::new(Mbc6::new(rom_data, header)), gb_mode)
+        }
+        MBCTypes::Mbc7 => {
+            (Box::new(Mbc7::new(rom_data, header)), gb_mode)
         }
         _ => unimplemented!(),
     }
