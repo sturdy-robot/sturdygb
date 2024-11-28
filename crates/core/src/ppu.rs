@@ -233,43 +233,57 @@ impl Ppu {
             // Check all sprites in OAM
             for sprite_index in 0..40 {
                 let oam_addr = sprite_index * 4;
-                let sprite_y = self.oam[oam_addr].wrapping_sub(16) as usize;
-                let sprite_x = self.oam[oam_addr + 1].wrapping_sub(8) as usize;
-                let tile_number = self.oam[oam_addr + 2] as u16;
+                let sprite_y = self.oam[oam_addr].wrapping_sub(16);
+                let sprite_x = self.oam[oam_addr + 1].wrapping_sub(8);
+                let tile_number = self.oam[oam_addr + 2];
                 let attributes = self.oam[oam_addr + 3];
 
                 // Check if sprite is visible on this scanline
-                if current_line >= sprite_y && current_line < sprite_y + sprite_height {
+                if (current_line as u8) >= sprite_y && (current_line as u8) < sprite_y.wrapping_add(sprite_height as u8) {
                     let palette = if attributes & 0x10 != 0 { self.obp1 } else { self.obp0 };
                     let flip_x = attributes & 0x20 != 0;
                     let flip_y = attributes & 0x40 != 0;
                     let behind_bg = attributes & 0x80 != 0;
 
-                    let line = current_line - sprite_y;
-                    let actual_line = if flip_y { sprite_height - 1 - line } else { line };
+                    let line = (current_line as u8).wrapping_sub(sprite_y);
+                    let actual_line = if flip_y { sprite_height - 1 - (line as usize) } else { line as usize };
 
                     // Get tile data for sprite
-                    let tile_addr = (0x8000 + (tile_number * 16)) & 0x1FFF;
-                    let tile_data_low = self.vram[(tile_addr as usize + actual_line * 2) as usize];
-                    let tile_data_high = self.vram[(tile_addr as usize + actual_line * 2 + 1) as usize];
+                    let tile_addr = if tall_sprites {
+                        let tile_num = tile_number & !1;
+                        0x8000 + (tile_num as usize * 16) + (if actual_line >= 8 { 16 } else { 0 })
+                    } else {
+                        0x8000 + (tile_number as usize * 16)
+                    };
+
+                    // Get tile row data
+                    let row_addr = (tile_addr & 0x1FFF) + ((actual_line & 7) * 2);
+                    let tile_data_low = self.vram[row_addr];
+                    let tile_data_high = self.vram[row_addr + 1];
 
                     // Draw sprite pixels
-                    for x in 0..8 {
-                        if sprite_x + x >= 160 {
+                    for x_pixel in 0..8 {
+                        let screen_x = sprite_x.wrapping_add(x_pixel);
+                        if screen_x >= 160 {
                             continue;
                         }
 
-                        let bit = if flip_x { x } else { 7 - x };
+                        let bit = if flip_x { x_pixel } else { 7 - x_pixel };
                         let low_bit = (tile_data_low >> bit) & 1;
                         let high_bit = (tile_data_high >> bit) & 1;
                         let color = (high_bit << 1) | low_bit;
 
-                        if color != 0 {  // Color 0 is transparent
-                            let bg_pixel = self.screen[current_line][sprite_x + x];
-                            if !behind_bg || bg_pixel == 0 {
-                                let palette_color = (palette >> (color * 2)) & 0x03;
-                                self.screen[current_line][sprite_x + x] = palette_color;
-                            }
+                        // Skip transparent pixels (color 0)
+                        if color == 0 {
+                            continue;
+                        }
+
+                        // Apply sprite palette
+                        let palette_pixel = (palette >> (color * 2)) & 0x03;
+
+                        // Check sprite priority
+                        if !behind_bg || self.screen[current_line][screen_x as usize] == 0 {
+                            self.screen[current_line][screen_x as usize] = palette_pixel;
                         }
                     }
                 }
@@ -406,7 +420,7 @@ impl Gb {
                             if self.ppu.stat & 0x10 != 0 {
                                 self.request_interrupt(Interrupt::LcdStat);
                             }
-                            self.ppu.frame_ready = true;
+                            // self.ppu.frame_ready = true;
                         } else {
                             self.ppu.set_mode(PpuMode::SearchingOAM);
                             if self.ppu.stat & 0x20 != 0 {
@@ -422,6 +436,7 @@ impl Gb {
 
                         if self.ppu.ly > 153 {
                             self.ppu.ly = 0;
+                            self.ppu.frame_ready = true;
                             self.ppu.set_mode(PpuMode::SearchingOAM);
                             if self.ppu.stat & 0x20 != 0 {
                                 self.request_interrupt(Interrupt::LcdStat);

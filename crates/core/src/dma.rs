@@ -45,9 +45,11 @@ impl Gb {
                 return;
             }
 
-            let address = self.ppu.dma.value as u16 * 0x100 + self.ppu.dma.byte as u16;
-            let value = self.read_byte(address);
-            self.write_byte(address, value);
+            if self.ppu.dma.byte < 0xA0 {
+                let source_addr = self.ppu.dma.value as u16 * 0x100 + self.ppu.dma.byte as u16;
+                let value = self.read_byte(source_addr);
+                self.ppu.oam[self.ppu.dma.byte as usize] = value;
+            }
             self.ppu.dma.byte = self.ppu.dma.byte.wrapping_add(1);
             self.ppu.dma.active = self.ppu.dma.byte < 0xA0;
         }
