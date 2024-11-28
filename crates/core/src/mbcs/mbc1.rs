@@ -24,7 +24,7 @@ impl Mbc1 {
         has_battery: bool,
     ) -> Self {
         let mut external_ram: Vec<u8>;
-        if has_ram {
+        if has_ram && header.ram_size > 0 {
             external_ram = vec![0; header.ram_size as usize];
             let mut rng = thread_rng();
             rng.fill_bytes(&mut external_ram);
@@ -55,16 +55,16 @@ impl Mbc for Mbc1 {
     }
 
     fn read_ram(&self, address: u16) -> u8 {
-        if self.ram_enabled {
-            let bank = if self.banking_mode {
-                self.current_ram_bank
-            } else {
-                0
-            };
-            self.external_ram[(bank * 0x2000) | ((address & 0x1FFF) as usize)]
+        if !self.ram_enabled || self.external_ram.is_empty() {
+            return 0xFF;
+        }
+
+        let bank = if self.banking_mode {
+            self.current_ram_bank
         } else {
             0
-        }
+        };
+        self.external_ram[(bank * 0x2000) | ((address & 0x1FFF) as usize)]
     }
 
     fn write_rom(&mut self, address: u16, value: u8) {
@@ -92,13 +92,15 @@ impl Mbc for Mbc1 {
     }
 
     fn write_ram(&mut self, address: u16, value: u8) {
-        if self.ram_enabled {
-            let bank = if self.banking_mode {
-                self.current_ram_bank
-            } else {
-                0
-            };
-            self.external_ram[(bank * 0x2000) | ((address & 0x1FFF) as usize)] = value;
+        if !self.ram_enabled || self.external_ram.is_empty() {
+            return;
         }
+
+        let bank = if self.banking_mode {
+            self.current_ram_bank
+        } else {
+            0
+        };
+        self.external_ram[(bank * 0x2000) | ((address & 0x1FFF) as usize)] = value;
     }
 }
