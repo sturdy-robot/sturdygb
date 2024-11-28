@@ -115,9 +115,13 @@ pub fn main() {
             .copy(&texture, None, None)
             .expect("Failed to copy texture");
         canvas.present();
-        let frame_time = Duration::new(0, 1_000_000_000 / 60);
+        // Game Boy runs at 59.7275 Hz
+        let frame_time = Duration::from_nanos(16_742_706); // 1_000_000_000 / 59.7275
         if start.elapsed() < frame_time {
-            std::thread::sleep(frame_time - start.elapsed());
+            let sleep_time = frame_time - start.elapsed();
+            if sleep_time > Duration::from_millis(1) {
+                std::thread::sleep(sleep_time - Duration::from_millis(1));
+            }
         }
         start = Instant::now();
     }

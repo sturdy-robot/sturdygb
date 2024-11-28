@@ -74,24 +74,31 @@ impl Joypad {
         // Keep the upper bits (4-5) which select button type
         let selection = self.data & 0x30;
 
-        // Default state when neither is selected
+        // When neither is selected (both bits set), all inputs read as high
         if selection == 0x30 {
-            self.data = 0x3F;
+            self.data = 0xFF;
             return;
         }
 
-        // Combine the selection bits with the appropriate button states
-        self.data = selection
-            | if selection & 0x20 == 0 {
-                // Action buttons selected
-                self.button_states
-            } else if selection & 0x10 == 0 {
-                // Direction buttons selected
-                self.dpad_states
-            } else {
-                0x0F // Both selected (shouldn't happen)
-            }
-            | 0xC0; // Set unused bits
+        // Start with unused bits set (6-7) and keep selection bits
+        let mut result = 0xC0 | selection;
+
+        // Add appropriate button states based on selection
+        if selection & 0x20 == 0 {
+            // Action buttons selected (P15)
+            result |= self.button_states;
+        }
+        if selection & 0x10 == 0 {
+            // Direction buttons selected (P14)
+            result |= self.dpad_states;
+        }
+
+        // If neither is selected, all inputs read as high
+        if selection == 0x30 {
+            result |= 0x0F;
+        }
+
+        self.data = result;
     }
 }
 

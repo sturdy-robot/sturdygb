@@ -17,6 +17,7 @@ pub struct Cpu {
     pub is_halted: bool,
     pub ime_toggle: bool,
     pub is_stopped: bool,
+    pub halt_bug: bool,
     pub ticks: u32,
 }
 
@@ -67,11 +68,15 @@ impl Cpu {
             is_halted: false,
             ime_toggle: false,
             is_stopped: false,
+            halt_bug: false,
             ticks: 0,
         }
     }
 
     pub fn advance_pc(&mut self) {
+        if self.halt_bug {
+            return;
+        }
         let adv = OPCODES_SIZE[self.current_instruction as usize];
         self.pc = self.pc.wrapping_add(adv);
     }

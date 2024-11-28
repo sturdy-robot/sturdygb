@@ -137,7 +137,7 @@ impl Gb {
     }
 
     pub fn components_tick(&mut self) {
-        self.dma_tick(self.cpu.pending_cycles as u32);
+        self.dma_tick(self.cpu.pending_cycles as u32 * 4);
         self.ppu_tick(self.cpu.pending_cycles as u32 * 4);
         self.timer_tick(self.cpu.pending_cycles as u32 * 4);
         self.cpu.pending_cycles = 0;
@@ -146,10 +146,32 @@ impl Gb {
     fn cpu_tick(&mut self) {
         if !self.cpu.is_halted {
             self.cpu.current_instruction = self.read_byte(self.cpu.pc);
-            self.decode();
+            
+            if self.cpu.halt_bug {
+                // For HALT bug, execute the instruction but don't increment PC
+                self.decode();
+                self.cpu.halt_bug = false;
+                // PC increment will be skipped since halt_bug is true
+            } else {
+                self.decode();
+            }
+            
             self.cpu.pending_cycles += self.cpu.instruction_cycles;
         } else {
-            self.cpu.pending_cycles = 1;
+            // When halted, we still need to check for interrupts
+            // HALT always consumes 4 T-cycles (1 M-cycle)
+            self.cpu.pending_cycles = 4;
+            
+            // Check if we should exit HALT
+            if (self.ie_flag & self.if_flag) != 0 {
+                if self.cpu.interrupt_master {
+                    // Normal interrupt handling will resume execution
+                    self.cpu.is_halted = false;
+                } else {
+                    // Exit HALT but don't handle interrupt since IME=0
+                    self.cpu.is_halted = false;
+                }
+            }
         }
     }
 

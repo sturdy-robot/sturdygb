@@ -20,6 +20,12 @@ impl Gb {
 
     pub fn handle_interrupt(&mut self) {
         if self.check_interrupts() {
+            // Check if there are any pending interrupts before disabling IME
+            let pending_interrupts = self.ie_flag & self.if_flag;
+            if pending_interrupts == 0 {
+                return;
+            }
+            
             self.cpu.interrupt_master = false;
             self.cpu.sp = self.cpu.sp.wrapping_sub(2);
             let pc = if self.cpu.is_halted {
@@ -39,9 +45,11 @@ impl Gb {
         if self.cpu.is_halted {
             if !self.cpu.interrupt_master {
                 if self.ie_flag & self.if_flag != 0 {
-                    // Halt Bug
+                    // Implement HALT bug: The next instruction is read twice
                     self.cpu.is_halted = false;
-                    // TODO: Implement the halt bug
+                    self.cpu.pc = self.cpu.pc.wrapping_add(1);
+                    // Don't increment PC after next instruction
+                    self.cpu.halt_bug = true;
                 }
             }
         }

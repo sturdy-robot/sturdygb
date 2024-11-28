@@ -97,33 +97,27 @@ impl Ppu {
     }
 
     pub fn set_mode(&mut self, mode: PpuMode) {
-        self.stat &= !0x03;
-        self.stat |= mode as u8;
-
-        // Check if we should trigger STAT interrupt for this mode
-        let mode_int_flag = match mode {
-            PpuMode::HBlank => self.stat & 0x08,       // Mode 0
-            PpuMode::VBlank => self.stat & 0x10,       // Mode 1
-            PpuMode::SearchingOAM => self.stat & 0x20, // Mode 2
-            PpuMode::Transferring => 0,                // Mode 3 doesn't trigger interrupt
-        };
-
-        if mode_int_flag != 0 {
-            self.stat |= 0x04; // Set interrupt request bit
-        }
+        // Update mode bits without affecting other bits
+        self.stat = (self.stat & !0x03) | (mode as u8);
+        self.mode = mode;
     }
 
     pub fn check_lyc(&mut self) {
-        // Update LY=LYC flag
-        if self.ly == self.lyc {
-            self.stat |= 0x04; // Set coincidence flag
-            if self.stat & 0x40 != 0 {
-                // LY=LYC interrupt enabled
-                self.stat |= 0x04; // Request STAT interrupt
-            }
+        let coincidence = self.ly == self.lyc;
+        // Update coincidence flag (bit 2)
+        if coincidence {
+            self.stat |= 0x04;
         } else {
-            self.stat &= !0x04; // Clear coincidence flag
+            self.stat &= !0x04;
         }
+    }
+
+    pub fn check_stat_interrupt(&self) -> bool {
+        // Check each STAT interrupt source
+        (self.stat & 0x40 != 0 && self.ly == self.lyc) || // LYC=LY
+        (self.stat & 0x20 != 0 && self.mode == PpuMode::SearchingOAM) || // Mode 2
+        (self.stat & 0x10 != 0 && self.mode == PpuMode::VBlank) || // Mode 1
+        (self.stat & 0x08 != 0 && self.mode == PpuMode::HBlank) // Mode 0
     }
 
     pub fn render_scanline(&mut self) {
@@ -424,66 +418,63 @@ impl Gb {
             // LCD is off
             self.ppu.ly = 0;
             self.ppu.mode_clock = 0;
-            self.ppu.stat &= !0x03; // Set mode to 0
+            self.ppu.set_mode(PpuMode::HBlank);
             return;
         }
 
-        for _ in 0..ticks {
-            self.ppu.mode_clock += 1;
+        self.ppu.mode_clock = self.ppu.mode_clock.wrapping_add(ticks);
 
-            match self.ppu.get_ppu_mode() {
-                PpuMode::HBlank => {
-                    if self.ppu.mode_clock >= 204 {
-                        self.ppu.mode_clock = 0;
-                        self.ppu.ly += 1;
-                        self.ppu.check_lyc();
+        match self.ppu.get_ppu_mode() {  
+            PpuMode::HBlank => {
+                if self.ppu.mode_clock >= 204 {
+                    self.ppu.mode_clock = 0;
+                    self.ppu.ly = self.ppu.ly.wrapping_add(1);
+                    self.ppu.check_lyc();
 
-                        if self.ppu.ly == 144 {
-                            self.ppu.set_mode(PpuMode::VBlank);
-                            self.request_interrupt(Interrupt::Vblank);
-                            if self.ppu.stat & 0x10 != 0 {
-                                self.request_interrupt(Interrupt::LcdStat);
-                            }
-                            // self.ppu.frame_ready = true;
-                        } else {
-                            self.ppu.set_mode(PpuMode::SearchingOAM);
-                            if self.ppu.stat & 0x20 != 0 {
-                                self.request_interrupt(Interrupt::LcdStat);
-                            }
-                        }
-                    }
-                }
-                PpuMode::VBlank => {
-                    if self.ppu.mode_clock >= 456 {
-                        self.ppu.mode_clock = 0;
-                        self.ppu.ly += 1;
-
-                        if self.ppu.ly > 153 {
-                            self.ppu.ly = 0;
-                            self.ppu.frame_ready = true;
-                            self.ppu.set_mode(PpuMode::SearchingOAM);
-                            if self.ppu.stat & 0x20 != 0 {
-                                self.request_interrupt(Interrupt::LcdStat);
-                            }
-                        }
-                        self.ppu.check_lyc();
-                    }
-                }
-                PpuMode::SearchingOAM => {
-                    if self.ppu.mode_clock >= 80 {
-                        self.ppu.mode_clock = 0;
-                        self.ppu.set_mode(PpuMode::Transferring);
-                    }
-                }
-                PpuMode::Transferring => {
-                    if self.ppu.mode_clock >= 172 {
-                        self.ppu.mode_clock = 0;
-                        self.ppu.set_mode(PpuMode::HBlank);
-                        if self.ppu.stat & 0x08 != 0 {
+                    if self.ppu.ly == 144 {
+                        self.ppu.set_mode(PpuMode::VBlank);
+                        self.request_interrupt(Interrupt::Vblank);
+                        if self.ppu.stat & 0x10 != 0 {
                             self.request_interrupt(Interrupt::LcdStat);
                         }
-                        self.ppu.render_scanline();
+                    } else {
+                        self.ppu.set_mode(PpuMode::SearchingOAM);
+                        if self.ppu.stat & 0x20 != 0 {
+                            self.request_interrupt(Interrupt::LcdStat);
+                        }
                     }
+                }
+            }
+            PpuMode::VBlank => {
+                if self.ppu.mode_clock >= 456 {
+                    self.ppu.mode_clock = 0;
+                    self.ppu.ly = self.ppu.ly.wrapping_add(1);
+
+                    if self.ppu.ly > 153 {
+                        self.ppu.ly = 0;
+                        self.ppu.frame_ready = true;
+                        self.ppu.set_mode(PpuMode::SearchingOAM);
+                        if self.ppu.stat & 0x20 != 0 {
+                            self.request_interrupt(Interrupt::LcdStat);
+                        }
+                    }
+                    self.ppu.check_lyc();
+                }
+            }
+            PpuMode::SearchingOAM => {
+                if self.ppu.mode_clock >= 80 {
+                    self.ppu.mode_clock = 0;
+                    self.ppu.set_mode(PpuMode::Transferring);
+                }
+            }
+            PpuMode::Transferring => {
+                if self.ppu.mode_clock >= 172 {
+                    self.ppu.mode_clock = 0;
+                    self.ppu.set_mode(PpuMode::HBlank);
+                    if self.ppu.stat & 0x08 != 0 {
+                        self.request_interrupt(Interrupt::LcdStat);
+                    }
+                    self.ppu.render_scanline();
                 }
             }
         }

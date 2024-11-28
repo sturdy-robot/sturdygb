@@ -42,15 +42,14 @@ impl Mbc3 {
 impl Mbc for Mbc3 {
     fn read_rom(&self, address: u16) -> u8 {
         match address {
-            0x0000..=0x3FFF => self.rom_data[address as usize],
+            0x0000..=0x3FFF => {
+                // Fast path for ROM bank 0
+                self.rom_data.get(address as usize).copied().unwrap_or(0xFF)
+            }
             0x4000..=0x7FFF => {
-                let bank = self.rom_bank;
-                let addr = bank * 0x4000 + (address as usize - 0x4000);
-                if addr < self.rom_data.len() {
-                    self.rom_data[addr]
-                } else {
-                    0xFF
-                }
+                // Fast path for banked ROM access
+                let addr = (self.rom_bank << 14) | (address as usize & 0x3FFF);
+                self.rom_data.get(addr).copied().unwrap_or(0xFF)
             }
             _ => 0xFF,
         }
@@ -64,30 +63,27 @@ impl Mbc for Mbc3 {
             }
             // ROM Bank Number
             0x2000..=0x3FFF => {
-                let mut bank = value & 0x7F;
-                if bank == 0 {
-                    bank = 1;
-                }
-                self.rom_bank = bank as usize;
+                // Fast path for ROM bank switching
+                let bank = if value & 0x7F == 0 { 1 } else { value & 0x7F };
+                let max_bank = (self.rom_data.len() >> 14).saturating_sub(1);
+                self.rom_bank = (bank as usize).min(max_bank);
             }
             // RAM Bank Number or RTC Register Select
             0x4000..=0x5FFF => {
-                if value <= 0x03 {
-                    self.ram_bank = value as usize;
-                } else if self.has_timer && (0x08..=0x0C).contains(&value) {
-                    // RTC Register select
+                if value <= 0x03 || (self.has_timer && (0x08..=0x0C).contains(&value)) {
                     self.ram_bank = value as usize;
                 }
             }
             // Latch Clock Data
             0x6000..=0x7FFF => {
-                if self.has_timer {
-                    if self.rtc_latch == 0 && value == 1 {
-                        self.rtc_latched = !self.rtc_latched;
-                        // TODO: If unlatching, copy current time to rtc_registers
+                if self.has_timer && self.rtc_latch == 0 && value == 1 {
+                    self.rtc_latched = !self.rtc_latched;
+                    if !self.rtc_latched {
+                        // Simplified RTC update - just increment seconds for now
+                        self.rtc_registers[0] = self.rtc_registers[0].wrapping_add(1);
                     }
-                    self.rtc_latch = value;
                 }
+                self.rtc_latch = value;
             }
             _ => {}
         }
@@ -98,25 +94,18 @@ impl Mbc for Mbc3 {
             return 0xFF;
         }
 
-        match address {
-            0xA000..=0xBFFF => {
-                if self.has_timer && self.ram_bank >= 0x08 {
-                    // RTC Register read
-                    let rtc_reg = self.ram_bank - 0x08;
-                    self.rtc_registers[rtc_reg]
-                } else if self.has_ram && self.ram_bank <= 0x03 {
-                    let addr = self.ram_bank * 0x2000 + (address as usize - 0xA000);
-                    if addr < self.ram.len() {
-                        self.ram[addr]
-                    } else {
-                        0xFF
-                    }
-                } else {
-                    0xFF
-                }
+        if address >= 0xA000 && address <= 0xBFFF {
+            if self.has_timer && self.ram_bank >= 0x08 {
+                // Fast path for RTC register read
+                return self.rtc_registers[self.ram_bank - 0x08];
             }
-            _ => 0xFF,
+            if self.has_ram && self.ram_bank <= 0x03 {
+                // Fast path for RAM read
+                let addr = (self.ram_bank << 13) | (address as usize & 0x1FFF);
+                return self.ram.get(addr).copied().unwrap_or(0xFF);
+            }
         }
+        0xFF
     }
 
     fn write_ram(&mut self, address: u16, value: u8) {
@@ -124,20 +113,19 @@ impl Mbc for Mbc3 {
             return;
         }
 
-        match address {
-            0xA000..=0xBFFF => {
-                if self.has_timer && self.ram_bank >= 0x08 {
-                    // RTC Register write
-                    let rtc_reg = self.ram_bank - 0x08;
-                    self.rtc_registers[rtc_reg] = value;
-                } else if self.has_ram && self.ram_bank <= 0x03 {
-                    let addr = self.ram_bank * 0x2000 + (address as usize - 0xA000);
-                    if addr < self.ram.len() {
-                        self.ram[addr] = value;
-                    }
+        if address >= 0xA000 && address <= 0xBFFF {
+            if self.has_timer && self.ram_bank >= 0x08 {
+                // Fast path for RTC register write
+                self.rtc_registers[self.ram_bank - 0x08] = value;
+                return;
+            }
+            if self.has_ram && self.ram_bank <= 0x03 {
+                // Fast path for RAM write
+                let addr = (self.ram_bank << 13) | (address as usize & 0x1FFF);
+                if let Some(ram_cell) = self.ram.get_mut(addr) {
+                    *ram_cell = value;
                 }
             }
-            _ => {}
         }
     }
 }
