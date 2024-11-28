@@ -31,8 +31,9 @@ impl Gb {
             return;
         }
 
-        if self.cpu.interrupt_master {
+        if self.cpu.interrupt_master && self.cpu.is_halted {
             self.cpu.is_halted = false;
+            return;
         }
 
         if !self.check_interrupts() {
