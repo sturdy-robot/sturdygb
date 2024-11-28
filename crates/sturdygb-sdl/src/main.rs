@@ -9,6 +9,7 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::{Color, PixelFormatEnum};
 use std::time::{Duration, Instant};
 use sturdygb_core::prelude::GbInstance;
+use sturdygb_core::joypad::JoypadButton;
 
 const SCREEN_WIDTH: u32 = 800;
 const SCREEN_HEIGHT: u32 = 720;
@@ -53,6 +54,36 @@ pub fn main() {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => break 'running,
+                Event::KeyDown {
+                    keycode: Some(key), ..
+                } => {
+                    match key {
+                        Keycode::Z => gb.press_button(JoypadButton::A),
+                        Keycode::X => gb.press_button(JoypadButton::B),
+                        Keycode::Return => gb.press_button(JoypadButton::Start),
+                        Keycode::RShift => gb.press_button(JoypadButton::Select),
+                        Keycode::Up => gb.press_button(JoypadButton::Up),
+                        Keycode::Down => gb.press_button(JoypadButton::Down),
+                        Keycode::Left => gb.press_button(JoypadButton::Left),
+                        Keycode::Right => gb.press_button(JoypadButton::Right),
+                        _ => {}
+                    }
+                }
+                Event::KeyUp {
+                    keycode: Some(key), ..
+                } => {
+                    match key {
+                        Keycode::Z => gb.release_button(JoypadButton::A),
+                        Keycode::X => gb.release_button(JoypadButton::B),
+                        Keycode::Return => gb.release_button(JoypadButton::Start),
+                        Keycode::RShift => gb.release_button(JoypadButton::Select),
+                        Keycode::Up => gb.release_button(JoypadButton::Up),
+                        Keycode::Down => gb.release_button(JoypadButton::Down),
+                        Keycode::Left => gb.release_button(JoypadButton::Left),
+                        Keycode::Right => gb.release_button(JoypadButton::Right),
+                        _ => {}
+                    }
+                }
                 _ => {}
             }
         }

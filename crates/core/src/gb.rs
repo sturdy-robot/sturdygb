@@ -6,7 +6,7 @@ use rand::prelude::*;
 
 use crate::cartridge::{GbMode, Mbc};
 use crate::cpu::Cpu;
-use crate::joypad::Joypad;
+use crate::joypad::{Joypad, JoypadButton};
 use crate::ppu::{Ppu, PpuMode};
 use crate::serial::Serial;
 use crate::sound::Sound;
@@ -177,5 +177,13 @@ impl Gb {
             self.read_byte(self.cpu.pc.wrapping_add(2)),
             self.read_byte(self.cpu.pc.wrapping_add(3)),
         );
+    }
+
+    pub fn press_button(&mut self, button: JoypadButton) {
+        self.joypad.press(button);
+    }
+
+    pub fn release_button(&mut self, button: JoypadButton) {
+        self.joypad.release(button);
     }
 }

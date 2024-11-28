@@ -8,7 +8,7 @@ mod disasm;
 pub mod gb;
 mod instructions;
 mod interrupts;
-mod joypad;
+pub mod joypad;
 mod cartridge;
 mod mbcs;
 mod memorybus;
