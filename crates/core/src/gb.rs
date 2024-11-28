@@ -146,35 +146,13 @@ impl Gb {
     fn cpu_tick(&mut self) {
         if self.cpu.is_halted {
             self.cpu.pending_cycles += 1;
-            
-            // Check for pending interrupts
-            let pending_interrupts = self.ie_flag & self.if_flag;
-            if pending_interrupts != 0 {
-                // Exit HALT regardless of IME
-                self.cpu.is_halted = false;
-                // If IME=0 and interrupts pending, trigger HALT bug
-                if !self.cpu.interrupt_master {
-                    self.cpu.halt_bug = true;
-                }
-            }
             return;
         }
 
         self.cpu.current_instruction = self.read_byte(self.cpu.pc);
-        
-        if self.cpu.halt_bug {
-            // Execute instruction without incrementing PC
-            self.decode();
-            self.cpu.pending_cycles += self.cpu.instruction_cycles;
-            self.cpu.halt_bug = false;
-        }
-        
-        // Execute instruction normally (with PC increment)
+
         self.decode();
         self.cpu.pending_cycles += self.cpu.instruction_cycles;
-        
-        // Handle any pending interrupts
-        self.handle_interrupt();
     }
 
     fn print_serial_message(&mut self) {

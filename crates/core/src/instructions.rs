@@ -319,25 +319,17 @@ impl Gb {
     }
 
     fn halt(&mut self) {
-        // Check if there are pending interrupts
         let pending_interrupts = self.ie_flag & self.if_flag;
-        
-        if !self.cpu.interrupt_master && pending_interrupts != 0 {
-            // HALT bug occurs when:
-            // 1. IME = 0 (interrupts disabled)
-            // 2. There is a pending interrupt
-            self.cpu.halt_bug = true;
-            // Don't enter HALT mode, but increment PC
-            self.cpu.advance_pc();
+        if pending_interrupts != 0 {
+            if self.cpu.interrupt_master {
+                self.cpu.is_halted = false;
+            } else {
+                self.cpu.halt_bug = true;
+            }
         } else {
-            // Normal HALT behavior
             self.cpu.is_halted = true;
-            // PC is incremented only if we actually enter HALT
             self.cpu.advance_pc();
         }
-        
-        // HALT takes 4 T-cycles (1 M-cycle)
-        self.cpu.instruction_cycles = 4;
     }
 
     fn ld_sp_d16(&mut self) {

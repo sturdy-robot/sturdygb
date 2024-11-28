@@ -19,45 +19,35 @@ impl Gb {
     }
 
     pub fn handle_interrupt(&mut self) {
-        if self.check_interrupts() {
-            // Check if there are any pending interrupts before disabling IME
-            let pending_interrupts = self.ie_flag & self.if_flag;
-            if pending_interrupts == 0 {
-                return;
-            }
-            
+        if self.cpu.ime_toggle {
+            self.cpu.ime_toggle = false;
+            self.cpu.interrupt_master = true;
+            return;
+        }
+
+        if self.cpu.d_ime_toggle {
+            self.cpu.d_ime_toggle = false;
             self.cpu.interrupt_master = false;
-            self.cpu.sp = self.cpu.sp.wrapping_sub(2);
-            let pc = if self.cpu.is_halted {
-                self.cpu.pc.wrapping_add(1)
-            } else {
-                self.cpu.pc
-            };
-            self.write_word(self.cpu.sp, pc);
-            self.cpu.pending_cycles += 5;
-            let interrupt_source = self.get_interrupt_source();
-            let address = self.go_interrupt(&interrupt_source);
-            self.cpu.pc = address;
-            self.if_flag &= !(interrupt_source as u8);
+            return;
+        }
+
+        if self.cpu.interrupt_master {
             self.cpu.is_halted = false;
         }
 
-        if self.cpu.is_halted {
-            if !self.cpu.interrupt_master {
-                if self.ie_flag & self.if_flag != 0 {
-                    // Implement HALT bug: The next instruction is read twice
-                    self.cpu.is_halted = false;
-                    self.cpu.pc = self.cpu.pc.wrapping_add(1);
-                    // Don't increment PC after next instruction
-                    self.cpu.halt_bug = true;
-                }
-            }
+        if !self.check_interrupts() {
+            return;
         }
 
-        if self.cpu.ime_toggle {
-            self.cpu.interrupt_master = true;
-            self.cpu.ime_toggle = false;
-        }
+        self.cpu.interrupt_master = false;
+        self.cpu.sp = self.cpu.sp.wrapping_sub(2);
+        let pc = if self.cpu.is_halted { self.cpu.pc.wrapping_add(1) } else { self.cpu.pc };
+        self.write_word(self.cpu.sp, pc);
+        self.cpu.pending_cycles += 5;
+        let interrupt_source = self.get_interrupt_source();
+        let address = self.go_interrupt(&interrupt_source);
+        self.cpu.pc = address;
+        self.if_flag &= !(interrupt_source as u8);
     }
 
     fn check_interrupts(&mut self) -> bool {
