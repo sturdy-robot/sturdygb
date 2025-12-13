@@ -4,9 +4,9 @@ SPDX-FileCopyrightText: 2024 Pedrenrique G. Guimarães <pedrenriquegg@hotmail.co
 SPDX-License-Identifier: MIT
 -->
 
-# SturdyGB
-
 <div align="center">
+
+# SturdyGB
 
 [![Rust](https://img.shields.io/badge/Rust-CC342D?style=flat&logo=rust&logoColor=white)](https://rust-lang.org/)
 [![License: MIT](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://opensource.org/license/mit)
