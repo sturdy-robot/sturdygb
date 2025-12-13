@@ -1,0 +1,87 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write  # required to upload assets to GitHub Releases
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+
+      # If you ever need native deps (SDL2, etc.), add OS-specific install steps here.
+
+      - name: Build (release)
+        run: cargo build --release --workspace
+
+      - name: Package binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Identify host triple (used in the artifact filename)
+          HOST_TRIPLE="$(rustc -Vv | sed -n 's/^host: //p')"
+          echo "HOST_TRIPLE=$HOST_TRIPLE" >> "$GITHUB_ENV"
+
+          # Find all binary targets in the workspace
+          python - <<'PY' > bins.txt
+          import json, subprocess
+          meta = json.loads(subprocess.check_output(["cargo","metadata","--format-version","1","--no-deps"]))
+          bins = set()
+          for pkg in meta["packages"]:
+            for tgt in pkg["targets"]:
+              if "bin" in tgt["kind"]:
+                bins.add(tgt["name"])
+          for b in sorted(bins):
+            print(b)
+          PY
+
+          mkdir -p dist
+          OUTDIR="dist/sturdygb-${GITHUB_REF_NAME}-${HOST_TRIPLE}"
+          mkdir -p "$OUTDIR"
+
+          while IFS= read -r bin; do
+            if [ -z "$bin" ]; then continue; fi
+            src="target/release/$bin"
+            if [ -f "$src" ]; then
+              cp "$src" "$OUTDIR/"
+            fi
+          done < bins.txt
+
+          # Create archive per platform
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            7z a "dist/sturdygb-${GITHUB_REF_NAME}-${HOST_TRIPLE}.zip" "./$OUTDIR/*"
+          else
+            tar -czf "dist/sturdygb-${GITHUB_REF_NAME}-${HOST_TRIPLE}.tar.gz" -C "$OUTDIR" .
+          fi
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sturdygb-${{ github.ref_name }}-${{ env.HOST_TRIPLE }}
+          path: dist/*
+
+      - name: Upload to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
