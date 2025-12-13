@@ -21,7 +21,7 @@ struct State {
 #[notan_main]
 fn main() -> Result<(), String> {
     let window = WindowConfig::new()
-        .set_title("SturdyGB (notan)")
+        .set_title("SturdyGB v0.1.0")
         .set_size(WIN_W, WIN_H)
         .set_vsync(true);
 
