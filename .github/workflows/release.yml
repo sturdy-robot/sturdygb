@@ -38,7 +38,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Identify host triple (used in the artifact filename)
           HOST_TRIPLE="$(rustc -Vv | sed -n 's/^host: //p')"
           echo "HOST_TRIPLE=$HOST_TRIPLE" >> "$GITHUB_ENV"
 
@@ -59,13 +58,31 @@ jobs:
           OUTDIR="dist/sturdygb-${GITHUB_REF_NAME}-${HOST_TRIPLE}"
           mkdir -p "$OUTDIR"
 
+          COPIED=0
           while IFS= read -r bin; do
-            if [ -z "$bin" ]; then continue; fi
-            src="target/release/$bin"
-            if [ -f "$src" ]; then
-              cp "$src" "$OUTDIR/"
+            [ -z "$bin" ] && continue
+
+            if [[ "${{ runner.os }}" == "Windows" ]]; then
+              src="target/release/${bin}.exe"
+              if [ -f "$src" ]; then
+                cp "$src" "$OUTDIR/"
+                COPIED=$((COPIED+1))
+              fi
+            else
+              src="target/release/${bin}"
+              if [ -f "$src" ]; then
+                cp "$src" "$OUTDIR/"
+                COPIED=$((COPIED+1))
+              fi
             fi
           done < bins.txt
+
+          if [ "$COPIED" -eq 0 ]; then
+            echo "ERROR: No binaries were copied into $OUTDIR"
+            echo "Contents of target/release:"
+            ls -la target/release || true
+            exit 1
+          fi
 
           # Create archive per platform
           if [[ "${{ runner.os }}" == "Windows" ]]; then
@@ -73,6 +90,7 @@ jobs:
           else
             tar -czf "dist/sturdygb-${GITHUB_REF_NAME}-${HOST_TRIPLE}.tar.gz" -C "$OUTDIR" .
           fi
+
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
