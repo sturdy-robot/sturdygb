@@ -3,103 +3,44 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
-  workflow_dispatch:
-
-permissions:
-  contents: write  # required to upload assets to GitHub Releases
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
 
 jobs:
-  build:
-    name: Build (${{ matrix.os }})
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.release.outputs.upload_url }}
+    steps:
+      - name: Create GitHub Release
+        id: release
+        uses: softprops/action-gh-release@v1 #
+        with:
+          draft: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  build-and-upload:
+    needs: create-release
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
-
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        target: [x86_64-unknown-linux-musl, x86_64-apple-darwin, x86_64-pc-windows-msvc]
+        exclude:
+          - os: macos-latest
+            target: x86_64-unknown-linux-musl
+          - os: windows-latest
+            target: x86_64-unknown-linux-musl
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Build Rust binary
+        run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Cache Rust
-        uses: Swatinem/rust-cache@v2
-
-      # If you ever need native deps (SDL2, etc.), add OS-specific install steps here.
-
-      - name: Build (release)
-        run: cargo build --release --workspace
-
-      - name: Package binaries
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          HOST_TRIPLE="$(rustc -Vv | sed -n 's/^host: //p')"
-          echo "HOST_TRIPLE=$HOST_TRIPLE" >> "$GITHUB_ENV"
-
-          # Find all binary targets in the workspace
-          python - <<'PY' > bins.txt
-          import json, subprocess
-          meta = json.loads(subprocess.check_output(["cargo","metadata","--format-version","1","--no-deps"]))
-          bins = set()
-          for pkg in meta["packages"]:
-            for tgt in pkg["targets"]:
-              if "bin" in tgt["kind"]:
-                bins.add(tgt["name"])
-          for b in sorted(bins):
-            print(b)
-          PY
-
-          mkdir -p dist
-          OUTDIR="dist/sturdygb-${GITHUB_REF_NAME}-${HOST_TRIPLE}"
-          mkdir -p "$OUTDIR"
-
-          COPIED=0
-          while IFS= read -r bin; do
-            [ -z "$bin" ] && continue
-
-            if [[ "${{ runner.os }}" == "Windows" ]]; then
-              src="target/release/${bin}.exe"
-              if [ -f "$src" ]; then
-                cp "$src" "$OUTDIR/"
-                COPIED=$((COPIED+1))
-              fi
-            else
-              src="target/release/${bin}"
-              if [ -f "$src" ]; then
-                cp "$src" "$OUTDIR/"
-                COPIED=$((COPIED+1))
-              fi
-            fi
-          done < bins.txt
-
-          if [ "$COPIED" -eq 0 ]; then
-            echo "ERROR: No binaries were copied into $OUTDIR"
-            echo "Contents of target/release:"
-            ls -la target/release || true
-            exit 1
-          fi
-
-          # Create archive per platform
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            7z a "dist/sturdygb-${GITHUB_REF_NAME}-${HOST_TRIPLE}.zip" "./$OUTDIR/*"
-          else
-            tar -czf "dist/sturdygb-${GITHUB_REF_NAME}-${HOST_TRIPLE}.tar.gz" -C "$OUTDIR" .
-          fi
-
-
-      - name: Upload workflow artifact
-        uses: actions/upload-artifact@v4
+      - name: Archive and upload release assets
+        uses: houseabsolute/actions-rust-release@v0 #
         with:
-          name: sturdygb-${{ github.ref_name }}-${{ env.HOST_TRIPLE }}
-          path: dist/*
-
-      - name: Upload to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
+          executable-name: sturdygb
+          target: ${{ matrix.target }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          upload-url: ${{ needs.create-release.outputs.upload_url }}
