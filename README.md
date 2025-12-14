@@ -14,6 +14,25 @@ SPDX-License-Identifier: MIT
 [![Last commit](https://img.shields.io/github/last-commit/sturdy-robot/sturdygb)](https://github.com/sturdy-robot/sturdygb/commits/main)
 [![GitHub contributors](https://img.shields.io/github/contributors/sturdy-robot/sturdygb)](https://GitHub.com/sturdy-robot/sturdygb/graphs/contributors/)
 
+
+<table>
+<tr>
+<td>
+<img width="300" src="https://github.com/user-attachments/assets/e96bb414-5d8e-49df-9d4e-22e15f0cbe34" />
+</td>
+<td>
+<img width="300"src="https://github.com/user-attachments/assets/07143e0d-e74b-461d-8976-58e5b7cc4479" />
+</td>
+</tr>
+<tr>
+<td>
+<img width="300" src="https://github.com/user-attachments/assets/b63ebce0-78d8-4627-8703-b4b465681274" />
+<td>
+<img width="300" src="https://github.com/user-attachments/assets/6a5766bc-d829-418a-a81f-362012a75168" />
+</tr>
+</table>
+
+
 </div>
 
 **SturdyGB** is an experimental **Game Boy emulator written in Rust**, focused on correctness, clean architecture, and long-term accuracy.
