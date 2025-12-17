@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 [package]
-name = "sturdygb-notan"
+name = "sturdygb"
 version = "0.1.0"
 edition = "2021"
 repository = "https://github.com/sturdy-robot/sturdygb"
@@ -10,6 +10,8 @@ repository = "https://github.com/sturdy-robot/sturdygb"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sturdygb = { path = "../core" }
+sturdygb_core = { path = "../core" }
 notan = { version="0.12.1", features=["draw"]}
+clap = { version = "4.5", features = ["derive"] }
+rfd = "0.14"
 

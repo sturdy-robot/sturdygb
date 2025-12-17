@@ -228,8 +228,7 @@ impl Mbc for Mbc7 {
                         value |= 1;
                     }
                     value
-                }
-                else {
+                } else {
                     0xFF
                 }
             }

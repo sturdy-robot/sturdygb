@@ -79,7 +79,7 @@ impl Gb {
             0xFF80..=0xFFFE => self.hram[address as usize & 0x007F] = value,
             0xFFFF => self.ie_flag = value & 0x1F,
             _ => {
-                println!("Not implemented memory region {}", address);
+                println!("Not implemented memory region 0x{:04x}", address);
             }
         };
     }

@@ -112,14 +112,6 @@ impl Ppu {
         }
     }
 
-    pub fn check_stat_interrupt(&self) -> bool {
-        // Check each STAT interrupt source
-        (self.stat & 0x40 != 0 && self.ly == self.lyc) || // LYC=LY
-        (self.stat & 0x20 != 0 && self.mode == PpuMode::SearchingOAM) || // Mode 2
-        (self.stat & 0x10 != 0 && self.mode == PpuMode::VBlank) || // Mode 1
-        (self.stat & 0x08 != 0 && self.mode == PpuMode::HBlank) // Mode 0
-    }
-
     pub fn render_scanline(&mut self) {
         // Skip rendering if LCD is off
         if self.lcdc & 0x80 == 0 {
@@ -391,7 +383,7 @@ impl Memory for Ppu {
             }
             0xFF42 => self.scy = value,
             0xFF43 => self.scx = value,
-            0xFF44 => self.ly = value,
+            0xFF44 => {} // LY is read-only,
             0xFF45 => self.lyc = value,
             0xFF46 => self.dma.start_transfer(value),
             0xFF47 => self.bgp = value,
@@ -424,7 +416,7 @@ impl Gb {
 
         self.ppu.mode_clock = self.ppu.mode_clock.wrapping_add(ticks);
 
-        match self.ppu.get_ppu_mode() {  
+        match self.ppu.get_ppu_mode() {
             PpuMode::HBlank => {
                 if self.ppu.mode_clock >= 204 {
                     self.ppu.mode_clock = 0;

@@ -2,6 +2,11 @@ use notan::draw::*;
 use notan::math::{Mat3, Vec2};
 use notan::prelude::*;
 
+use clap::Parser;
+
+use rfd::MessageDialog;
+use std::sync::OnceLock;
+
 use sturdygb_core::joypad::JoypadButton;
 use sturdygb_core::prelude::GbInstance;
 
@@ -12,6 +17,24 @@ const SCALE: f32 = 5.0;
 const WIN_W: u32 = (GB_W as u32) * (SCALE as u32);
 const WIN_H: u32 = (GB_H as u32) * (SCALE as u32);
 
+static ROM_PATH: OnceLock<String> = OnceLock::new();
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+fn example_usage() -> &'static str {
+    if cfg!(windows) {
+        "sturdygb path\\to\\game.gb"
+    } else {
+        "sturdygb path/to/game.gb"
+    }
+}
+
+#[derive(Parser, Debug)]
+#[command(name = "sturdygb")]
+struct Cli {
+    #[arg(value_name = "ROM")]
+    rom: Option<String>,
+}
+
 #[derive(AppState)]
 struct State {
     gb: sturdygb_core::gb::Gb,
@@ -20,8 +43,22 @@ struct State {
 
 #[notan_main]
 fn main() -> Result<(), String> {
+    let cli = Cli::parse();
+    let Some(rom) = cli.rom else {
+        let example = example_usage();
+        MessageDialog::new()
+            .set_title("SturdyGB")
+            .set_description(&format!(
+                "No ROM was provided.\n\nRun this program from the command line and pass a ROM path.\n\nExample:\n  {example}"
+            ))
+            .show();
+        return Ok(());
+    };
+
+    let _ = ROM_PATH.set(rom);
+
     let window = WindowConfig::new()
-        .set_title("SturdyGB v0.1.0")
+        .set_title(&format!("SturdyGB v{}", VERSION))
         .set_size(WIN_W, WIN_H)
         .set_vsync(true);
 
@@ -34,15 +71,21 @@ fn main() -> Result<(), String> {
 }
 
 fn init(_gfx: &mut Graphics) -> State {
-    let args = std::env::args().collect::<Vec<String>>();
-    let rom = args
-        .get(1)
-        .map(|s| s.as_str())
-        .unwrap_or("roms/cpu_instrs.gb");
-
-    let gb = GbInstance::build(rom)
-        .map_err(|_| "Failed to load ROM".to_string())
-        .unwrap();
+    let rom = ROM_PATH.get().expect("ROM path must be set");
+    let gb = match GbInstance::build(rom) {
+        Ok(gb) => gb,
+        Err(e) => {
+            let example = example_usage();
+            let msg = format!(
+                "Failed to load ROM:\n  {rom}\n\n{e}\n\nRun this program from the command line and pass a valid ROM path.\n\nExample:\n  {example}"
+            );
+            MessageDialog::new()
+                .set_title("SturdyGB")
+                .set_description(&msg)
+                .show();
+            std::process::exit(1);
+        }
+    };
 
     State {
         gb,
@@ -51,6 +94,10 @@ fn init(_gfx: &mut Graphics) -> State {
 }
 
 fn update(app: &mut App, state: &mut State) {
+    if app.keyboard.was_pressed(KeyCode::Escape) {
+        app.exit();
+    }
+
     set_btn(app, state, KeyCode::Z, JoypadButton::A);
     set_btn(app, state, KeyCode::X, JoypadButton::B);
     set_btn(app, state, KeyCode::Return, JoypadButton::Start);
@@ -60,10 +107,6 @@ fn update(app: &mut App, state: &mut State) {
     set_btn(app, state, KeyCode::Down, JoypadButton::Down);
     set_btn(app, state, KeyCode::Left, JoypadButton::Left);
     set_btn(app, state, KeyCode::Right, JoypadButton::Right);
-
-    if app.keyboard.was_pressed(KeyCode::Escape) {
-        app.exit();
-    }
 
     state.gb.run_one_frame();
     let frame = state.gb.get_screen_data();

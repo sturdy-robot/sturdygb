@@ -34,18 +34,24 @@ pub fn get_mbc(rom_data: Vec<u8>, header: CartridgeHeader) -> (Box<dyn Mbc>, GbM
         MBCTypes::Mbc2 { battery, ram } => {
             (Box::new(Mbc2::new(rom_data, header, battery, ram)), gb_mode)
         }
-        MBCTypes::Mbc3 { ram, timer, battery } => {
-            (Box::new(Mbc3::new(rom_data, header, ram, timer, battery)), gb_mode)
-        }
-        MBCTypes::Mbc5 { ram, battery, rumble } => {
-            (Box::new(Mbc5::new(rom_data, header, ram, battery, rumble)), gb_mode)
-        }
-        MBCTypes::Mbc6 => {
-            (Box::new(Mbc6::new(rom_data, header)), gb_mode)
-        }
-        MBCTypes::Mbc7 => {
-            (Box::new(Mbc7::new(rom_data, header)), gb_mode)
-        }
+        MBCTypes::Mbc3 {
+            ram,
+            timer,
+            battery,
+        } => (
+            Box::new(Mbc3::new(rom_data, header, ram, timer, battery)),
+            gb_mode,
+        ),
+        MBCTypes::Mbc5 {
+            ram,
+            battery,
+            rumble,
+        } => (
+            Box::new(Mbc5::new(rom_data, header, ram, battery, rumble)),
+            gb_mode,
+        ),
+        MBCTypes::Mbc6 => (Box::new(Mbc6::new(rom_data, header)), gb_mode),
+        MBCTypes::Mbc7 => (Box::new(Mbc7::new(rom_data, header)), gb_mode),
         _ => unimplemented!(),
     }
 }

@@ -5,11 +5,12 @@
 use crate::mbcs::get_mbc;
 use std::fs;
 
-pub fn load_cartridge(filename: &str) -> Result<(Box<dyn Mbc>, GbMode), &str> {
-    let rom_data = fs::read(filename).expect("Unable to read file contents");
+pub fn load_cartridge(filename: &str) -> Result<(Box<dyn Mbc>, GbMode), String> {
+    let rom_data =
+        fs::read(filename).map_err(|e| format!("Unable to read ROM '{filename}': {e}"))?;
     match CartridgeHeader::new(&rom_data) {
         Ok(header) => Ok(get_mbc(rom_data, header)),
-        Err(f) => return Err(f),
+        Err(f) => Err(f.to_string()),
     }
 }
 

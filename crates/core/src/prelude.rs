@@ -7,7 +7,7 @@ use super::gb::{Gb, GbTypes};
 pub struct GbInstance;
 
 impl GbInstance {
-    pub fn build(filename: &str) -> Result<Gb, ()> {
+    pub fn build(filename: &str) -> Result<Gb, String> {
         let gb_type: GbTypes;
         match load_cartridge(filename) {
             Ok((mbc, gb_mode)) => {
@@ -18,7 +18,7 @@ impl GbInstance {
                 };
                 Ok(Gb::new(mbc, gb_mode, gb_type))
             }
-            Err(e) => Err(println!("Error loading ROM: {}", e)),
+            Err(e) => Err(format!("Error loading ROM: {e}")),
         }
     }
 }

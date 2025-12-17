@@ -16,7 +16,12 @@ pub struct Mbc2 {
 }
 
 impl Mbc2 {
-    pub fn new(rom_data: Vec<u8>, header: CartridgeHeader, has_battery: bool, has_ram: bool) -> Self {
+    pub fn new(
+        rom_data: Vec<u8>,
+        header: CartridgeHeader,
+        has_battery: bool,
+        has_ram: bool,
+    ) -> Self {
         Self {
             rom_data,
             header,

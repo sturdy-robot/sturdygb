@@ -72,7 +72,7 @@ impl Memory for Timer {
 impl Gb {
     pub fn timer_tick(&mut self, cycles: u32) {
         self.timer.cycles += cycles;
-        while self.timer.cycles >= 256 {  
+        while self.timer.cycles >= 256 {
             self.timer.cycles -= 256;
             self.timer.div = self.timer.div.wrapping_add(1);
         }
@@ -80,7 +80,7 @@ impl Gb {
         if self.timer.enabled {
             self.timer.ticks += cycles;
             while self.timer.ticks >= self.timer.frequency {
-                self.timer.ticks -= self.timer.frequency;  
+                self.timer.ticks -= self.timer.frequency;
                 self.timer.tima = self.timer.tima.wrapping_add(1);
                 if self.timer.tima == 0 {
                     self.timer.tima = self.timer.tma;

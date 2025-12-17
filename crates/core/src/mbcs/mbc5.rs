@@ -23,7 +23,13 @@ pub struct Mbc5 {
 }
 
 impl Mbc5 {
-    pub fn new(rom_data: Vec<u8>, header: CartridgeHeader, ram: bool, battery: bool, rumble: bool) -> Self {
+    pub fn new(
+        rom_data: Vec<u8>,
+        header: CartridgeHeader,
+        ram: bool,
+        battery: bool,
+        rumble: bool,
+    ) -> Self {
         let ram_size = if ram { header.ram_size as usize } else { 0 };
         Self {
             rom_data,

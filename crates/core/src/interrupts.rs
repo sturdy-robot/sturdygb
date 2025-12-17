@@ -42,7 +42,11 @@ impl Gb {
 
         self.cpu.interrupt_master = false;
         self.cpu.sp = self.cpu.sp.wrapping_sub(2);
-        let pc = if self.cpu.is_halted { self.cpu.pc.wrapping_add(1) } else { self.cpu.pc };
+        let pc = if self.cpu.is_halted {
+            self.cpu.pc.wrapping_add(1)
+        } else {
+            self.cpu.pc
+        };
         self.write_word(self.cpu.sp, pc);
         self.cpu.pending_cycles += 5;
         let interrupt_source = self.get_interrupt_source();
