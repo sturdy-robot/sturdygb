@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 <div align="center">
 
-# SturdyGB
+![Sturdy GB logo](images/sturdygb_logo.svg)
 
 [![Rust](https://img.shields.io/badge/Rust-CC342D?style=flat&logo=rust&logoColor=white)](https://rust-lang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/license/mit)
@@ -76,6 +76,14 @@ It is **not yet** a drop-in replacement for mature emulators.
 - MBC5
 - MBC7
 - MM01 (not implemented yet)
+- Save games supported.
+
+### Audio (APU)
+
+- Sound channels
+- Wave pattern generation
+- Volume envelope
+- Sound output
 
 ## Frontend
 
@@ -86,11 +94,9 @@ It is **not yet** a drop-in replacement for mature emulators.
 
 ## Missing / Incomplete Features
 
-- Audio (APU)
 - Inaccurate PPU
 - Game Boy Color (CGB) support
 - Super Game Boy (SGB) features
-- Save games
 - Save states
 - Debugger UI
 - Cheats/GameShark
