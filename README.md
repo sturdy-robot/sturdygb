@@ -9,11 +9,14 @@ SPDX-License-Identifier: MIT
 ![Sturdy GB logo](images/sturdygb_logo.svg)
 
 [![Rust](https://img.shields.io/badge/Rust-CC342D?style=flat&logo=rust&logoColor=white)](https://rust-lang.org/)
+[![GitHub release](https://img.shields.io/github/v/release/sturdy-robot/sturdygb)](https://github.com/sturdy-robot/sturdygb/releases)
+[![GitHub Actions build status](https://img.shields.io/github/actions/workflow/status/sturdy-robot/sturdygb/release.yml)](https://github.com/sturdy-robot/sturdygb/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/license/mit)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://GitHub.com/sturdy-robot/sturdygb/graphs/commit-activity)
 [![Last commit](https://img.shields.io/github/last-commit/sturdy-robot/sturdygb)](https://github.com/sturdy-robot/sturdygb/commits/main)
 [![GitHub contributors](https://img.shields.io/github/contributors/sturdy-robot/sturdygb)](https://GitHub.com/sturdy-robot/sturdygb/graphs/contributors/)
 
+---
 
 <table>
 <tr>
