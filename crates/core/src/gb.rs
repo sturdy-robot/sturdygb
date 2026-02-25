@@ -86,7 +86,7 @@ impl Gb {
             vec![0; 0x2000]
         };
         let mut hram = vec![0; 0x7F];
-        let mut rng = thread_rng();
+        let mut rng = rand::rng();
         rng.fill_bytes(&mut wram);
         rng.fill_bytes(&mut hram);
 

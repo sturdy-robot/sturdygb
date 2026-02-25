@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-use paste::paste;
+use pastey::paste;
 
 use crate::gb::Gb;
 

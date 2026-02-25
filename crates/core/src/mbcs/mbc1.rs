@@ -35,7 +35,7 @@ impl Mbc1 {
                 }
             } else {
                 external_ram = vec![0; header.ram_size as usize];
-                let mut rng = thread_rng();
+                let mut rng = rand::rng();
                 rng.fill_bytes(&mut external_ram);
             }
         } else {
