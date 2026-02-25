@@ -137,10 +137,20 @@ impl Gb {
     }
 
     pub fn components_tick(&mut self) {
-        self.dma_tick(self.cpu.pending_cycles as u32 * 4);
-        self.ppu_tick(self.cpu.pending_cycles as u32 * 4);
-        self.timer_tick(self.cpu.pending_cycles as u32 * 4);
+        let cycles = self.cpu.pending_cycles as u32 * 4;
+        self.dma_tick(cycles);
+        self.ppu_tick(cycles);
+        self.timer_tick(cycles);
+        self.sound.tick(cycles);
         self.cpu.pending_cycles = 0;
+    }
+
+    pub fn get_audio_buffer(&self) -> Vec<f32> {
+        self.sound.get_audio_buffer()
+    }
+
+    pub fn set_sample_rate(&mut self, rate: u32) {
+        self.sound.set_sample_rate(rate);
     }
 
     fn cpu_tick(&mut self) {

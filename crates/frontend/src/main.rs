@@ -10,6 +10,9 @@ use std::sync::OnceLock;
 use sturdygb_core::joypad::JoypadButton;
 use sturdygb_core::prelude::GbInstance;
 
+use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use std::sync::mpsc::{sync_channel, SyncSender};
+
 const GB_W: usize = 160;
 const GB_H: usize = 144;
 
@@ -39,7 +42,11 @@ struct Cli {
 struct State {
     gb: sturdygb_core::gb::Gb,
     rgba: Vec<u8>,
+    leftover_audio: Vec<[f32; 2]>,
 }
+
+static mut AUDIO_PRODUCER: Option<SyncSender<[f32; 2]>> = None;
+static mut AUDIO_STREAM: Option<cpal::Stream> = None;
 
 #[notan_main]
 fn main() -> Result<(), String> {
@@ -72,7 +79,7 @@ fn main() -> Result<(), String> {
 
 fn init(_gfx: &mut Graphics) -> State {
     let rom = ROM_PATH.get().expect("ROM path must be set");
-    let gb = match GbInstance::build(rom) {
+    let mut gb = match GbInstance::build(rom) {
         Ok(gb) => gb,
         Err(e) => {
             let example = example_usage();
@@ -87,9 +94,55 @@ fn init(_gfx: &mut Graphics) -> State {
         }
     };
 
+    setup_audio(&mut gb);
+
     State {
         gb,
         rgba: vec![0; GB_W * GB_H * 4],
+        leftover_audio: Vec::new(),
+    }
+}
+
+fn setup_audio(gb: &mut sturdygb_core::gb::Gb) {
+    let host = cpal::default_host();
+    let device = host.default_output_device();
+    if let Some(device) = device {
+        let config = device.default_output_config().unwrap().config();
+        
+        let sample_rate: u32 = config.sample_rate.into();
+        gb.set_sample_rate(sample_rate);
+        
+        // Keep buffer balanced (4096 samples ~ 85ms at 48kHz) to prevent audio latency
+        let (prod, cons) = sync_channel::<[f32; 2]>(4096);
+        
+        let channels = config.channels as usize;
+        let mut last_sample = [0.0, 0.0];
+        
+        let stream = device.build_output_stream(
+            &config,
+            move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+                for frame in data.chunks_mut(channels) {
+                    let sample = match cons.try_recv() {
+                        Ok(v) => v,
+                        Err(_) => [last_sample[0] * 0.90, last_sample[1] * 0.90],
+                    };
+                    last_sample = sample;
+                    
+                    if channels >= 1 && frame.len() >= 1 { frame[0] = sample[0]; }
+                    if channels >= 2 && frame.len() >= 2 { frame[1] = sample[1]; }
+                }
+            },
+            |err| eprintln!("an error occurred on stream: {}", err),
+            None
+        );
+        
+        if let Ok(stream) = stream {
+            stream.play().unwrap();
+            unsafe {
+                AUDIO_PRODUCER = Some(prod);
+                AUDIO_STREAM = Some(stream);
+            }
+        }
     }
 }
 
@@ -108,7 +161,52 @@ fn update(app: &mut App, state: &mut State) {
     set_btn(app, state, KeyCode::Left, JoypadButton::Left);
     set_btn(app, state, KeyCode::Right, JoypadButton::Right);
 
-    state.gb.run_one_frame();
+    let mut channel_full = false;
+    let mut frames_run = 0;
+
+    // First try to drain leftover audio
+    let mut new_leftover = Vec::with_capacity(state.leftover_audio.len());
+    unsafe {
+        #[allow(static_mut_refs)]
+        if let Some(prod) = &mut AUDIO_PRODUCER {
+            for sample in state.leftover_audio.drain(..) {
+                if !channel_full {
+                    if let Err(std::sync::mpsc::TrySendError::Full(val)) = prod.try_send(sample) {
+                        channel_full = true;
+                        new_leftover.push(val);
+                    }
+                } else {
+                    new_leftover.push(sample);
+                }
+            }
+        }
+    }
+    state.leftover_audio = new_leftover;
+
+    // Run frames until audio channel fills up, capped to prevent infinite loops (if audio fails)
+    while !channel_full && frames_run < 5 {
+        state.gb.run_one_frame();
+        frames_run += 1;
+        
+        let audio_data = state.gb.get_audio_buffer();
+        unsafe {
+            #[allow(static_mut_refs)]
+            if let Some(prod) = &mut AUDIO_PRODUCER {
+                for frame in audio_data.chunks_exact(2) {
+                    let sample = [frame[0], frame[1]];
+                    if !channel_full {
+                        if let Err(std::sync::mpsc::TrySendError::Full(val)) = prod.try_send(sample) {
+                            channel_full = true;
+                            state.leftover_audio.push(val);
+                        }
+                    } else {
+                        state.leftover_audio.push(sample);
+                    }
+                }
+            }
+        }
+    }
+
     let frame = state.gb.get_screen_data();
     for y in 0..GB_H {
         for x in 0..GB_W {
