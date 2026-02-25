@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2024 Pedrenrique G. Guimarães <pedrenriquegg@hotmail.com>
+SPDX-FileCopyrightText: 2026 Pedrenrique G. Guimarães <pedrenriquegg@hotmail.com>
 
 SPDX-License-Identifier: MIT
 -->
@@ -209,7 +209,7 @@ Accuracy, structure, and experimentation are prioritized over performance, UX, o
 
 ## 📜 License
 
-    Copyright © 2022-2024 Pedrenrique G. Guimarães
+    Copyright © 2022-2026 Pedrenrique G. Guimarães
 
     Permission is hereby granted, free of charge, to any person
     obtaining a copy of this software and associated documentation

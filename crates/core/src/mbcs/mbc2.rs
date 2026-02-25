@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 Pedrenrique G. Guimarães
+// SPDX-FileCopyrightText: 2026 Pedrenrique G. Guimarães
 //
 // SPDX-License-Identifier: MIT
 
