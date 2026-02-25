@@ -17,6 +17,7 @@ pub struct Mbc3 {
     rtc_registers: [u8; 5], // Seconds, Minutes, Hours, Days Low, Days High/Control
     rtc_latch: u8,
     rtc_latched: bool,
+    save_path: std::path::PathBuf,
 }
 
 impl Mbc3 {
@@ -26,21 +27,32 @@ impl Mbc3 {
         ram: bool,
         timer: bool,
         battery: bool,
+        save_path: std::path::PathBuf,
     ) -> Self {
         let ram_size = if ram { header.ram_size as usize } else { 0 };
+        let mut external_ram = vec![0; ram_size];
+        if ram && battery && save_path.exists() {
+            if let Ok(data) = std::fs::read(&save_path) {
+                if data.len() == ram_size {
+                    external_ram = data;
+                }
+            }
+        }
+
         Self {
             rom_data,
             header,
             ram_enabled: false,
             rom_bank: 1,
             ram_bank: 0,
-            ram: vec![0; ram_size],
+            ram: external_ram,
             has_ram: ram,
             has_timer: timer,
             has_battery: battery,
             rtc_registers: [0; 5],
             rtc_latch: 0xFF,
             rtc_latched: false,
+            save_path,
         }
     }
 }
@@ -65,7 +77,11 @@ impl Mbc for Mbc3 {
         match address {
             // RAM Enable
             0x0000..=0x1FFF => {
+                let was_enabled = self.ram_enabled;
                 self.ram_enabled = (value & 0x0F) == 0x0A;
+                if was_enabled && !self.ram_enabled && self.has_battery && !self.ram.is_empty() {
+                    let _ = std::fs::write(&self.save_path, &self.ram);
+                }
             }
             // ROM Bank Number
             0x2000..=0x3FFF => {
@@ -132,6 +148,14 @@ impl Mbc for Mbc3 {
                     *ram_cell = value;
                 }
             }
+        }
+    }
+}
+
+impl Drop for Mbc3 {
+    fn drop(&mut self) {
+        if self.has_battery && !self.ram.is_empty() {
+            let _ = std::fs::write(&self.save_path, &self.ram);
         }
     }
 }

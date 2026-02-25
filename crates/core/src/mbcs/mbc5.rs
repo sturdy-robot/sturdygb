@@ -20,6 +20,7 @@ pub struct Mbc5 {
     has_battery: bool,
     has_rumble: bool,
     rumble_active: bool,
+    save_path: std::path::PathBuf,
 }
 
 impl Mbc5 {
@@ -29,19 +30,29 @@ impl Mbc5 {
         ram: bool,
         battery: bool,
         rumble: bool,
+        save_path: std::path::PathBuf,
     ) -> Self {
         let ram_size = if ram { header.ram_size as usize } else { 0 };
+        let mut external_ram = vec![0; ram_size];
+        if ram && battery && save_path.exists() {
+            if let Ok(data) = std::fs::read(&save_path) {
+                if data.len() == ram_size {
+                    external_ram = data;
+                }
+            }
+        }
         Self {
             rom_data,
             header,
             ram_enabled: false,
             rom_bank: 1,
             ram_bank: 0,
-            ram: vec![0; ram_size],
+            ram: external_ram,
             has_ram: ram,
             has_battery: battery,
             has_rumble: rumble,
             rumble_active: false,
+            save_path,
         }
     }
 }
@@ -67,7 +78,11 @@ impl Mbc for Mbc5 {
         match address {
             // RAM Enable
             0x0000..=0x1FFF => {
+                let was_enabled = self.ram_enabled;
                 self.ram_enabled = (value & 0x0F) == 0x0A;
+                if was_enabled && !self.ram_enabled && self.has_battery && !self.ram.is_empty() {
+                    let _ = std::fs::write(&self.save_path, &self.ram);
+                }
             }
             // ROM Bank Number (Lower 8 bits)
             0x2000..=0x2FFF => {
@@ -127,6 +142,14 @@ impl Mbc for Mbc5 {
                 }
             }
             _ => {}
+        }
+    }
+}
+
+impl Drop for Mbc5 {
+    fn drop(&mut self) {
+        if self.has_battery && !self.ram.is_empty() {
+            let _ = std::fs::write(&self.save_path, &self.ram);
         }
     }
 }

@@ -13,6 +13,7 @@ pub struct Mbc2 {
     rom_bank: usize,
     has_ram: bool,
     has_battery: bool,
+    save_path: std::path::PathBuf,
 }
 
 impl Mbc2 {
@@ -21,15 +22,26 @@ impl Mbc2 {
         header: CartridgeHeader,
         has_battery: bool,
         has_ram: bool,
+        save_path: std::path::PathBuf,
     ) -> Self {
+        let mut ram = [0xFF; 0x200];
+        if has_ram && has_battery && save_path.exists() {
+            if let Ok(data) = std::fs::read(&save_path) {
+                if data.len() == 0x200 {
+                    ram.copy_from_slice(&data);
+                }
+            }
+        }
+
         Self {
             rom_data,
             header,
-            ram: [0xFF; 0x200],
+            ram,
             ram_enabled: false,
             rom_bank: 1,
             has_ram,
             has_battery,
+            save_path,
         }
     }
 }
@@ -58,7 +70,11 @@ impl Mbc for Mbc2 {
                 let is_ram_enable = (address & 0x0100) == 0;
                 if is_ram_enable {
                     // RAM Enable (bit 8 = 0)
+                    let was_enabled = self.ram_enabled;
                     self.ram_enabled = (value & 0x0F) == 0x0A;
+                    if was_enabled && !self.ram_enabled && self.has_battery {
+                        let _ = std::fs::write(&self.save_path, &self.ram);
+                    }
                 } else {
                     // ROM Bank Number (bit 8 = 1)
                     let mut bank = value & 0x0F;
@@ -100,6 +116,14 @@ impl Mbc for Mbc2 {
                 self.ram[ram_addr] = value & 0x0F;
             }
             _ => {}
+        }
+    }
+}
+
+impl Drop for Mbc2 {
+    fn drop(&mut self) {
+        if self.has_battery {
+            let _ = std::fs::write(&self.save_path, &self.ram);
         }
     }
 }

@@ -8,8 +8,9 @@ use std::fs;
 pub fn load_cartridge(filename: &str) -> Result<(Box<dyn Mbc>, GbMode), String> {
     let rom_data =
         fs::read(filename).map_err(|e| format!("Unable to read ROM '{filename}': {e}"))?;
+    let save_path = std::path::PathBuf::from(filename).with_extension("sav");
     match CartridgeHeader::new(&rom_data) {
-        Ok(header) => Ok(get_mbc(rom_data, header)),
+        Ok(header) => Ok(get_mbc(rom_data, header, save_path)),
         Err(f) => Err(f.to_string()),
     }
 }

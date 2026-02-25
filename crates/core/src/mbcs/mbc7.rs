@@ -34,6 +34,7 @@ pub struct Mbc7 {
     accel_x: i16,
     accel_y: i16,
     accel_enabled: bool,
+    save_path: std::path::PathBuf,
 }
 
 #[derive(PartialEq)]
@@ -46,11 +47,19 @@ enum EepromState {
 }
 
 impl Mbc7 {
-    pub fn new(rom_data: Vec<u8>, header: CartridgeHeader) -> Self {
+    pub fn new(rom_data: Vec<u8>, header: CartridgeHeader, save_path: std::path::PathBuf) -> Self {
+        let mut ram = vec![0; 256]; // 256 bytes of EEPROM
+        if save_path.exists() {
+            if let Ok(data) = std::fs::read(&save_path) {
+                if data.len() == 256 {
+                    ram = data;
+                }
+            }
+        }
         Self {
             rom_data,
             header,
-            ram: vec![0; 256], // 256 bytes of EEPROM
+            ram,
             rom_bank: 1,
             ram_enabled: false,
             eeprom_write_enabled: false,
@@ -66,6 +75,7 @@ impl Mbc7 {
             accel_x: 0x8000u16 as i16,
             accel_y: 0x8000u16 as i16,
             accel_enabled: false,
+            save_path,
         }
     }
 
@@ -192,7 +202,11 @@ impl Mbc for Mbc7 {
                 }
             }
             0x4000..=0x5FFF => {
+                let was_enabled = self.ram_enabled;
                 self.ram_enabled = (value & 0x0F) == 0x0A;
+                if was_enabled && !self.ram_enabled {
+                    let _ = std::fs::write(&self.save_path, &self.ram);
+                }
             }
             _ => {}
         }
@@ -247,5 +261,11 @@ impl Mbc for Mbc7 {
             }
             _ => {}
         }
+    }
+}
+
+impl Drop for Mbc7 {
+    fn drop(&mut self) {
+        let _ = std::fs::write(&self.save_path, &self.ram);
     }
 }

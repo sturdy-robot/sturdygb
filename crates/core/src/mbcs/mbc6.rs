@@ -20,14 +20,23 @@ pub struct Mbc6 {
     bank_b_mapping: usize, // 0x6000-0x7FFF
     flash_mode: bool,
     flash_command: u8,
+    save_path: std::path::PathBuf,
 }
 
 impl Mbc6 {
-    pub fn new(rom_data: Vec<u8>, header: CartridgeHeader) -> Self {
+    pub fn new(rom_data: Vec<u8>, header: CartridgeHeader, save_path: std::path::PathBuf) -> Self {
+        let mut ram = vec![0; 0x4000]; // 128Kb of RAM
+        if save_path.exists() {
+            if let Ok(data) = std::fs::read(&save_path) {
+                if data.len() == 0x4000 {
+                    ram = data;
+                }
+            }
+        }
         Self {
             rom_data,
             header,
-            ram: vec![0; 0x4000], // 128Kb of RAM
+            ram,
             ram_enabled: false,
             rom_bank_a: 1,
             rom_bank_b: 2,
@@ -37,6 +46,7 @@ impl Mbc6 {
             bank_b_mapping: 0x6000,
             flash_mode: false,
             flash_command: 0,
+            save_path,
         }
     }
 
@@ -116,7 +126,11 @@ impl Mbc for Mbc6 {
         match address {
             // RAM Enable
             0x0000..=0x1FFF => {
+                let was_enabled = self.ram_enabled;
                 self.ram_enabled = (value & 0x0F) == 0x0A;
+                if was_enabled && !self.ram_enabled {
+                    let _ = std::fs::write(&self.save_path, &self.ram);
+                }
             }
             // ROM Bank A Number
             0x2000..=0x2FFF => {
@@ -193,5 +207,11 @@ impl Mbc for Mbc6 {
             }
             _ => {}
         }
+    }
+}
+
+impl Drop for Mbc6 {
+    fn drop(&mut self) {
+        let _ = std::fs::write(&self.save_path, &self.ram);
     }
 }

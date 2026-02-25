@@ -19,7 +19,11 @@ use romonly::RomOnly;
 
 use super::cartridge::{CartridgeHeader, GbMode, MBCTypes, Mbc};
 
-pub fn get_mbc(rom_data: Vec<u8>, header: CartridgeHeader) -> (Box<dyn Mbc>, GbMode) {
+pub fn get_mbc(
+    rom_data: Vec<u8>,
+    header: CartridgeHeader,
+    save_path: std::path::PathBuf,
+) -> (Box<dyn Mbc>, GbMode) {
     let gb_mode = match header.cgb_flag {
         0x80 => GbMode::NonCgbMode,
         0xC0 => GbMode::CgbMode,
@@ -28,18 +32,20 @@ pub fn get_mbc(rom_data: Vec<u8>, header: CartridgeHeader) -> (Box<dyn Mbc>, GbM
 
     match header.mbc_type {
         MBCTypes::RomOnly => (Box::new(RomOnly::new(rom_data, header)), gb_mode),
-        MBCTypes::Mbc1 { ram, battery } => {
-            (Box::new(Mbc1::new(rom_data, header, ram, battery)), gb_mode)
-        }
-        MBCTypes::Mbc2 { battery, ram } => {
-            (Box::new(Mbc2::new(rom_data, header, battery, ram)), gb_mode)
-        }
+        MBCTypes::Mbc1 { ram, battery } => (
+            Box::new(Mbc1::new(rom_data, header, ram, battery, save_path)),
+            gb_mode,
+        ),
+        MBCTypes::Mbc2 { battery, ram } => (
+            Box::new(Mbc2::new(rom_data, header, battery, ram, save_path)),
+            gb_mode,
+        ),
         MBCTypes::Mbc3 {
             ram,
             timer,
             battery,
         } => (
-            Box::new(Mbc3::new(rom_data, header, ram, timer, battery)),
+            Box::new(Mbc3::new(rom_data, header, ram, timer, battery, save_path)),
             gb_mode,
         ),
         MBCTypes::Mbc5 {
@@ -47,11 +53,19 @@ pub fn get_mbc(rom_data: Vec<u8>, header: CartridgeHeader) -> (Box<dyn Mbc>, GbM
             battery,
             rumble,
         } => (
-            Box::new(Mbc5::new(rom_data, header, ram, battery, rumble)),
+            Box::new(Mbc5::new(
+                rom_data, header, ram, battery, rumble, save_path,
+            )),
             gb_mode,
         ),
-        MBCTypes::Mbc6 => (Box::new(Mbc6::new(rom_data, header)), gb_mode),
-        MBCTypes::Mbc7 => (Box::new(Mbc7::new(rom_data, header)), gb_mode),
+        MBCTypes::Mbc6 => (
+            Box::new(Mbc6::new(rom_data, header, save_path)),
+            gb_mode,
+        ),
+        MBCTypes::Mbc7 => (
+            Box::new(Mbc7::new(rom_data, header, save_path)),
+            gb_mode,
+        ),
         _ => unimplemented!(),
     }
 }
