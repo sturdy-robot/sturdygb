@@ -7,6 +7,8 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use std::collections::HashMap;
 use std::sync::mpsc::{sync_channel, SyncSender};
 
+pub const APP_NAME: &str = concat!("SturdyGB v", env!("CARGO_PKG_VERSION"));
+
 #[cfg(not(target_arch = "wasm32"))]
 use rfd::FileDialog;
 
@@ -15,7 +17,6 @@ use rfd::AsyncFileDialog;
 
 const GB_W: usize = 160;
 const GB_H: usize = 144;
-const SCALE: f32 = 4.0;
 
 static mut AUDIO_PRODUCER: Option<SyncSender<[f32; 2]>> = None;
 static mut AUDIO_STREAM: Option<cpal::Stream> = None;
@@ -355,10 +356,9 @@ impl eframe::App for EmuApp {
                         if ui.button("Stop").clicked() {
                             self.state = None;
                             self.texture = None;
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
-                                "SturdyGB v{}",
-                                env!("CARGO_PKG_VERSION")
-                            )));
+                            ctx.send_viewport_cmd(egui::ViewportCommand::Title(
+                                APP_NAME.to_string(),
+                            ));
                             ui.close();
                         }
                     }
@@ -569,7 +569,7 @@ impl eframe::App for EmuApp {
                 if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
                     self.state = None;
                     self.texture = None;
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Title("SturdyGB".to_string()));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Title(APP_NAME.to_string()));
                     return;
                 }
 
@@ -716,10 +716,8 @@ impl eframe::App for EmuApp {
                     self.last_fps_update = std::time::Instant::now();
 
                     ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
-                        "SturdyGB v{} - {} (FPS: {})",
-                        env!("CARGO_PKG_VERSION"),
-                        state.title,
-                        self.current_fps
+                        "{} - {} (FPS: {})",
+                        APP_NAME, state.title, self.current_fps
                     )));
                 }
 

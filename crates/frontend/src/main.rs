@@ -3,6 +3,8 @@
 
 mod app;
 
+use crate::app::APP_NAME;
+
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result<()> {
     use clap::Parser;
@@ -34,7 +36,7 @@ fn main() -> eframe::Result<()> {
 
     let mut viewport = eframe::egui::ViewportBuilder::default()
         .with_inner_size([(160.0) * 4.0, (144.0) * 4.0 + 30.0])
-        .with_title(format!("SturdyGB"));
+        .with_title(APP_NAME.to_string());
 
     if let Some(icon) = icon_data {
         viewport = viewport.with_icon(icon);
@@ -46,7 +48,7 @@ fn main() -> eframe::Result<()> {
     };
 
     eframe::run_native(
-        "SturdyGB",
+        APP_NAME,
         options,
         Box::new(|cc| Ok(Box::new(app::EmuApp::new(cc, cli.rom)))),
     )
