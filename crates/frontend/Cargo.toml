@@ -3,15 +3,36 @@
 # SPDX-License-Identifier: MIT
 [package]
 name = "sturdygb"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 repository = "https://github.com/sturdy-robot/sturdygb"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 sturdygb_core = { path = "../core" }
-notan = { version = "0.12.1", features = ["draw"] }
 clap = { version = "4.5", features = ["derive"] }
-rfd = "0.14"
-cpal = "0.17.3"
+rfd = "0.14.1"
+cpal = "0.15"
+eframe = { version = "0.33.3", features = ["wgpu"] }
+egui = { version = "0.33.3", features = ["color-hex"] }
+egui_extras = { version = "0.33.3", features = ["image"] }
+zip = { version = "0.6", default-features = false, features = ["deflate"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+walkdir = "2"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4.50"
+console_error_panic_hook = "0.1"
+cpal = { version = "0.15", features = ["wasm-bindgen"] }
+log = "0.4"
+getrandom_02 = { package = "getrandom", version = "0.2", features = ["js"] }
+getrandom_03 = { package = "getrandom", version = "0.3", features = [
+    "wasm_js",
+] }
+getrandom_04 = { package = "getrandom", version = "0.4", features = [
+    "wasm_js",
+] }

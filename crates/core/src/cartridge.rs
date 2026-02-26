@@ -15,6 +15,15 @@ pub fn load_cartridge(filename: &str) -> Result<(Box<dyn Mbc>, GbMode), String> 
     }
 }
 
+pub fn load_cartridge_from_bytes(rom_data: Vec<u8>) -> Result<(Box<dyn Mbc>, GbMode), String> {
+    // For web/memory loads, we do not have a save file path
+    let save_path = std::path::PathBuf::new();
+    match CartridgeHeader::new(&rom_data) {
+        Ok(header) => Ok(get_mbc(rom_data, header, save_path)),
+        Err(f) => Err(f.to_string()),
+    }
+}
+
 #[allow(unused_variables)]
 pub trait Mbc {
     fn read_rom(&self, address: u16) -> u8;

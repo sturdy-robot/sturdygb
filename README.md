@@ -91,9 +91,10 @@ It is **not yet** a drop-in replacement for mature emulators.
 ## Frontend
 
 - **Pure Rust frontend**
-- Uses **[Notan](https://github.com/Nazariglez/notan)** for rendering and input
+- Uses **[egui (eframe)](https://github.com/emilk/egui/tree/main/crates/eframe)** for rendering and input
 - Pixel-perfect nearest-neighbor scaling
-- No native dependencies (SDL removed)
+- No native dependencies
+- Simple frontend with `egui`
 
 ## Missing / Incomplete Features
 
@@ -143,7 +144,7 @@ Keys are not yet customizable, and they are hardcoded as follows:
 | Z | A |
 | X | B |
 | Return/Enter | Start |
-| Right Shift | Select |
+| Space | Select |
 
 ## Roadmap
 
@@ -154,10 +155,9 @@ Planned future work includes:
 - Full APU implementation
 - Game Boy Color (CGB) mode
 - Debugging tools (PPU viewer, memory viewer, breakpoints)
-- Save states and battery-backed RAM (to save your games)
+- Save states
 - Libretro core
 - Android port (?)
-- Fully functional standalone frontend
 - Customizable keys
 - Rewind
 
