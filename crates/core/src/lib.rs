@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-mod cartridge;
+pub mod cartridge;
 mod cb_prefix;
 mod cpu;
 mod disasm;

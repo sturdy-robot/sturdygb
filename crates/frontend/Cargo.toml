@@ -15,10 +15,12 @@ sturdygb_core = { path = "../core" }
 clap = { version = "4.5", features = ["derive"] }
 rfd = "0.14.1"
 cpal = "0.15"
-eframe = { version = "0.33.3", features = ["wgpu"] }
-egui = { version = "0.33.3", features = ["color-hex"] }
+eframe = { version = "0.33.3", features = ["wgpu", "persistence"] }
+egui = { version = "0.33.3", features = ["color-hex", "serde"] }
 egui_extras = { version = "0.33.3", features = ["image"] }
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+serde = { version = "1.0", features = ["derive"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 walkdir = "2"

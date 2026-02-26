@@ -16,10 +16,32 @@ fn main() -> eframe::Result<()> {
 
     let cli = Cli::parse();
 
+    let icon_data = match image::load_from_memory(include_bytes!(
+        "../../../images/sturdygb_symbol_64x64.png"
+    )) {
+        Ok(img) => {
+            let img = img.into_rgba8();
+            let (width, height) = img.dimensions();
+            let rgba = img.into_raw();
+            Some(std::sync::Arc::new(eframe::egui::IconData {
+                rgba,
+                width,
+                height,
+            }))
+        }
+        Err(_) => None,
+    };
+
+    let mut viewport = eframe::egui::ViewportBuilder::default()
+        .with_inner_size([(160.0) * 4.0, (144.0) * 4.0 + 30.0])
+        .with_title(format!("SturdyGB"));
+
+    if let Some(icon) = icon_data {
+        viewport = viewport.with_icon(icon);
+    }
+
     let options = eframe::NativeOptions {
-        viewport: eframe::egui::ViewportBuilder::default()
-            .with_inner_size([(160.0) * 4.0, (144.0) * 4.0 + 30.0])
-            .with_title(format!("SturdyGB")),
+        viewport,
         ..Default::default()
     };
 

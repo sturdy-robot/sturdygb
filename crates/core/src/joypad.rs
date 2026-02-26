@@ -18,6 +18,7 @@ pub struct Joypad {
     dpad_states: u8,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum JoypadButton {
     A,
     B,

@@ -46,6 +46,7 @@ pub struct CartridgeHeader {
     pub mbc_type: MBCTypes,
     pub rom_size: u32,
     pub ram_size: u32,
+    pub company: String,
 }
 
 pub enum MBCTypes {
@@ -206,18 +207,98 @@ impl CartridgeHeader {
             let rom_size: u32 = 32 * (1 << rom_data[0x0148]);
             let ram_size: u32 = get_ram_size(&rom_data[0x0149]);
             let sgb_flag = rom_data[0x146] == 0x03;
+            let company = get_company_name(rom_data[0x14B], &rom_data[0x144..=0x145]);
             Ok(Self {
                 entry: rom_data[0x100..=0x103].try_into().unwrap(),
                 logo: rom_data[0x104..=0x133].try_into().unwrap(),
-                title: rom_data[0x134..=0x143].escape_ascii().to_string(),
+                title: rom_data[0x134..=0x143]
+                    .iter()
+                    .filter(|&&b| b != 0)
+                    .map(|&b| b as char)
+                    .collect::<String>()
+                    .trim()
+                    .to_string(),
                 cgb_flag: rom_data[0x143],
                 sgb_flag,
                 mbc_type,
                 rom_size,
                 ram_size,
+                company,
             })
         } else {
             Err("Cartridge is not a valid GB ROM")
         }
+    }
+}
+
+fn get_company_name(old_code: u8, new_code: &[u8]) -> String {
+    if old_code != 0x33 {
+        // Fall back to old ascii hash (approximate values missing)
+        return format!("Old Licensee: {old_code:02X}");
+    }
+
+    let code_str = std::str::from_utf8(new_code).unwrap_or("00");
+    match code_str {
+        "01" => "Nintendo".to_string(),
+        "08" => "Capcom".to_string(),
+        "13" => "Electronic Arts".to_string(),
+        "18" => "Hudson Soft".to_string(),
+        "19" => "b-ai".to_string(),
+        "20" => "kss".to_string(),
+        "22" => "pow".to_string(),
+        "24" => "PCM Complete".to_string(),
+        "25" => "san-x".to_string(),
+        "28" => "Kemco Japan".to_string(),
+        "29" => "seta".to_string(),
+        "30" => "Viacom".to_string(),
+        "31" => "Nintendo".to_string(),
+        "32" => "Bandai".to_string(),
+        "33" => "Ocean/Acclaim".to_string(),
+        "34" => "Konami".to_string(),
+        "35" => "Hector".to_string(),
+        "37" => "Taito".to_string(),
+        "38" => "Hudson".to_string(),
+        "39" => "Banpresto".to_string(),
+        "41" => "Ubi Soft".to_string(),
+        "42" => "Atlus".to_string(),
+        "44" => "Malibu".to_string(),
+        "46" => "angel".to_string(),
+        "47" => "Bullet-Proof".to_string(),
+        "49" => "irem".to_string(),
+        "50" => "Absolute".to_string(),
+        "51" => "Acclaim".to_string(),
+        "52" => "Activision".to_string(),
+        "53" => "American sammy".to_string(),
+        "54" => "Konami".to_string(),
+        "55" => "Hi tech entertainment".to_string(),
+        "56" => "LJN".to_string(),
+        "57" => "Matchbox".to_string(),
+        "58" => "Mattel".to_string(),
+        "59" => "Milton Bradley".to_string(),
+        "60" => "Titus".to_string(),
+        "61" => "Virgin".to_string(),
+        "64" => "LucasArts".to_string(),
+        "67" => "Ocean".to_string(),
+        "69" => "Electronic Arts".to_string(),
+        "70" => "Infogrames".to_string(),
+        "71" => "Interplay".to_string(),
+        "72" => "Broderbund".to_string(),
+        "73" => "sculptured".to_string(),
+        "75" => "sci".to_string(),
+        "78" => "THQ".to_string(),
+        "79" => "Accolade".to_string(),
+        "80" => "misawa".to_string(),
+        "83" => "lozc".to_string(),
+        "86" => "Tokuma Shoten Intermedia".to_string(),
+        "87" => "Tsukuda Original".to_string(),
+        "91" => "Chunsoft".to_string(),
+        "92" => "Video system".to_string(),
+        "93" => "Ocean/Acclaim".to_string(),
+        "95" => "Varie".to_string(),
+        "96" => "Yonezawa/s'pal".to_string(),
+        "97" => "Kaneko".to_string(),
+        "99" => "Pack in soft".to_string(),
+        "A4" => "Konami (Yu-Gi-Oh!)".to_string(),
+        _ => format!("Unknown: {code_str}"),
     }
 }
