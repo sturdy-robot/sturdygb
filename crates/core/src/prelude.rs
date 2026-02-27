@@ -22,10 +22,13 @@ impl GbInstance {
         }
     }
 
-    pub fn build_from_bytes(rom_data: Vec<u8>) -> Result<Gb, String> {
+    pub fn build_from_bytes(
+        rom_data: Vec<u8>,
+        save_path: Option<std::path::PathBuf>,
+    ) -> Result<Gb, String> {
         use crate::cartridge::load_cartridge_from_bytes;
         let gb_type: GbTypes;
-        match load_cartridge_from_bytes(rom_data) {
+        match load_cartridge_from_bytes(rom_data, save_path) {
             Ok((mbc, gb_mode)) => {
                 gb_type = if gb_mode == GbMode::CgbMode {
                     GbTypes::Cgb

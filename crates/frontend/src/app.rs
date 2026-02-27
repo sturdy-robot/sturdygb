@@ -169,7 +169,10 @@ impl EmuApp {
     fn load_rom_file(&mut self, path: &str) {
         if let Ok(bytes) = std::fs::read(path) {
             if let Some(extracted) = extract_rom_from_bytes(&bytes) {
-                self.load_rom_bytes(extracted);
+                self.load_rom_bytes(
+                    extracted,
+                    Some(std::path::PathBuf::from(path).with_extension("sav")),
+                );
                 return;
             }
 
@@ -178,7 +181,8 @@ impl EmuApp {
                 title = header.title;
             }
 
-            match GbInstance::build_from_bytes(bytes) {
+            let save_path = std::path::PathBuf::from(path).with_extension("sav");
+            match GbInstance::build_from_bytes(bytes, Some(save_path)) {
                 Ok(mut gb) => {
                     setup_audio(&mut gb);
                     self.state = Some(State {
@@ -200,7 +204,7 @@ impl EmuApp {
         }
     }
 
-    fn load_rom_bytes(&mut self, mut bytes: Vec<u8>) {
+    fn load_rom_bytes(&mut self, mut bytes: Vec<u8>, save_path: Option<std::path::PathBuf>) {
         if let Some(extracted) = extract_rom_from_bytes(&bytes) {
             bytes = extracted;
         }
@@ -210,7 +214,7 @@ impl EmuApp {
             title = header.title;
         }
 
-        match GbInstance::build_from_bytes(bytes) {
+        match GbInstance::build_from_bytes(bytes, save_path) {
             Ok(mut gb) => {
                 setup_audio(&mut gb);
                 self.state = Some(State {
@@ -312,7 +316,7 @@ impl eframe::App for EmuApp {
         // Check for async loaded roms
         if let Ok(result) = self.rom_load_channel.1.try_recv() {
             match result {
-                Ok(bytes) => self.load_rom_bytes(bytes),
+                Ok(bytes) => self.load_rom_bytes(bytes, None),
                 Err(e) => self.error_msg = Some(format!("Failed to load ROM via async: {e}")),
             }
         }
