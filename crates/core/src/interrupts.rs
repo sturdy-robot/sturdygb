@@ -31,23 +31,19 @@ impl Gb {
             return;
         }
 
-        if self.cpu.interrupt_master && self.cpu.is_halted {
+        let pending = self.ie_flag & self.if_flag & 0x1F;
+
+        if pending != 0 && self.cpu.is_halted {
             self.cpu.is_halted = false;
-            return;
         }
 
-        if !self.check_interrupts() {
+        if !self.cpu.interrupt_master || pending == 0 {
             return;
         }
 
         self.cpu.interrupt_master = false;
         self.cpu.sp = self.cpu.sp.wrapping_sub(2);
-        let pc = if self.cpu.is_halted {
-            self.cpu.pc.wrapping_add(1)
-        } else {
-            self.cpu.pc
-        };
-        self.write_word(self.cpu.sp, pc);
+        self.write_word(self.cpu.sp, self.cpu.pc);
         self.cpu.pending_cycles += 5;
         let interrupt_source = self.get_interrupt_source();
         let address = self.go_interrupt(&interrupt_source);
@@ -55,20 +51,17 @@ impl Gb {
         self.if_flag &= !(interrupt_source as u8);
     }
 
-    fn check_interrupts(&mut self) -> bool {
-        self.cpu.interrupt_master && (self.ie_flag & self.if_flag != 0)
-    }
-
     fn get_interrupt_source(&mut self) -> Interrupt {
-        if self.if_flag & (Interrupt::Vblank as u8) != 0 {
+        let pending = self.ie_flag & self.if_flag & 0x1F;
+        if pending & (Interrupt::Vblank as u8) != 0 {
             Interrupt::Vblank
-        } else if self.if_flag & (Interrupt::LcdStat as u8) != 0 {
+        } else if pending & (Interrupt::LcdStat as u8) != 0 {
             Interrupt::LcdStat
-        } else if self.if_flag & (Interrupt::Timer as u8) != 0 {
+        } else if pending & (Interrupt::Timer as u8) != 0 {
             Interrupt::Timer
-        } else if self.if_flag & (Interrupt::Serial as u8) != 0 {
+        } else if pending & (Interrupt::Serial as u8) != 0 {
             Interrupt::Serial
-        } else if self.if_flag & (Interrupt::Joypad as u8) != 0 {
+        } else if pending & (Interrupt::Joypad as u8) != 0 {
             Interrupt::Joypad
         } else {
             Interrupt::Invalid
