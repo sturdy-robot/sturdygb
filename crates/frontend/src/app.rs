@@ -277,13 +277,46 @@ impl EmuApp {
                                 let mut title = "Unknown Title".to_string();
                                 let mut company = "Unknown Company".to_string();
 
-                                if let Ok(bytes) = std::fs::read(&path) {
-                                    let try_bytes = extract_rom_from_bytes(&bytes).unwrap_or(bytes);
-                                    if let Ok(header) =
-                                        sturdygb_core::cartridge::CartridgeHeader::new(&try_bytes)
-                                    {
-                                        title = header.title;
-                                        company = header.company;
+                                if ext == "gb" || ext == "gbc" {
+                                    if let Ok(mut f) = std::fs::File::open(&path) {
+                                        use std::io::Read;
+                                        let mut header_bytes = vec![0; 0x150];
+                                        if f.read_exact(&mut header_bytes).is_ok() {
+                                            if let Ok(header) =
+                                                sturdygb_core::cartridge::CartridgeHeader::new(
+                                                    &header_bytes,
+                                                )
+                                            {
+                                                title = header.title;
+                                                company = header.company;
+                                            }
+                                        }
+                                    }
+                                } else if ext == "zip" {
+                                    if let Ok(f) = std::fs::File::open(&path) {
+                                        if let Ok(mut archive) = zip::ZipArchive::new(f) {
+                                            for i in 0..archive.len() {
+                                                if let Ok(mut inner) = archive.by_index(i) {
+                                                    let inner_name = inner.name().to_lowercase();
+                                                    if inner_name.ends_with(".gb")
+                                                        || inner_name.ends_with(".gbc")
+                                                    {
+                                                        use std::io::Read;
+                                                        let mut header_bytes = vec![0; 0x150];
+                                                        if inner
+                                                            .read_exact(&mut header_bytes)
+                                                            .is_ok()
+                                                        {
+                                                            if let Ok(header) = sturdygb_core::cartridge::CartridgeHeader::new(&header_bytes) {
+                                                                title = header.title;
+                                                                company = header.company;
+                                                            }
+                                                        }
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
 
@@ -673,8 +706,6 @@ impl eframe::App for EmuApp {
                 }
                 state.leftover_audio = new_leftover;
 
-                // Run frames until audio channel fills up, capped to prevent infinite loops (if audio fails)
-                // For wasm we might need to be very defensive about infinite loops
                 while !channel_full && frames_run < 5 {
                     state.gb.run_one_frame();
                     frames_run += 1;
@@ -690,10 +721,14 @@ impl eframe::App for EmuApp {
                                         prod.try_send(sample)
                                     {
                                         channel_full = true;
-                                        state.leftover_audio.push(val);
+                                        if state.leftover_audio.len() < 8192 {
+                                            state.leftover_audio.push(val);
+                                        }
                                     }
                                 } else {
-                                    state.leftover_audio.push(sample);
+                                    if state.leftover_audio.len() < 8192 {
+                                        state.leftover_audio.push(sample);
+                                    }
                                 }
                             }
                         }

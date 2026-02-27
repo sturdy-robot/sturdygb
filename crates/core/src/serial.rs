@@ -22,7 +22,8 @@ impl Serial {
     pub fn get_serial_message(&mut self) -> Option<String> {
         if !self.serial_data.is_empty() {
             let serial_string = self.serial_data.escape_ascii().to_string();
-            Some(serial_string.to_owned())
+            self.serial_data.clear();
+            Some(serial_string)
         } else {
             None
         }
