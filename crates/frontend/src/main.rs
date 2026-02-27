@@ -56,7 +56,7 @@ fn main() -> eframe::Result<()> {
     }
 
     eframe::run_native(
-        APP_NAME,
+        "sturdygb",
         options,
         Box::new(|cc| Ok(Box::new(app::EmuApp::new(cc, cli.rom)))),
     )
