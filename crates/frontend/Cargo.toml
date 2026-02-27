@@ -8,18 +8,24 @@ edition = "2021"
 repository = "https://github.com/sturdy-robot/sturdygb"
 
 [lib]
+name = "sturdygb"
 crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "sturdygb_bin"
+path = "src/main.rs"
 
 [dependencies]
 sturdygb_core = { path = "../core" }
 clap = { version = "4.5", features = ["derive"] }
-rfd = "0.14.1"
-cpal = "0.15"
+rfd = "0.17.2"
+cpal = "0.17"
 eframe = { version = "0.33.3", features = ["wgpu", "persistence"] }
 egui = { version = "0.33.3", features = ["color-hex", "serde"] }
 egui_extras = { version = "0.33.3", features = ["image"] }
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
+instant = { version = "0.1", features = ["wasm-bindgen", "inaccurate"] }
 serde = { version = "1.0", features = ["derive"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -29,9 +35,14 @@ walkdir = "2"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4.50"
 console_error_panic_hook = "0.1"
-cpal = { version = "0.15", features = ["wasm-bindgen"] }
+cpal = { version = "0.17", features = ["wasm-bindgen"] }
 log = "0.4"
-getrandom_02 = { package = "getrandom", version = "0.2", features = ["js"] }
+web-sys = { version = "0.3.83", features = [
+    "Document",
+    "Element",
+    "HtmlCanvasElement",
+    "Window",
+] }
 getrandom_03 = { package = "getrandom", version = "0.3", features = [
     "wasm_js",
 ] }

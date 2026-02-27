@@ -40,15 +40,21 @@ pub struct EmuApp {
     game_list: Vec<GameEntry>,
     #[cfg(not(target_arch = "wasm32"))]
     recursive_search: bool,
+    #[cfg(not(target_arch = "wasm32"))]
+    search_query: String,
+    #[cfg(not(target_arch = "wasm32"))]
+    sort_by: SortMethod,
+    #[cfg(not(target_arch = "wasm32"))]
+    sort_ascending: bool,
     config: SturdyConfig,
     show_options: bool,
     #[cfg(not(target_arch = "wasm32"))]
     loading_directory: bool,
     #[cfg(not(target_arch = "wasm32"))]
     dir_load_receiver: Option<std::sync::mpsc::Receiver<GameEntry>>,
-    start_time: std::time::Instant,
+    start_time: instant::Instant,
     frames_rendered: usize,
-    last_fps_update: std::time::Instant,
+    last_fps_update: instant::Instant,
     current_fps: usize,
 }
 
@@ -98,6 +104,14 @@ pub enum Palette {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub enum SortMethod {
+    Filename,
+    Title,
+    Company,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Clone)]
 struct GameEntry {
     path: std::path::PathBuf,
@@ -124,15 +138,21 @@ impl EmuApp {
             game_list: Vec::new(),
             #[cfg(not(target_arch = "wasm32"))]
             recursive_search: false,
+            #[cfg(not(target_arch = "wasm32"))]
+            search_query: String::new(),
+            #[cfg(not(target_arch = "wasm32"))]
+            sort_by: SortMethod::Filename,
+            #[cfg(not(target_arch = "wasm32"))]
+            sort_ascending: true,
             config,
             show_options: false,
             #[cfg(not(target_arch = "wasm32"))]
             loading_directory: false,
             #[cfg(not(target_arch = "wasm32"))]
             dir_load_receiver: None,
-            start_time: std::time::Instant::now(),
+            start_time: instant::Instant::now(),
             frames_rendered: 0,
-            last_fps_update: std::time::Instant::now(),
+            last_fps_update: instant::Instant::now(),
             current_fps: 0,
         };
 
@@ -169,7 +189,7 @@ impl EmuApp {
                     });
                     self.error_msg = None;
                     self.frames_rendered = 0;
-                    self.last_fps_update = std::time::Instant::now();
+                    self.last_fps_update = instant::Instant::now();
                 }
                 Err(e) => {
                     self.error_msg = Some(format!("Failed to load ROM:\n{e}"));
@@ -201,7 +221,7 @@ impl EmuApp {
                 });
                 self.error_msg = None;
                 self.frames_rendered = 0;
-                self.last_fps_update = std::time::Instant::now();
+                self.last_fps_update = instant::Instant::now();
             }
             Err(e) => {
                 self.error_msg = Some(format!("Failed to load ROM:\n{e}"));
@@ -322,7 +342,7 @@ impl eframe::App for EmuApp {
         }
 
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
-            egui::menu::bar(ui, |ui| {
+            egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("Open ROM...").clicked() {
                         #[cfg(not(target_arch = "wasm32"))]
@@ -713,7 +733,7 @@ impl eframe::App for EmuApp {
                 if self.last_fps_update.elapsed().as_secs_f32() >= 1.0 {
                     self.current_fps = self.frames_rendered;
                     self.frames_rendered = 0;
-                    self.last_fps_update = std::time::Instant::now();
+                    self.last_fps_update = instant::Instant::now();
 
                     ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
                         "{} - {} (FPS: {})",
@@ -758,6 +778,7 @@ impl eframe::App for EmuApp {
                     {
                         ui.centered_and_justified(|ui| {
                             ui.vertical_centered(|ui| {
+                                ui.add_space(ui.available_height() / 2.0 - 30.0);
                                 ui.heading("No games found.");
                                 ui.add_space(8.0);
                                 if ui.button("Open ROM...").clicked() {
@@ -802,6 +823,7 @@ impl eframe::App for EmuApp {
 
                         if self.loading_directory {
                             ui.centered_and_justified(|ui| {
+                                ui.add_space(ui.available_height() / 2.0 - 30.0);
                                 ui.vertical_centered(|ui| {
                                     ui.heading(format!(
                                         "Loading Games... ({})",
@@ -812,6 +834,68 @@ impl eframe::App for EmuApp {
                             });
                         } else {
                             let mut to_load = None;
+
+                            ui.horizontal(|ui| {
+                                ui.label("Search:");
+                                ui.text_edit_singleline(&mut self.search_query);
+
+                                ui.separator();
+
+                                ui.label("Sort by:");
+                                egui::ComboBox::from_id_salt("sort_by")
+                                    .selected_text(format!("{:?}", self.sort_by))
+                                    .show_ui(ui, |ui| {
+                                        ui.selectable_value(
+                                            &mut self.sort_by,
+                                            SortMethod::Filename,
+                                            "Filename",
+                                        );
+                                        ui.selectable_value(
+                                            &mut self.sort_by,
+                                            SortMethod::Title,
+                                            "Title",
+                                        );
+                                        ui.selectable_value(
+                                            &mut self.sort_by,
+                                            SortMethod::Company,
+                                            "Company",
+                                        );
+                                    });
+
+                                if ui
+                                    .button(if self.sort_ascending { "⬆" } else { "⬇" })
+                                    .clicked()
+                                {
+                                    self.sort_ascending = !self.sort_ascending;
+                                }
+                            });
+                            ui.add_space(4.0);
+
+                            let query = self.search_query.to_lowercase();
+                            let mut filtered_games: Vec<_> = self
+                                .game_list
+                                .iter()
+                                .filter(|g| {
+                                    query.is_empty()
+                                        || g.filename.to_lowercase().contains(&query)
+                                        || g.title.to_lowercase().contains(&query)
+                                        || g.company.to_lowercase().contains(&query)
+                                })
+                                .collect();
+
+                            filtered_games.sort_by(|a, b| {
+                                let cmp = match self.sort_by {
+                                    SortMethod::Filename => a.filename.cmp(&b.filename),
+                                    SortMethod::Title => a.title.cmp(&b.title),
+                                    SortMethod::Company => a.company.cmp(&b.company),
+                                };
+                                if self.sort_ascending {
+                                    cmp
+                                } else {
+                                    cmp.reverse()
+                                }
+                            });
+
                             let row_height = 20.0;
 
                             use egui_extras::{Column, TableBuilder};
@@ -837,8 +921,8 @@ impl eframe::App for EmuApp {
                                     });
                                 })
                                 .body(|body| {
-                                    body.rows(row_height, self.game_list.len(), |mut row| {
-                                        let entry = &self.game_list[row.index()];
+                                    body.rows(row_height, filtered_games.len(), |mut row| {
+                                        let entry = filtered_games[row.index()];
                                         row.col(|ui| {
                                             if ui
                                                 .selectable_label(false, &entry.filename)
@@ -862,6 +946,31 @@ impl eframe::App for EmuApp {
                         }
                     }
                 }
+
+                #[cfg(target_arch = "wasm32")]
+                {
+                    ui.centered_and_justified(|ui| {
+                        ui.vertical_centered(|ui| {
+                            ui.add_space(ui.available_height() / 2.0 - 30.0);
+                            ui.heading("SturdyGB Web");
+                            ui.add_space(8.0);
+                            if ui.button("Open ROM...").clicked() {
+                                let sender = self.rom_load_channel.0.clone();
+                                wasm_bindgen_futures::spawn_local(async move {
+                                    let file = AsyncFileDialog::new()
+                                        .add_filter("GameBoy ROMs", &["gb", "gbc"])
+                                        .pick_file()
+                                        .await;
+
+                                    if let Some(file) = file {
+                                        let bytes = file.read().await;
+                                        let _ = sender.send(Ok(bytes));
+                                    }
+                                });
+                            }
+                        });
+                    });
+                }
             }
         });
     }
@@ -881,7 +990,7 @@ fn setup_audio(gb: &mut sturdygb_core::gb::Gb) {
     if let Some(device) = device {
         let config = device.default_output_config().unwrap().config();
 
-        let sample_rate: u32 = config.sample_rate.0;
+        let sample_rate: u32 = config.sample_rate.into();
         gb.set_sample_rate(sample_rate);
 
         let (prod, cons) = sync_channel::<[f32; 2]>(4096);
