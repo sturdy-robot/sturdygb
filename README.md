@@ -21,17 +21,19 @@ SPDX-License-Identifier: MIT
 <table>
 <tr>
 <td>
-<img width="300" src="https://github.com/user-attachments/assets/e96bb414-5d8e-49df-9d4e-22e15f0cbe34" />
+<img width="400" src="./images/sturdygbv0-3-0-frontend1.PNG" />
 </td>
 <td>
-<img width="300"src="https://github.com/user-attachments/assets/07143e0d-e74b-461d-8976-58e5b7cc4479" />
+<img width="400"src="./images/sturdygbv0-3-0-frontend5.PNG" />
 </td>
 </tr>
 <tr>
 <td>
-<img width="300" src="https://github.com/user-attachments/assets/b63ebce0-78d8-4627-8703-b4b465681274" />
+<img width="400" src="./images/sturdygbv0-3-0-frontend3.PNG" />
+</td>
 <td>
-<img width="300" src="https://github.com/user-attachments/assets/6a5766bc-d829-418a-a81f-362012a75168" />
+<img width="400" src="./images/sturdygbv0-3-0-frontend4.PNG" />
+</td>
 </tr>
 </table>
 

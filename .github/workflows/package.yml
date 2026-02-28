@@ -1,0 +1,169 @@
+name: Package
+
+permissions:
+  contents: write
+
+on:
+  pull_request:
+  release:
+    types: [published]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  macos-app:
+    name: macOS .app Bundle (Universal)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust targets
+        run: |
+          rustup target add x86_64-apple-darwin
+          rustup target add aarch64-apple-darwin
+
+      - name: Build for x86_64
+        run: cargo build --profile dist --bin sturdygb_bin --target x86_64-apple-darwin
+
+      - name: Build for aarch64
+        run: cargo build --profile dist --bin sturdygb_bin --target aarch64-apple-darwin
+
+      - name: Create universal binary
+        run: |
+          mkdir -p target/universal
+          lipo -create \
+            target/x86_64-apple-darwin/dist/sturdygb_bin \
+            target/aarch64-apple-darwin/dist/sturdygb_bin \
+            -output target/universal/sturdygb_bin
+
+      - name: Generate .icns
+        run: |
+          mkdir -p sturdygb.iconset
+          cp images/sturdygb_symbol_16x16.png sturdygb.iconset/icon_16x16.png
+          cp images/sturdygb_symbol_32x32.png sturdygb.iconset/icon_32x32.png
+          # Use 32x32 as 16x16@2x
+          cp images/sturdygb_symbol_32x32.png sturdygb.iconset/icon_16x16@2x.png
+          # Use 64x64 as 32x32@2x
+          cp images/sturdygb_symbol_64x64.png sturdygb.iconset/icon_32x32@2x.png
+          iconutil -c icns sturdygb.iconset -o sturdygb.icns
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            # Strip leading 'v' if present
+            VERSION="${VERSION#v}"
+          else
+            VERSION="dev"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Assemble .app bundle
+        run: |
+          APP_NAME="SturdyGB.app"
+          mkdir -p "${APP_NAME}/Contents/MacOS"
+          mkdir -p "${APP_NAME}/Contents/Resources"
+
+          # Copy binary
+          cp target/universal/sturdygb_bin "${APP_NAME}/Contents/MacOS/sturdygb_bin"
+          chmod +x "${APP_NAME}/Contents/MacOS/sturdygb_bin"
+
+          # Copy icon
+          cp sturdygb.icns "${APP_NAME}/Contents/Resources/sturdygb.icns"
+
+          # Generate Info.plist with version
+          sed "s/VERSION_PLACEHOLDER/${{ steps.version.outputs.version }}/g" \
+            packaging/macos/Info.plist > "${APP_NAME}/Contents/Info.plist"
+
+      - name: Create zip
+        run: |
+          ZIP_NAME="SturdyGB-${{ steps.version.outputs.version }}-macOS-universal.zip"
+          ditto -c -k --sequesterRsrc --keepParent SturdyGB.app "$ZIP_NAME"
+          echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-app-bundle
+          path: ${{ env.ZIP_NAME }}
+
+      - name: Upload to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" "$ZIP_NAME" --clobber
+
+  linux-appimage:
+    name: Linux AppImage (x86_64)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev pkg-config libfuse2
+
+      - name: Build
+        run: cargo build --profile dist --bin sturdygb_bin --target x86_64-unknown-linux-gnu
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"
+          else
+            VERSION="dev"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Download linuxdeploy
+        run: |
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage
+
+      - name: Build AppImage
+        run: |
+          export LDAI_OUTPUT="SturdyGB-${{ steps.version.outputs.version }}-x86_64.AppImage"
+          export LDAI_UPDATE_INFORMATION="gh-releases-zsync|sturdy-robot|sturdygb|latest|SturdyGB-*-x86_64.AppImage.zsync"
+
+          # Set up AppDir structure
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/icons/hicolor/64x64/apps
+          mkdir -p AppDir/usr/share/applications
+
+          # Copy binary
+          cp target/x86_64-unknown-linux-gnu/dist/sturdygb_bin AppDir/usr/bin/sturdygb_bin
+          chmod +x AppDir/usr/bin/sturdygb_bin
+
+          # Copy icon
+          cp images/sturdygb_symbol_64x64.png AppDir/usr/share/icons/hicolor/64x64/apps/sturdygb.png
+
+          # Copy desktop file
+          cp packaging/linux/sturdygb.desktop AppDir/usr/share/applications/sturdygb.desktop
+
+          # Build AppImage
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            --icon-file images/sturdygb_symbol_64x64.png \
+            --desktop-file packaging/linux/sturdygb.desktop \
+            --output appimage
+
+          echo "APPIMAGE_NAME=$LDAI_OUTPUT" >> "$GITHUB_ENV"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: ${{ env.APPIMAGE_NAME }}
+
+      - name: Upload to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" "$APPIMAGE_NAME" --clobber
