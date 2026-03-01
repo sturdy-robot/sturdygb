@@ -26,6 +26,8 @@ struct State {
     rgba: Vec<u8>,
     leftover_audio: Vec<[f32; 2]>,
     title: String,
+    rom_bytes: Vec<u8>,
+    save_path: Option<std::path::PathBuf>,
 }
 
 pub struct EmuApp {
@@ -46,6 +48,7 @@ pub struct EmuApp {
     sort_by: SortMethod,
     #[cfg(not(target_arch = "wasm32"))]
     sort_ascending: bool,
+    paused: bool,
     config: SturdyConfig,
     show_options: bool,
     #[cfg(not(target_arch = "wasm32"))]
@@ -144,6 +147,7 @@ impl EmuApp {
             sort_by: SortMethod::Filename,
             #[cfg(not(target_arch = "wasm32"))]
             sort_ascending: true,
+            paused: false,
             config,
             show_options: false,
             #[cfg(not(target_arch = "wasm32"))]
@@ -182,7 +186,7 @@ impl EmuApp {
             }
 
             let save_path = std::path::PathBuf::from(path).with_extension("sav");
-            match GbInstance::build_from_bytes(bytes, Some(save_path)) {
+            match GbInstance::build_from_bytes(bytes.clone(), Some(save_path.clone())) {
                 Ok(mut gb) => {
                     setup_audio(&mut gb);
                     self.state = Some(State {
@@ -190,7 +194,10 @@ impl EmuApp {
                         rgba: vec![0; GB_W * GB_H * 4],
                         leftover_audio: Vec::new(),
                         title,
+                        rom_bytes: bytes,
+                        save_path: Some(save_path),
                     });
+                    self.paused = false;
                     self.error_msg = None;
                     self.frames_rendered = 0;
                     self.last_fps_update = instant::Instant::now();
@@ -214,7 +221,7 @@ impl EmuApp {
             title = header.title;
         }
 
-        match GbInstance::build_from_bytes(bytes, save_path) {
+        match GbInstance::build_from_bytes(bytes.clone(), save_path.clone()) {
             Ok(mut gb) => {
                 setup_audio(&mut gb);
                 self.state = Some(State {
@@ -222,7 +229,10 @@ impl EmuApp {
                     rgba: vec![0; GB_W * GB_H * 4],
                     leftover_audio: Vec::new(),
                     title,
+                    rom_bytes: bytes,
+                    save_path,
                 });
+                self.paused = false;
                 self.error_msg = None;
                 self.frames_rendered = 0;
                 self.last_fps_update = instant::Instant::now();
@@ -413,6 +423,7 @@ impl eframe::App for EmuApp {
                         if ui.button("Stop").clicked() {
                             self.state = None;
                             self.texture = None;
+                            self.paused = false;
                             ctx.send_viewport_cmd(egui::ViewportCommand::Title(
                                 APP_NAME.to_string(),
                             ));
@@ -431,6 +442,34 @@ impl eframe::App for EmuApp {
                         if ui.button("Exit").clicked() {
                             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                         }
+                    }
+                });
+                ui.menu_button("Emulation", |ui| {
+                    let has_state = self.state.is_some();
+                    if ui
+                        .add_enabled(
+                            has_state,
+                            egui::Button::new(if self.paused {
+                                "Resume"
+                            } else {
+                                "Pause"
+                            }),
+                        )
+                        .clicked()
+                    {
+                        self.paused = !self.paused;
+                        ui.close();
+                    }
+                    if ui
+                        .add_enabled(has_state, egui::Button::new("Reset"))
+                        .clicked()
+                    {
+                        if let Some(state) = &self.state {
+                            let rom_bytes = state.rom_bytes.clone();
+                            let save_path = state.save_path.clone();
+                            self.load_rom_bytes(rom_bytes, save_path);
+                        }
+                        ui.close();
                     }
                 });
                 if ui.button("Options").clicked() {
@@ -626,108 +665,111 @@ impl eframe::App for EmuApp {
                 if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
                     self.state = None;
                     self.texture = None;
+                    self.paused = false;
                     ctx.send_viewport_cmd(egui::ViewportCommand::Title(APP_NAME.to_string()));
                     return;
                 }
 
-                // Input handling
-                let k = &self.config.keybinds;
-                set_btn(
-                    ctx,
-                    state,
-                    *k.get(&JoypadButton::Up).unwrap(),
-                    JoypadButton::Up,
-                );
-                set_btn(
-                    ctx,
-                    state,
-                    *k.get(&JoypadButton::Down).unwrap(),
-                    JoypadButton::Down,
-                );
-                set_btn(
-                    ctx,
-                    state,
-                    *k.get(&JoypadButton::Left).unwrap(),
-                    JoypadButton::Left,
-                );
-                set_btn(
-                    ctx,
-                    state,
-                    *k.get(&JoypadButton::Right).unwrap(),
-                    JoypadButton::Right,
-                );
-                set_btn(
-                    ctx,
-                    state,
-                    *k.get(&JoypadButton::A).unwrap(),
-                    JoypadButton::A,
-                );
-                set_btn(
-                    ctx,
-                    state,
-                    *k.get(&JoypadButton::B).unwrap(),
-                    JoypadButton::B,
-                );
-                set_btn(
-                    ctx,
-                    state,
-                    *k.get(&JoypadButton::Start).unwrap(),
-                    JoypadButton::Start,
-                );
-                set_btn(
-                    ctx,
-                    state,
-                    *k.get(&JoypadButton::Select).unwrap(),
-                    JoypadButton::Select,
-                );
+                if !self.paused {
+                    // Input handling
+                    let k = &self.config.keybinds;
+                    set_btn(
+                        ctx,
+                        state,
+                        *k.get(&JoypadButton::Up).unwrap(),
+                        JoypadButton::Up,
+                    );
+                    set_btn(
+                        ctx,
+                        state,
+                        *k.get(&JoypadButton::Down).unwrap(),
+                        JoypadButton::Down,
+                    );
+                    set_btn(
+                        ctx,
+                        state,
+                        *k.get(&JoypadButton::Left).unwrap(),
+                        JoypadButton::Left,
+                    );
+                    set_btn(
+                        ctx,
+                        state,
+                        *k.get(&JoypadButton::Right).unwrap(),
+                        JoypadButton::Right,
+                    );
+                    set_btn(
+                        ctx,
+                        state,
+                        *k.get(&JoypadButton::A).unwrap(),
+                        JoypadButton::A,
+                    );
+                    set_btn(
+                        ctx,
+                        state,
+                        *k.get(&JoypadButton::B).unwrap(),
+                        JoypadButton::B,
+                    );
+                    set_btn(
+                        ctx,
+                        state,
+                        *k.get(&JoypadButton::Start).unwrap(),
+                        JoypadButton::Start,
+                    );
+                    set_btn(
+                        ctx,
+                        state,
+                        *k.get(&JoypadButton::Select).unwrap(),
+                        JoypadButton::Select,
+                    );
 
-                // Emulation Loop
-                let mut channel_full = false;
-                let mut frames_run = 0;
+                    // Emulation Loop
+                    let mut channel_full = false;
+                    let mut frames_run = 0;
 
-                // First try to drain leftover audio
-                let mut new_leftover = Vec::with_capacity(state.leftover_audio.len());
-                unsafe {
-                    #[allow(static_mut_refs)]
-                    if let Some(prod) = &mut AUDIO_PRODUCER {
-                        for sample in state.leftover_audio.drain(..) {
-                            if !channel_full {
-                                if let Err(std::sync::mpsc::TrySendError::Full(val)) =
-                                    prod.try_send(sample)
-                                {
-                                    channel_full = true;
-                                    new_leftover.push(val);
-                                }
-                            } else {
-                                new_leftover.push(sample);
-                            }
-                        }
-                    }
-                }
-                state.leftover_audio = new_leftover;
-
-                while !channel_full && frames_run < 5 {
-                    state.gb.run_one_frame();
-                    frames_run += 1;
-
-                    let audio_data = state.gb.get_audio_buffer();
+                    // First try to drain leftover audio
+                    let mut new_leftover = Vec::with_capacity(state.leftover_audio.len());
                     unsafe {
                         #[allow(static_mut_refs)]
                         if let Some(prod) = &mut AUDIO_PRODUCER {
-                            for frame in audio_data.chunks_exact(2) {
-                                let sample = [frame[0], frame[1]];
+                            for sample in state.leftover_audio.drain(..) {
                                 if !channel_full {
                                     if let Err(std::sync::mpsc::TrySendError::Full(val)) =
                                         prod.try_send(sample)
                                     {
                                         channel_full = true;
-                                        if state.leftover_audio.len() < 8192 {
-                                            state.leftover_audio.push(val);
-                                        }
+                                        new_leftover.push(val);
                                     }
                                 } else {
-                                    if state.leftover_audio.len() < 8192 {
-                                        state.leftover_audio.push(sample);
+                                    new_leftover.push(sample);
+                                }
+                            }
+                        }
+                    }
+                    state.leftover_audio = new_leftover;
+
+                    while !channel_full && frames_run < 5 {
+                        state.gb.run_one_frame();
+                        frames_run += 1;
+
+                        let audio_data = state.gb.get_audio_buffer();
+                        unsafe {
+                            #[allow(static_mut_refs)]
+                            if let Some(prod) = &mut AUDIO_PRODUCER {
+                                for frame in audio_data.chunks_exact(2) {
+                                    let sample = [frame[0], frame[1]];
+                                    if !channel_full {
+                                        if let Err(std::sync::mpsc::TrySendError::Full(val)) =
+                                            prod.try_send(sample)
+                                        {
+                                            channel_full = true;
+                                            if state.leftover_audio.len() < 8192 {
+                                                state.leftover_audio.push(val);
+                                            }
+                                        }
+                                    } else {
+                                        if state.leftover_audio.len() < 8192 {
+                                            state.leftover_audio.push(sample);
+                                        }
                                     }
                                 }
                             }
@@ -991,7 +1033,8 @@ impl eframe::App for EmuApp {
                     ui.centered_and_justified(|ui| {
                         ui.vertical_centered(|ui| {
                             ui.add_space(ui.available_height() / 2.0 - 30.0);
-                            ui.heading("SturdyGB Web");
+                            ui.heading(format!("{}", APP_NAME, ));
+                            ui.heading("Select a ROM file");
                             ui.add_space(8.0);
                             if ui.button("Open ROM...").clicked() {
                                 let sender = self.rom_load_channel.0.clone();
