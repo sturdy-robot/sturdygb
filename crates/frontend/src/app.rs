@@ -69,6 +69,7 @@ pub struct SturdyConfig {
     #[cfg(not(target_arch = "wasm32"))]
     pub rom_directories: Vec<std::path::PathBuf>,
     pub keybinds: HashMap<JoypadButton, egui::Key>,
+    #[cfg(not(target_arch = "wasm32"))]
     pub fullscreen: bool,
 }
 
@@ -90,6 +91,7 @@ impl Default for SturdyConfig {
             scale: ScaleMode::Integer(4.0),
             palette: Palette::Greyscale,
             keybinds,
+            #[cfg(not(target_arch = "wasm32"))]
             fullscreen: false,
         }
     }
@@ -359,9 +361,11 @@ impl eframe::App for EmuApp {
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Apply fullscreen state
+        #[cfg(not(target_arch = "wasm32"))]
         ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(self.config.fullscreen));
-
+        
         // Toggle fullscreen with F11
+        #[cfg(not(target_arch = "wasm32"))]
         if ctx.input(|i| i.key_pressed(egui::Key::F11)) {
             self.config.fullscreen = !self.config.fullscreen;
         }
@@ -483,6 +487,7 @@ impl eframe::App for EmuApp {
                         ui.close();
                     }
                 });
+                #[cfg(not(target_arch = "wasm32"))]
                 ui.menu_button("View", |ui| {
                     if ui
                         .button(if self.config.fullscreen {
@@ -886,7 +891,7 @@ impl eframe::App for EmuApp {
                                 ui.add_space(ui.available_height() / 2.0 - 30.0);
                                 ui.heading("No games found.");
                                 ui.add_space(8.0);
-                                if ui.button("Open ROM...").clicked() {
+                                if ui.button("📁 Open ROM...").clicked() {
                                     if let Some(path) = FileDialog::new()
                                         .add_filter("GameBoy ROMs", &["gb"])
                                         .pick_file()
@@ -894,7 +899,7 @@ impl eframe::App for EmuApp {
                                         self.load_rom_file(path.to_str().unwrap());
                                     }
                                 }
-                                if ui.button("Add ROM directory...").clicked() {
+                                if ui.button("📁 Add ROM directory...").clicked() {
                                     if let Some(path) = FileDialog::new().pick_folder() {
                                         self.load_directory(path);
                                     }
@@ -1060,11 +1065,11 @@ impl eframe::App for EmuApp {
                             ui.heading(format!("{}", APP_NAME, ));
                             ui.heading("Select a ROM file");
                             ui.add_space(8.0);
-                            if ui.button("Open ROM...").clicked() {
+                            if ui.button("📁 Open ROM...").clicked() {
                                 let sender = self.rom_load_channel.0.clone();
                                 wasm_bindgen_futures::spawn_local(async move {
                                     let file = AsyncFileDialog::new()
-                                        .add_filter("GameBoy ROMs", &["gb", "gbc"])
+                                        .add_filter("GameBoy ROMs", &["gb", "zip"])
                                         .pick_file()
                                         .await;
 
