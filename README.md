@@ -29,7 +29,7 @@ SPDX-License-Identifier: MIT
 </tr>
 <tr>
 <td>
-<img width="400" src="./images/sturdygbv0-3-0-frontend3.PNG" />
+<img width="400" src="./images/sturdygbv0-3-0-frontend2.PNG" />
 </td>
 <td>
 <img width="400" src="./images/sturdygbv0-3-0-frontend4.PNG" />
