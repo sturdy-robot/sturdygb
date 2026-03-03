@@ -172,9 +172,9 @@ SturdyGB can also be compiled to run in a web browser using WebAssembly.
    ```
 
 5. **Serve the application:**
-   You will need a local web server to serve the files in the `crates/frontend/public` directory. For example, using Python:
+   You will need a local web server to serve the files in the `crates/frontend/public` directory. Assuming you are still in `crates/frontend` from the previous steps:
    ```bash
-   cd public
+   cd crates/frontend/public
    python -m http.server 8080
    ```
    Then navigate to `http://localhost:8080` in your web browser.

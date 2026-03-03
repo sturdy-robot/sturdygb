@@ -6,6 +6,7 @@ use sturdygb_core::prelude::GbInstance;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use std::collections::HashMap;
 use std::sync::mpsc::{sync_channel, SyncSender};
+use std::sync::Mutex;
 
 pub const APP_NAME: &str = concat!("SturdyGB v", env!("CARGO_PKG_VERSION"));
 
@@ -18,8 +19,8 @@ use rfd::AsyncFileDialog;
 const GB_W: usize = 160;
 const GB_H: usize = 144;
 
-static mut AUDIO_PRODUCER: Option<SyncSender<[f32; 2]>> = None;
-static mut AUDIO_STREAM: Option<cpal::Stream> = None;
+static AUDIO_PRODUCER: Mutex<Option<SyncSender<[f32; 2]>>> = Mutex::new(None);
+static AUDIO_STREAM: Mutex<Option<cpal::Stream>> = Mutex::new(None);
 
 struct State {
     gb: sturdygb_core::gb::Gb,
@@ -71,6 +72,25 @@ pub struct SturdyConfig {
     pub keybinds: HashMap<JoypadButton, egui::Key>,
     #[cfg(not(target_arch = "wasm32"))]
     pub fullscreen: bool,
+}
+
+impl SturdyConfig {
+    fn default_key(btn: &JoypadButton) -> egui::Key {
+        match btn {
+            JoypadButton::Up => egui::Key::ArrowUp,
+            JoypadButton::Down => egui::Key::ArrowDown,
+            JoypadButton::Left => egui::Key::ArrowLeft,
+            JoypadButton::Right => egui::Key::ArrowRight,
+            JoypadButton::A => egui::Key::Z,
+            JoypadButton::B => egui::Key::X,
+            JoypadButton::Start => egui::Key::Enter,
+            JoypadButton::Select => egui::Key::Space,
+        }
+    }
+
+    fn keybind(&self, btn: &JoypadButton) -> egui::Key {
+        self.keybinds.get(btn).copied().unwrap_or_else(|| Self::default_key(btn))
+    }
 }
 
 impl Default for SturdyConfig {
@@ -383,13 +403,18 @@ impl eframe::App for EmuApp {
         if self.loading_directory {
             if let Some(rx) = &self.dir_load_receiver {
                 let mut loaded_some = false;
-                while let Ok(entry) = rx.try_recv() {
-                    self.game_list.push(entry);
-                    loaded_some = true;
-                }
+                let disconnected = loop {
+                    match rx.try_recv() {
+                        Ok(entry) => {
+                            self.game_list.push(entry);
+                            loaded_some = true;
+                        }
+                        Err(std::sync::mpsc::TryRecvError::Disconnected) => break true,
+                        Err(std::sync::mpsc::TryRecvError::Empty) => break false,
+                    }
+                };
 
-                // If the channel is disconnected, the loading thread is done
-                if let Err(std::sync::mpsc::TryRecvError::Disconnected) = rx.try_recv() {
+                if disconnected {
                     self.loading_directory = false;
                     self.dir_load_receiver = None;
                     self.game_list.sort_by(|a, b| a.filename.cmp(&b.filename));
@@ -409,7 +434,7 @@ impl eframe::App for EmuApp {
                         #[cfg(not(target_arch = "wasm32"))]
                         {
                             if let Some(path) = FileDialog::new()
-                                .add_filter("GameBoy ROMs", &["gb", "zip"])
+                                .add_filter("GameBoy ROMs", &["gb", "gbc", "zip"])
                                 .pick_file()
                             {
                                 self.load_rom_file(path.to_str().unwrap());
@@ -421,7 +446,7 @@ impl eframe::App for EmuApp {
                             let sender = self.rom_load_channel.0.clone();
                             wasm_bindgen_futures::spawn_local(async move {
                                 let file = AsyncFileDialog::new()
-                                    .add_filter("GameBoy ROMs", &["gb", "zip"])
+                                    .add_filter("GameBoy ROMs", &["gb", "gbc", "zip"])
                                     .pick_file()
                                     .await;
 
@@ -701,55 +726,19 @@ impl eframe::App for EmuApp {
 
                 if !self.paused {
                     // Input handling
-                    let k = &self.config.keybinds;
-                    set_btn(
-                        ctx,
-                        state,
-                        *k.get(&JoypadButton::Up).unwrap(),
+                    let buttons = [
                         JoypadButton::Up,
-                    );
-                    set_btn(
-                        ctx,
-                        state,
-                        *k.get(&JoypadButton::Down).unwrap(),
                         JoypadButton::Down,
-                    );
-                    set_btn(
-                        ctx,
-                        state,
-                        *k.get(&JoypadButton::Left).unwrap(),
                         JoypadButton::Left,
-                    );
-                    set_btn(
-                        ctx,
-                        state,
-                        *k.get(&JoypadButton::Right).unwrap(),
                         JoypadButton::Right,
-                    );
-                    set_btn(
-                        ctx,
-                        state,
-                        *k.get(&JoypadButton::A).unwrap(),
                         JoypadButton::A,
-                    );
-                    set_btn(
-                        ctx,
-                        state,
-                        *k.get(&JoypadButton::B).unwrap(),
                         JoypadButton::B,
-                    );
-                    set_btn(
-                        ctx,
-                        state,
-                        *k.get(&JoypadButton::Start).unwrap(),
                         JoypadButton::Start,
-                    );
-                    set_btn(
-                        ctx,
-                        state,
-                        *k.get(&JoypadButton::Select).unwrap(),
                         JoypadButton::Select,
-                    );
+                    ];
+                    for btn in buttons {
+                        set_btn(ctx, state, self.config.keybind(&btn), btn);
+                    }
 
                     // Emulation Loop
                     let mut channel_full = false;
@@ -757,9 +746,8 @@ impl eframe::App for EmuApp {
 
                     // First try to drain leftover audio
                     let mut new_leftover = Vec::with_capacity(state.leftover_audio.len());
-                    unsafe {
-                        #[allow(static_mut_refs)]
-                        if let Some(prod) = &mut AUDIO_PRODUCER {
+                    if let Ok(guard) = AUDIO_PRODUCER.lock() {
+                        if let Some(prod) = guard.as_ref() {
                             for sample in state.leftover_audio.drain(..) {
                                 if !channel_full {
                                     if let Err(std::sync::mpsc::TrySendError::Full(val)) =
@@ -781,9 +769,8 @@ impl eframe::App for EmuApp {
                         frames_run += 1;
 
                         let audio_data = state.gb.get_audio_buffer();
-                        unsafe {
-                            #[allow(static_mut_refs)]
-                            if let Some(prod) = &mut AUDIO_PRODUCER {
+                        if let Ok(guard) = AUDIO_PRODUCER.lock() {
+                            if let Some(prod) = guard.as_ref() {
                                 for frame in audio_data.chunks_exact(2) {
                                     let sample = [frame[0], frame[1]];
                                     if !channel_full {
@@ -893,7 +880,7 @@ impl eframe::App for EmuApp {
                                 ui.add_space(8.0);
                                 if ui.button("📁 Open ROM...").clicked() {
                                     if let Some(path) = FileDialog::new()
-                                        .add_filter("GameBoy ROMs", &["gb"])
+                                        .add_filter("GameBoy ROMs", &["gb", "gbc", "zip"])
                                         .pick_file()
                                     {
                                         self.load_rom_file(path.to_str().unwrap());
@@ -1069,7 +1056,7 @@ impl eframe::App for EmuApp {
                                 let sender = self.rom_load_channel.0.clone();
                                 wasm_bindgen_futures::spawn_local(async move {
                                     let file = AsyncFileDialog::new()
-                                        .add_filter("GameBoy ROMs", &["gb", "zip"])
+                                        .add_filter("GameBoy ROMs", &["gb", "gbc", "zip"])
                                         .pick_file()
                                         .await;
 
@@ -1133,9 +1120,11 @@ fn setup_audio(gb: &mut sturdygb_core::gb::Gb) {
 
         if let Ok(stream) = stream {
             stream.play().unwrap();
-            unsafe {
-                AUDIO_PRODUCER = Some(prod);
-                AUDIO_STREAM = Some(stream);
+            if let Ok(mut guard) = AUDIO_PRODUCER.lock() {
+                *guard = Some(prod);
+            }
+            if let Ok(mut guard) = AUDIO_STREAM.lock() {
+                *guard = Some(stream);
             }
         }
     }
