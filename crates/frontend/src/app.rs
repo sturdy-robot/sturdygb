@@ -69,6 +69,7 @@ pub struct SturdyConfig {
     #[cfg(not(target_arch = "wasm32"))]
     pub rom_directories: Vec<std::path::PathBuf>,
     pub keybinds: HashMap<JoypadButton, egui::Key>,
+    pub fullscreen: bool,
 }
 
 impl Default for SturdyConfig {
@@ -89,6 +90,7 @@ impl Default for SturdyConfig {
             scale: ScaleMode::Integer(4.0),
             palette: Palette::Greyscale,
             keybinds,
+            fullscreen: false,
         }
     }
 }
@@ -356,6 +358,14 @@ impl eframe::App for EmuApp {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Apply fullscreen state
+        ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(self.config.fullscreen));
+
+        // Toggle fullscreen with F11
+        if ctx.input(|i| i.key_pressed(egui::Key::F11)) {
+            self.config.fullscreen = !self.config.fullscreen;
+        }
+
         // Check for async loaded roms
         if let Ok(result) = self.rom_load_channel.1.try_recv() {
             match result {
@@ -391,11 +401,11 @@ impl eframe::App for EmuApp {
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
-                    if ui.button("Open ROM...").clicked() {
+                    if ui.button("📁 Open ROM...").clicked() {
                         #[cfg(not(target_arch = "wasm32"))]
                         {
                             if let Some(path) = FileDialog::new()
-                                .add_filter("GameBoy ROMs", &["gb"])
+                                .add_filter("GameBoy ROMs", &["gb", "zip"])
                                 .pick_file()
                             {
                                 self.load_rom_file(path.to_str().unwrap());
@@ -407,7 +417,7 @@ impl eframe::App for EmuApp {
                             let sender = self.rom_load_channel.0.clone();
                             wasm_bindgen_futures::spawn_local(async move {
                                 let file = AsyncFileDialog::new()
-                                    .add_filter("GameBoy ROMs", &["gb", "gbc"])
+                                    .add_filter("GameBoy ROMs", &["gb", "zip"])
                                     .pick_file()
                                     .await;
 
@@ -419,8 +429,25 @@ impl eframe::App for EmuApp {
                         }
                         ui.close();
                     }
-                    if let Some(_) = self.state {
-                        if ui.button("Stop").clicked() {
+                    
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        if ui.button("📁 Open Directory...").clicked() {
+                            if let Some(path) = FileDialog::new().pick_folder() {
+                                self.load_directory(path);
+                            }
+                            ui.close();
+                        }
+                        ui.checkbox(&mut self.recursive_search, "🔍 Recursive Search");
+                        if ui.button("❎ Exit").clicked() {
+                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                        }
+                    }
+                });
+                ui.menu_button("Emulation", |ui| {
+                    let has_state = self.state.is_some();
+                    if has_state {
+                        if ui.button("🟥 Stop").clicked() {
                             self.state = None;
                             self.texture = None;
                             self.paused = false;
@@ -430,29 +457,13 @@ impl eframe::App for EmuApp {
                             ui.close();
                         }
                     }
-                    #[cfg(not(target_arch = "wasm32"))]
-                    {
-                        if ui.button("Open Directory...").clicked() {
-                            if let Some(path) = FileDialog::new().pick_folder() {
-                                self.load_directory(path);
-                            }
-                            ui.close();
-                        }
-                        ui.checkbox(&mut self.recursive_search, "Recursive Search");
-                        if ui.button("Exit").clicked() {
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                        }
-                    }
-                });
-                ui.menu_button("Emulation", |ui| {
-                    let has_state = self.state.is_some();
                     if ui
                         .add_enabled(
                             has_state,
                             egui::Button::new(if self.paused {
-                                "Resume"
+                                "▶ Resume"
                             } else {
-                                "Pause"
+                                "⏸ Pause"
                             }),
                         )
                         .clicked()
@@ -461,7 +472,7 @@ impl eframe::App for EmuApp {
                         ui.close();
                     }
                     if ui
-                        .add_enabled(has_state, egui::Button::new("Reset"))
+                        .add_enabled(has_state, egui::Button::new("🔄 Reset"))
                         .clicked()
                     {
                         if let Some(state) = &self.state {
@@ -469,6 +480,19 @@ impl eframe::App for EmuApp {
                             let save_path = state.save_path.clone();
                             self.load_rom_bytes(rom_bytes, save_path);
                         }
+                        ui.close();
+                    }
+                });
+                ui.menu_button("View", |ui| {
+                    if ui
+                        .button(if self.config.fullscreen {
+                            "⛶ Exit Fullscreen (F11)"
+                        } else {
+                            "⛶ Fullscreen (F11)"
+                        })
+                        .clicked()
+                    {
+                        self.config.fullscreen = !self.config.fullscreen;
                         ui.close();
                     }
                 });
@@ -984,8 +1008,8 @@ impl eframe::App for EmuApp {
                                 .striped(true)
                                 .resizable(true)
                                 .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                                .column(Column::initial(150.0).clip(true).resizable(true))
-                                .column(Column::initial(150.0).clip(true).resizable(true))
+                                .column(Column::auto_with_initial_suggestion(300.0).clip(true).resizable(true))
+                                .column(Column::auto_with_initial_suggestion(150.0).clip(true).resizable(true))
                                 .column(Column::remainder())
                                 .min_scrolled_height(0.0);
 
