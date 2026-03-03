@@ -3,15 +3,53 @@
 # SPDX-License-Identifier: MIT
 [package]
 name = "sturdygb"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 repository = "https://github.com/sturdy-robot/sturdygb"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "sturdygb"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "sturdygb_bin"
+path = "src/main.rs"
 
 [dependencies]
 sturdygb_core = { path = "../core" }
-notan = { version = "0.12.1", features = ["draw"] }
 clap = { version = "4.5", features = ["derive"] }
-rfd = "0.14"
-cpal = "0.17.3"
+rfd = "0.17.2"
+cpal = "0.17"
+eframe = { version = "0.33.3", features = ["wgpu", "persistence"] }
+egui = { version = "0.33.3", features = ["color-hex", "serde"] }
+egui_extras = { version = "0.33.3", features = ["image"] }
+zip = { version = "0.6", default-features = false, features = ["deflate"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+instant = { version = "0.1", features = ["wasm-bindgen", "inaccurate"] }
+serde = { version = "1.0", features = ["derive"] }
+
+[target.'cfg(target_os = "windows")'.build-dependencies]
+winresource = "0.1"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+walkdir = "2"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4.50"
+console_error_panic_hook = "0.1"
+cpal = { version = "0.17", features = ["wasm-bindgen"] }
+log = "0.4"
+web-sys = { version = "0.3.83", features = [
+    "Document",
+    "Element",
+    "HtmlCanvasElement",
+    "Window",
+] }
+getrandom_03 = { package = "getrandom", version = "0.3", features = [
+    "wasm_js",
+] }
+getrandom_04 = { package = "getrandom", version = "0.4", features = [
+    "wasm_js",
+] }

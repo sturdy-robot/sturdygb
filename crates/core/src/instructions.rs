@@ -319,8 +319,13 @@ impl Gb {
     }
 
     fn halt(&mut self) {
-        self.cpu.is_halted = true;
         self.cpu.advance_pc();
+        let pending = self.ie_flag & self.if_flag & 0x1F;
+        if !self.cpu.interrupt_master && pending != 0 {
+            self.cpu.halt_bug = true;
+        } else {
+            self.cpu.is_halted = true;
+        }
     }
 
     fn ld_sp_d16(&mut self) {

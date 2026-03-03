@@ -76,10 +76,11 @@ impl Cpu {
     }
 
     pub fn advance_pc(&mut self) {
+        let mut adv = OPCODES_SIZE[self.current_instruction as usize];
         if self.halt_bug {
-            return;
+            self.halt_bug = false;
+            adv = adv.saturating_sub(1);
         }
-        let adv = OPCODES_SIZE[self.current_instruction as usize];
         self.pc = self.pc.wrapping_add(adv);
     }
 

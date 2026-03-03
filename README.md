@@ -21,38 +21,33 @@ SPDX-License-Identifier: MIT
 <table>
 <tr>
 <td>
-<img width="300" src="https://github.com/user-attachments/assets/e96bb414-5d8e-49df-9d4e-22e15f0cbe34" />
+<img width="400" src="./images/sturdygbv0-3-0-frontend1.PNG" />
 </td>
 <td>
-<img width="300"src="https://github.com/user-attachments/assets/07143e0d-e74b-461d-8976-58e5b7cc4479" />
+<img width="400"src="./images/sturdygbv0-3-0-frontend5.PNG" />
 </td>
 </tr>
 <tr>
 <td>
-<img width="300" src="https://github.com/user-attachments/assets/b63ebce0-78d8-4627-8703-b4b465681274" />
+<img width="400" src="./images/sturdygbv0-3-0-frontend3.PNG" />
+</td>
 <td>
-<img width="300" src="https://github.com/user-attachments/assets/6a5766bc-d829-418a-a81f-362012a75168" />
+<img width="400" src="./images/sturdygbv0-3-0-frontend4.PNG" />
+</td>
 </tr>
 </table>
-
 
 </div>
 
 **SturdyGB** is an experimental **Game Boy emulator written in Rust**, focused on correctness, clean architecture, and long-term accuracy.
 
-This project is still in **early development**. It can already run many commercial **DMG (original Game Boy)** titles, but several subsystems are incomplete or approximate.
-
-SturdyGB is primarily intended as:
-- a learning and research project,
-- a testbed for emulator accuracy,
-- and a clean Rust codebase for exploring Game Boy internals.
-
-It is **not yet** a drop-in replacement for mature emulators.
+This project is still in **early development**. It can already run many commercial **DMG (original Game Boy)** titles.
 
 ## Current Features
 
 ### Core Emulation
-- LR35902 CPU  
+
+- LR35902 CPU
   - Passes **blargg’s CPU instruction tests**
 - Timer
 - Interrupt controller
@@ -60,18 +55,22 @@ It is **not yet** a drop-in replacement for mature emulators.
 - Serial I/O
 
 ### Video (PPU)
+
 - Functional DMG PPU
 - Background, window, and sprite rendering
 - OAM DMA
 - Scanline-based renderer (not cycle-accurate yet)
 
-> Some games that rely on mid-scanline PPU tricks or precise STAT timing may show graphical issues.
+> [!WARNING]
+> Some games may show graphical issues due to the inaccurate PPU.
 
 ### Input
+
 - Joypad emulation
 - Keyboard input in frontend
 
 ### Cartridge Support
+
 - ROM-only
 - MBC1
 - MBC2
@@ -91,9 +90,10 @@ It is **not yet** a drop-in replacement for mature emulators.
 ## Frontend
 
 - **Pure Rust frontend**
-- Uses **[Notan](https://github.com/Nazariglez/notan)** for rendering and input
+- Uses **[egui (eframe)](https://github.com/emilk/egui/tree/main/crates/eframe)** for rendering and input
 - Pixel-perfect nearest-neighbor scaling
-- No native dependencies (SDL removed)
+- No native dependencies
+- Simple frontend with `egui`
 
 ## Missing / Incomplete Features
 
@@ -106,44 +106,95 @@ It is **not yet** a drop-in replacement for mature emulators.
 - Rewind
 - Customizable keys
 
-## Building and running from GitHub
+## Building and running from source
 
 You can find release builds [here](https://github.com/sturdy-robot/sturdygb/releases).
 
-To build from source, just use:
+Officially supported architectures:
+
+- aarch64-apple-darwin
+- aarch64-pc-windows-msvc
+- aarch64-unknown-linux-gnu
+- x86_64-apple-darwin
+- x86_64-pc-windows-msvc
+- x86_64-unknown-linux-gnu
+
+### Prerequisites
+
+To build SturdyGB, you need the Rust toolchain installed. You can install it via [rustup](https://rustup.rs/).
+
+### Desktop Build
+
+To build the native desktop application from source, run:
 
 ```bash
-cargo build
+cargo build --release
 ```
 
-And you can run it simply with:
+You can run the emulator directly using:
 
 ```bash
-cargo run <rom-name.gb>
+# Run without a ROM
+cargo run --release --bin sturdygb_bin
+
+# Run with a specific ROM
+cargo run --release --bin sturdygb_bin <rom-name.gb>
 ```
 
-## How to run
+### WebAssembly (WASM) Build
 
-Since we don't have a fully fledged frontend yet, you have to run it from the command line:
+SturdyGB can also be compiled to run in a web browser using WebAssembly.
 
-```bash
-sturdygb <rom-name.gb>
-```
+1. **Install the `wasm32-unknown-unknown` target:**
+
+   ```bash
+   rustup target add wasm32-unknown-unknown
+   ```
+
+2. **Install `wasm-bindgen-cli`:**
+   Make sure the version matches the one in `Cargo.toml`.
+
+   ```bash
+   cargo install wasm-bindgen-cli
+   ```
+
+3. **Build the WebAssembly target:**
+
+   ```bash
+   cd crates/frontend
+   cargo build --target wasm32-unknown-unknown --release
+   ```
+
+4. **Generate the WASM bindings:**
+
+   ```bash
+   wasm-bindgen --out-dir public/pkg --target web ../../target/wasm32-unknown-unknown/release/sturdygb.wasm
+   ```
+
+5. **Serve the application:**
+   You will need a local web server to serve the files in the `crates/frontend/public` directory. Assuming you are still in `crates/frontend` from the previous steps:
+   ```bash
+   cd crates/frontend/public
+   python -m http.server 8080
+   ```
+   Then navigate to `http://localhost:8080` in your web browser.
 
 ## Keys
 
-Keys are not yet customizable, and they are hardcoded as follows:
+The default keys are:
 
-| Key | Action |
-| --- | --- |
-| Arrow Up | Up |
-| Arrow Down | Down |
-| Arrow Left | Left |
-| Arrow Right | Right |
-| Z | A |
-| X | B |
-| Return/Enter | Start |
-| Right Shift | Select |
+| Key          | Action |
+| ------------ | ------ |
+| Arrow Up     | Up     |
+| Arrow Down   | Down   |
+| Arrow Left   | Left   |
+| Arrow Right  | Right  |
+| Z            | A      |
+| X            | B      |
+| Return/Enter | Start  |
+| Space        | Select |
+
+You can customize them in the UI (no joypad support yet).
 
 ## Roadmap
 
@@ -151,13 +202,11 @@ Planned future work includes:
 
 - Pixel-FIFO-based, cycle-accurate PPU
 - Correct STAT interrupt edge behavior
-- Full APU implementation
 - Game Boy Color (CGB) mode
 - Debugging tools (PPU viewer, memory viewer, breakpoints)
-- Save states and battery-backed RAM (to save your games)
+- Save states
 - Libretro core
 - Android port (?)
-- Fully functional standalone frontend
 - Customizable keys
 - Rewind
 
@@ -210,7 +259,7 @@ SturdyGB is an **early technical project**.
 
 Accuracy, structure, and experimentation are prioritized over performance, UX, or completeness. Expect bugs, missing features, and breaking changes.
 
-## 📜 License
+## License
 
     Copyright © 2022-2026 Pedrenrique G. Guimarães
 

@@ -123,7 +123,7 @@ impl Gb {
         self.handle_interrupt();
         self.cpu_tick();
         self.components_tick();
-        //self.print_serial_message();
+        self.print_serial_message();
     }
 
     pub fn run_one_frame(&mut self) {

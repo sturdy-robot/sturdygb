@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=SturdyGB
+Comment=Game Boy Emulator
+Exec=sturdygb_bin
+Icon=sturdygb
+Type=Application
+Categories=Game;Emulator;
