@@ -208,6 +208,21 @@ impl Mbc for Mbc6 {
             _ => {}
         }
     }
+
+    fn get_battery_ram(&self) -> Option<&[u8]> {
+        if !self.ram.is_empty() {
+            Some(&self.ram)
+        } else {
+            None
+        }
+    }
+
+    fn set_battery_ram(&mut self, data: &[u8]) {
+        if !self.ram.is_empty() {
+            let len = self.ram.len().min(data.len());
+            self.ram[..len].copy_from_slice(&data[..len]);
+        }
+    }
 }
 
 impl Drop for Mbc6 {

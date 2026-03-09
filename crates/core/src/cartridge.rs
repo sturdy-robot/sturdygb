@@ -37,6 +37,12 @@ pub trait Mbc {
     fn write_rom(&mut self, address: u16, value: u8) {}
 
     fn write_ram(&mut self, address: u16, value: u8) {}
+
+    fn get_battery_ram(&self) -> Option<&[u8]> {
+        None
+    }
+
+    fn set_battery_ram(&mut self, _data: &[u8]) {}
 }
 
 pub struct CartridgeHeader {

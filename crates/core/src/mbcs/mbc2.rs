@@ -118,6 +118,21 @@ impl Mbc for Mbc2 {
             _ => {}
         }
     }
+
+    fn get_battery_ram(&self) -> Option<&[u8]> {
+        if self.has_battery && self.has_ram {
+            Some(&self.ram)
+        } else {
+            None
+        }
+    }
+
+    fn set_battery_ram(&mut self, data: &[u8]) {
+        if self.has_battery && self.has_ram {
+            let len = self.ram.len().min(data.len());
+            self.ram[..len].copy_from_slice(&data[..len]);
+        }
+    }
 }
 
 impl Drop for Mbc2 {

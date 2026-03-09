@@ -185,7 +185,7 @@ impl EmuApp {
         };
 
         if let Some(rom) = initial_rom {
-            app.load_rom_file(&rom);
+            app.load_rom_file(&rom, cc.storage);
         } else {
             #[cfg(not(target_arch = "wasm32"))]
             app.reload_all_directories();
@@ -194,48 +194,19 @@ impl EmuApp {
         app
     }
 
-    fn load_rom_file(&mut self, path: &str) {
+    fn load_rom_file(&mut self, path: &str, storage: Option<&dyn eframe::Storage>) {
         if let Ok(bytes) = std::fs::read(path) {
-            if let Some(extracted) = extract_rom_from_bytes(&bytes) {
-                self.load_rom_bytes(
-                    extracted,
-                    Some(std::path::PathBuf::from(path).with_extension("sav")),
-                );
-                return;
-            }
-
-            let mut title = "Unknown Title".to_string();
-            if let Ok(header) = sturdygb_core::cartridge::CartridgeHeader::new(&bytes) {
-                title = header.title;
-            }
-
-            let save_path = std::path::PathBuf::from(path).with_extension("sav");
-            match GbInstance::build_from_bytes(bytes.clone(), Some(save_path.clone())) {
-                Ok(mut gb) => {
-                    setup_audio(&mut gb);
-                    self.state = Some(State {
-                        gb,
-                        rgba: vec![0; GB_W * GB_H * 4],
-                        leftover_audio: Vec::new(),
-                        title,
-                        rom_bytes: bytes,
-                        save_path: Some(save_path),
-                    });
-                    self.paused = false;
-                    self.error_msg = None;
-                    self.frames_rendered = 0;
-                    self.last_fps_update = instant::Instant::now();
-                }
-                Err(e) => {
-                    self.error_msg = Some(format!("Failed to load ROM:\n{e}"));
-                }
-            }
+            self.load_rom_bytes(
+                bytes,
+                Some(std::path::PathBuf::from(path).with_extension("sav")),
+                storage,
+            );
         } else {
             self.error_msg = Some(format!("Could not read file {path}"));
         }
     }
 
-    fn load_rom_bytes(&mut self, mut bytes: Vec<u8>, save_path: Option<std::path::PathBuf>) {
+    fn load_rom_bytes(&mut self, mut bytes: Vec<u8>, save_path: Option<std::path::PathBuf>, storage: Option<&dyn eframe::Storage>) {
         if let Some(extracted) = extract_rom_from_bytes(&bytes) {
             bytes = extracted;
         }
@@ -247,6 +218,13 @@ impl EmuApp {
 
         match GbInstance::build_from_bytes(bytes.clone(), save_path.clone()) {
             Ok(mut gb) => {
+                #[cfg(target_arch = "wasm32")]
+                if let Some(storage) = storage {
+                    if let Some(saved) = eframe::get_value::<Vec<u8>>(storage, &format!("sturdygb_sram_{title}")) {
+                        gb.set_battery_ram(&saved);
+                    }
+                }
+
                 setup_audio(&mut gb);
                 self.state = Some(State {
                     gb,
@@ -377,6 +355,13 @@ impl EmuApp {
 impl eframe::App for EmuApp {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, "sturdygb_config", &self.config);
+
+        #[cfg(target_arch = "wasm32")]
+        if let Some(state) = &mut self.state {
+            if let Some(ram) = state.gb.get_battery_ram() {
+                eframe::set_value(storage, &format!("sturdygb_sram_{}", state.title), &ram.to_vec());
+            }
+        }
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -393,7 +378,7 @@ impl eframe::App for EmuApp {
         // Check for async loaded roms
         if let Ok(result) = self.rom_load_channel.1.try_recv() {
             match result {
-                Ok(bytes) => self.load_rom_bytes(bytes, None),
+                Ok(bytes) => self.load_rom_bytes(bytes, None, _frame.storage()),
                 Err(e) => self.error_msg = Some(format!("Failed to load ROM via async: {e}")),
             }
         }
@@ -437,7 +422,7 @@ impl eframe::App for EmuApp {
                                 .add_filter("GameBoy ROMs", &["gb", "gbc", "zip"])
                                 .pick_file()
                             {
-                                self.load_rom_file(path.to_str().unwrap());
+                                self.load_rom_file(path.to_str().unwrap(), _frame.storage());
                             }
                         }
 
@@ -507,7 +492,7 @@ impl eframe::App for EmuApp {
                         if let Some(state) = &self.state {
                             let rom_bytes = state.rom_bytes.clone();
                             let save_path = state.save_path.clone();
-                            self.load_rom_bytes(rom_bytes, save_path);
+                            self.load_rom_bytes(rom_bytes, save_path, _frame.storage());
                         }
                         ui.close();
                     }

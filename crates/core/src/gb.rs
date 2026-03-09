@@ -200,4 +200,12 @@ impl Gb {
     pub fn release_button(&mut self, button: JoypadButton) {
         self.joypad.release(button);
     }
+
+    pub fn get_battery_ram(&self) -> Option<&[u8]> {
+        self.mbc.get_battery_ram()
+    }
+
+    pub fn set_battery_ram(&mut self, data: &[u8]) {
+        self.mbc.set_battery_ram(data);
+    }
 }

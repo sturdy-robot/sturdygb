@@ -119,6 +119,21 @@ impl Mbc for Mbc1 {
         };
         self.external_ram[(bank * 0x2000) | ((address & 0x1FFF) as usize)] = value;
     }
+
+    fn get_battery_ram(&self) -> Option<&[u8]> {
+        if self.has_battery && !self.external_ram.is_empty() {
+            Some(&self.external_ram)
+        } else {
+            None
+        }
+    }
+
+    fn set_battery_ram(&mut self, data: &[u8]) {
+        if self.has_battery && !self.external_ram.is_empty() {
+            let len = self.external_ram.len().min(data.len());
+            self.external_ram[..len].copy_from_slice(&data[..len]);
+        }
+    }
 }
 
 impl Drop for Mbc1 {
