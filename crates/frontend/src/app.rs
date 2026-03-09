@@ -89,7 +89,10 @@ impl SturdyConfig {
     }
 
     fn keybind(&self, btn: &JoypadButton) -> egui::Key {
-        self.keybinds.get(btn).copied().unwrap_or_else(|| Self::default_key(btn))
+        self.keybinds
+            .get(btn)
+            .copied()
+            .unwrap_or_else(|| Self::default_key(btn))
     }
 }
 
@@ -206,7 +209,12 @@ impl EmuApp {
         }
     }
 
-    fn load_rom_bytes(&mut self, mut bytes: Vec<u8>, save_path: Option<std::path::PathBuf>, storage: Option<&dyn eframe::Storage>) {
+    fn load_rom_bytes(
+        &mut self,
+        mut bytes: Vec<u8>,
+        save_path: Option<std::path::PathBuf>,
+        _storage: Option<&dyn eframe::Storage>,
+    ) {
         if let Some(extracted) = extract_rom_from_bytes(&bytes) {
             bytes = extracted;
         }
@@ -219,8 +227,10 @@ impl EmuApp {
         match GbInstance::build_from_bytes(bytes.clone(), save_path.clone()) {
             Ok(mut gb) => {
                 #[cfg(target_arch = "wasm32")]
-                if let Some(storage) = storage {
-                    if let Some(saved) = eframe::get_value::<Vec<u8>>(storage, &format!("sturdygb_sram_{title}")) {
+                if let Some(storage) = _storage {
+                    if let Some(saved) =
+                        eframe::get_value::<Vec<u8>>(storage, &format!("sturdygb_sram_{title}"))
+                    {
                         gb.set_battery_ram(&saved);
                     }
                 }
@@ -359,7 +369,11 @@ impl eframe::App for EmuApp {
         #[cfg(target_arch = "wasm32")]
         if let Some(state) = &mut self.state {
             if let Some(ram) = state.gb.get_battery_ram() {
-                eframe::set_value(storage, &format!("sturdygb_sram_{}", state.title), &ram.to_vec());
+                eframe::set_value(
+                    storage,
+                    &format!("sturdygb_sram_{}", state.title),
+                    &ram.to_vec(),
+                );
             }
         }
     }
@@ -368,7 +382,7 @@ impl eframe::App for EmuApp {
         // Apply fullscreen state
         #[cfg(not(target_arch = "wasm32"))]
         ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(self.config.fullscreen));
-        
+
         // Toggle fullscreen with F11
         #[cfg(not(target_arch = "wasm32"))]
         if ctx.input(|i| i.key_pressed(egui::Key::F11)) {
@@ -443,7 +457,7 @@ impl eframe::App for EmuApp {
                         }
                         ui.close();
                     }
-                    
+
                     #[cfg(not(target_arch = "wasm32"))]
                     {
                         if ui.button("📁 Open Directory...").clicked() {
@@ -868,7 +882,10 @@ impl eframe::App for EmuApp {
                                         .add_filter("GameBoy ROMs", &["gb", "gbc", "zip"])
                                         .pick_file()
                                     {
-                                        self.load_rom_file(path.to_str().unwrap());
+                                        self.load_rom_file(
+                                            path.to_str().unwrap(),
+                                            _frame.storage(),
+                                        );
                                     }
                                 }
                                 if ui.button("📁 Add ROM directory...").clicked() {
@@ -985,8 +1002,16 @@ impl eframe::App for EmuApp {
                                 .striped(true)
                                 .resizable(true)
                                 .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                                .column(Column::auto_with_initial_suggestion(300.0).clip(true).resizable(true))
-                                .column(Column::auto_with_initial_suggestion(150.0).clip(true).resizable(true))
+                                .column(
+                                    Column::auto_with_initial_suggestion(300.0)
+                                        .clip(true)
+                                        .resizable(true),
+                                )
+                                .column(
+                                    Column::auto_with_initial_suggestion(150.0)
+                                        .clip(true)
+                                        .resizable(true),
+                                )
                                 .column(Column::remainder())
                                 .min_scrolled_height(0.0);
 
@@ -1023,7 +1048,7 @@ impl eframe::App for EmuApp {
                                 });
 
                             if let Some(path) = to_load {
-                                self.load_rom_file(path.to_str().unwrap());
+                                self.load_rom_file(path.to_str().unwrap(), _frame.storage());
                             }
                         }
                     }
@@ -1034,7 +1059,7 @@ impl eframe::App for EmuApp {
                     ui.centered_and_justified(|ui| {
                         ui.vertical_centered(|ui| {
                             ui.add_space(ui.available_height() / 2.0 - 30.0);
-                            ui.heading(format!("{}", APP_NAME, ));
+                            ui.heading(format!("{}", APP_NAME,));
                             ui.heading("Select a ROM file");
                             ui.add_space(8.0);
                             if ui.button("📁 Open ROM...").clicked() {

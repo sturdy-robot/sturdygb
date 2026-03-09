@@ -8,6 +8,7 @@ use super::gb::Gb;
 use super::hdma::Hdma;
 use super::interrupts::Interrupt;
 use super::memory::Memory;
+use std::collections::VecDeque;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum PpuMode {
@@ -15,6 +16,35 @@ pub enum PpuMode {
     VBlank = 1,
     SearchingOAM = 2,
     Transferring = 3,
+}
+
+#[derive(Copy, Clone)]
+struct LineSprite {
+    y: u8,
+    x: u8,
+    tile_number: u8,
+    attributes: u8,
+    oam_index: u8,
+}
+
+#[derive(Copy, Clone)]
+struct BgPixel {
+    color: u8,
+}
+
+#[derive(Copy, Clone)]
+struct SpritePixel {
+    color: u8,
+    palette: u8,
+    behind_bg: bool,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum FetcherStep {
+    GetTile,
+    GetTileDataLow,
+    GetTileDataHigh,
+    Push,
 }
 
 pub struct Ppu {
@@ -43,8 +73,27 @@ pub struct Ppu {
     pub dma: Dma,
     pub hdma: Hdma,
     pub mode_clock: u32,
+    line_clock: u32,
     pub frame_ready: bool,
     screen: [[u8; 160]; 144],
+    bg_fifo: VecDeque<BgPixel>,
+    sprite_fifo: VecDeque<Option<SpritePixel>>,
+    line_sprites: Vec<LineSprite>,
+    oam_scan_index: usize,
+    next_sprite_index: usize,
+    fetcher_step: FetcherStep,
+    fetcher_step_clock: u8,
+    fetcher_map_x: usize,
+    fetcher_using_window: bool,
+    fetcher_tile_number: u8,
+    fetcher_tile_data_low: u8,
+    fetcher_tile_data_high: u8,
+    fetch_x: i16,
+    visible_x: u8,
+    sprite_fetch_delay: u8,
+    window_line_counter: u8,
+    window_triggered: bool,
+    window_rendering_this_line: bool,
 }
 
 impl Ppu {
@@ -81,7 +130,26 @@ impl Ppu {
             dma: Dma::new(),
             hdma: Hdma::new(),
             mode_clock: 0,
+            line_clock: 0,
             screen: [[0; 160]; 144],
+            bg_fifo: VecDeque::with_capacity(16),
+            sprite_fifo: VecDeque::with_capacity(16),
+            line_sprites: Vec::with_capacity(10),
+            oam_scan_index: 0,
+            next_sprite_index: 0,
+            fetcher_step: FetcherStep::GetTile,
+            fetcher_step_clock: 0,
+            fetcher_map_x: 0,
+            fetcher_using_window: false,
+            fetcher_tile_number: 0,
+            fetcher_tile_data_low: 0,
+            fetcher_tile_data_high: 0,
+            fetch_x: 0,
+            visible_x: 0,
+            sprite_fetch_delay: 0,
+            window_line_counter: 0,
+            window_triggered: false,
+            window_rendering_this_line: false,
         }
     }
 
@@ -102,7 +170,8 @@ impl Ppu {
         self.mode = mode;
     }
 
-    pub fn check_lyc(&mut self) {
+    pub fn check_lyc(&mut self) -> bool {
+        let previous = self.stat & 0x04 != 0;
         let coincidence = self.ly == self.lyc;
         // Update coincidence flag (bit 2)
         if coincidence {
@@ -110,195 +179,359 @@ impl Ppu {
         } else {
             self.stat &= !0x04;
         }
+        coincidence && !previous && self.stat & 0x40 != 0
     }
 
-    pub fn render_scanline(&mut self) {
-        // Skip rendering if LCD is off
-        if self.lcdc & 0x80 == 0 {
+    fn bg_enabled(&self) -> bool {
+        self.lcdc & 0x01 != 0
+    }
+
+    fn sprites_enabled(&self) -> bool {
+        self.lcdc & 0x02 != 0
+    }
+
+    fn tall_sprites(&self) -> bool {
+        self.lcdc & 0x04 != 0
+    }
+
+    fn sprite_height(&self) -> u8 {
+        if self.tall_sprites() {
+            16
+        } else {
+            8
+        }
+    }
+
+    fn window_enabled_for_line(&self) -> bool {
+        self.bg_enabled() && self.lcdc & 0x20 != 0 && self.ly >= self.wy && self.wx <= 166
+    }
+
+    fn window_start_x(&self) -> i16 {
+        self.wx as i16 - 7
+    }
+
+    fn clear_pixel_fifos(&mut self) {
+        self.bg_fifo.clear();
+        self.sprite_fifo.clear();
+        self.next_sprite_index = 0;
+        self.sprite_fetch_delay = 0;
+        self.visible_x = 0;
+    }
+
+    fn reset_fetcher(&mut self, using_window: bool) {
+        self.fetcher_using_window = using_window;
+        self.fetcher_step = FetcherStep::GetTile;
+        self.fetcher_step_clock = 0;
+        self.fetcher_map_x = if using_window {
+            0
+        } else {
+            (self.scx as usize >> 3) & 0x1F
+        };
+        self.fetcher_tile_number = 0;
+        self.fetcher_tile_data_low = 0;
+        self.fetcher_tile_data_high = 0;
+    }
+
+    fn reset_lcd_state(&mut self) {
+        self.ly = 0;
+        self.mode_clock = 0;
+        self.line_clock = 0;
+        self.window_line_counter = 0;
+        self.window_triggered = false;
+        self.window_rendering_this_line = false;
+        self.oam_scan_index = 0;
+        self.line_sprites.clear();
+        self.fetch_x = 0;
+        self.clear_pixel_fifos();
+        self.reset_fetcher(false);
+        self.set_mode(PpuMode::HBlank);
+        let _ = self.check_lyc();
+    }
+
+    fn enable_lcd(&mut self) {
+        self.ly = 0;
+        self.mode_clock = 0;
+        self.line_clock = 0;
+        self.window_line_counter = 0;
+        self.oam_scan_index = 0;
+        self.line_sprites.clear();
+        self.window_triggered = false;
+        self.window_rendering_this_line = false;
+        self.fetch_x = 0;
+        self.clear_pixel_fifos();
+        self.reset_fetcher(false);
+        self.set_mode(PpuMode::SearchingOAM);
+        let _ = self.check_lyc();
+    }
+
+    fn start_oam_search(&mut self) {
+        self.mode_clock = 0;
+        self.set_mode(PpuMode::SearchingOAM);
+        self.oam_scan_index = 0;
+        self.line_sprites.clear();
+        self.window_triggered = false;
+        self.window_rendering_this_line = false;
+        self.fetch_x = 0;
+        self.clear_pixel_fifos();
+        self.reset_fetcher(false);
+    }
+
+    fn start_transfer(&mut self) {
+        self.mode_clock = 0;
+        self.set_mode(PpuMode::Transferring);
+        self.line_sprites
+            .sort_by_key(|sprite| (sprite.x, sprite.oam_index));
+        let start_with_window = self.window_enabled_for_line() && self.window_start_x() <= 0;
+        self.window_triggered = start_with_window;
+        self.window_rendering_this_line = start_with_window;
+        self.fetch_x = if start_with_window {
+            0
+        } else {
+            -i16::from(self.scx & 0x07)
+        };
+        self.clear_pixel_fifos();
+        self.reset_fetcher(start_with_window);
+    }
+
+    fn scan_oam_entry(&mut self, sprite_index: usize) {
+        if self.line_sprites.len() >= 10 {
             return;
         }
 
-        let current_line = self.ly as usize;
-        if current_line >= 144 {
-            return;
+        let oam_addr = sprite_index * 4;
+        let sprite = LineSprite {
+            y: self.oam[oam_addr],
+            x: self.oam[oam_addr + 1],
+            tile_number: self.oam[oam_addr + 2],
+            attributes: self.oam[oam_addr + 3],
+            oam_index: sprite_index as u8,
+        };
+        let top = i16::from(sprite.y) - 16;
+        let line = i16::from(self.ly);
+        let height = i16::from(self.sprite_height());
+
+        if line >= top && line < top + height {
+            self.line_sprites.push(sprite);
         }
+    }
 
-        // Background rendering
-        let bg_enabled = self.lcdc & 0x01 != 0;
-        let bg_tile_map = if self.lcdc & 0x08 != 0 {
-            0x9C00
-        } else {
-            0x9800
-        };
-        let bg_tile_data = if self.lcdc & 0x10 != 0 {
-            0x8000
-        } else {
-            0x8800
-        };
-        let signed_tile_numbers = bg_tile_data == 0x8800;
-
-        // Window rendering
-        let window_enabled = self.lcdc & 0x20 != 0;
-        let window_tile_map = if self.lcdc & 0x40 != 0 {
-            0x9C00
-        } else {
-            0x9800
-        };
-        let window_y = self.wy as usize;
-        let window_x = self.wx.wrapping_sub(7) as usize;
-
-        // For each pixel in the scanline
-        for x in 0..160 {
-            let mut pixel = 0;
-
-            if bg_enabled {
-                // Calculate background tile coordinates
-                let bg_x = (self.scx as usize + x) & 0xFF;
-                let bg_y = (self.scy as usize + current_line) & 0xFF;
-                let tile_x = bg_x >> 3;
-                let tile_y = bg_y >> 3;
-                let tile_pixel_x = bg_x & 7;
-                let tile_pixel_y = bg_y & 7;
-
-                // Get tile number from tile map
-                let tile_map_addr = bg_tile_map + tile_y * 32 + tile_x;
-                let tile_number = self.vram[(tile_map_addr & 0x1FFF) as usize];
-
-                // Get tile data address
-                let tile_addr = if signed_tile_numbers {
-                    let signed_tile = tile_number as i8 as i16;
-                    let offset = (signed_tile + 128) * 16;
-                    (0x8800 + offset as usize) & 0x1FFF
-                } else {
-                    let offset = tile_number as usize * 16;
-                    (bg_tile_data + offset) & 0x1FFF
-                };
-
-                // Get tile row data
-                let row_addr = tile_addr + (tile_pixel_y * 2);
-                let tile_data_low = self.vram[row_addr];
-                let tile_data_high = self.vram[row_addr + 1];
-
-                // Extract pixel color from tile data
-                let color_bit = 7 - tile_pixel_x;
-                let low_bit = (tile_data_low >> color_bit) & 1;
-                let high_bit = (tile_data_high >> color_bit) & 1;
-                pixel = (high_bit << 1) | low_bit;
-            }
-
-            // Check if we should draw window at this position
-            if window_enabled && current_line >= window_y && x >= window_x {
-                let window_rel_y = current_line - window_y;
-                let window_rel_x = x - window_x;
-                let tile_x = window_rel_x >> 3;
-                let tile_y = window_rel_y >> 3;
-                let tile_pixel_x = window_rel_x & 7;
-                let tile_pixel_y = window_rel_y & 7;
-
-                // Get window tile number
-                let tile_map_addr = window_tile_map + tile_y * 32 + tile_x;
-                let tile_number = self.vram[(tile_map_addr & 0x1FFF) as usize];
-
-                // Get window tile data
-                let tile_addr = if signed_tile_numbers {
-                    let signed_tile = tile_number as i8 as i16;
-                    let offset = (signed_tile + 128) * 16;
-                    (0x8800 + offset as usize) & 0x1FFF
-                } else {
-                    let offset = tile_number as usize * 16;
-                    (bg_tile_data + offset) & 0x1FFF
-                };
-
-                let row_addr = tile_addr + (tile_pixel_y * 2);
-                let tile_data_low = self.vram[row_addr];
-                let tile_data_high = self.vram[row_addr + 1];
-
-                let color_bit = 7 - tile_pixel_x;
-                let low_bit = (tile_data_low >> color_bit) & 1;
-                let high_bit = (tile_data_high >> color_bit) & 1;
-                pixel = (high_bit << 1) | low_bit;
-            }
-
-            // Apply background palette
-            let palette_pixel = (self.bgp >> (pixel * 2)) & 0x03;
-            self.screen[current_line][x] = palette_pixel;
+    fn tick_oam_search(&mut self) {
+        if self.mode_clock % 2 == 0 && self.oam_scan_index < 40 {
+            self.scan_oam_entry(self.oam_scan_index);
+            self.oam_scan_index += 1;
         }
+    }
 
-        // Sprite rendering
-        if self.lcdc & 0x02 != 0 {
-            // Sprites enabled
-            let tall_sprites = self.lcdc & 0x04 != 0;
-            let sprite_height = if tall_sprites { 16 } else { 8 };
+    fn tile_map_base(&self, using_window: bool) -> usize {
+        if using_window {
+            if self.lcdc & 0x40 != 0 {
+                0x1C00
+            } else {
+                0x1800
+            }
+        } else if self.lcdc & 0x08 != 0 {
+            0x1C00
+        } else {
+            0x1800
+        }
+    }
 
-            // Check all sprites in OAM
-            for sprite_index in 0..40 {
-                let oam_addr = sprite_index * 4;
-                let sprite_y = self.oam[oam_addr].wrapping_sub(16);
-                let sprite_x = self.oam[oam_addr + 1].wrapping_sub(8);
-                let tile_number = self.oam[oam_addr + 2];
-                let attributes = self.oam[oam_addr + 3];
+    fn fetcher_tile_y(&self) -> usize {
+        if self.fetcher_using_window {
+            (self.window_line_counter as usize >> 3) & 0x1F
+        } else {
+            (((self.scy as usize) + (self.ly as usize)) & 0xFF) >> 3
+        }
+    }
 
-                // Check if sprite is visible on this scanline
-                if (current_line as u8) >= sprite_y
-                    && (current_line as u8) < sprite_y.wrapping_add(sprite_height as u8)
-                {
-                    let palette = if attributes & 0x10 != 0 {
-                        self.obp1
-                    } else {
-                        self.obp0
-                    };
-                    let flip_x = attributes & 0x20 != 0;
-                    let flip_y = attributes & 0x40 != 0;
-                    let behind_bg = attributes & 0x80 != 0;
+    fn fetcher_pixel_y(&self) -> usize {
+        if self.fetcher_using_window {
+            self.window_line_counter as usize & 0x07
+        } else {
+            ((self.scy as usize) + (self.ly as usize)) & 0x07
+        }
+    }
 
-                    let line = (current_line as u8).wrapping_sub(sprite_y);
-                    let actual_line = if flip_y {
-                        sprite_height - 1 - (line as usize)
-                    } else {
-                        line as usize
-                    };
+    fn read_bg_tile_number(&self) -> u8 {
+        let tile_map_base = self.tile_map_base(self.fetcher_using_window);
+        let tile_addr = tile_map_base + self.fetcher_tile_y() * 32 + (self.fetcher_map_x & 0x1F);
+        self.vram[tile_addr & 0x1FFF]
+    }
 
-                    // Get tile data for sprite
-                    let tile_addr = if tall_sprites {
-                        let tile_num = tile_number & !1;
-                        0x8000 + (tile_num as usize * 16) + (if actual_line >= 8 { 16 } else { 0 })
-                    } else {
-                        0x8000 + (tile_number as usize * 16)
-                    };
+    fn read_bg_tile_row_addr(&self, tile_number: u8) -> usize {
+        let tile_row = self.fetcher_pixel_y() * 2;
+        if self.lcdc & 0x10 != 0 {
+            ((tile_number as usize) * 16 + tile_row) & 0x1FFF
+        } else {
+            let signed_tile = tile_number as i8 as i16;
+            (0x1000i32 + i32::from(signed_tile) * 16 + tile_row as i32) as usize & 0x1FFF
+        }
+    }
 
-                    // Get tile row data
-                    let row_addr = (tile_addr & 0x1FFF) + ((actual_line & 7) * 2);
-                    let tile_data_low = self.vram[row_addr];
-                    let tile_data_high = self.vram[row_addr + 1];
-
-                    // Draw sprite pixels
-                    for x_pixel in 0..8 {
-                        let screen_x = sprite_x.wrapping_add(x_pixel);
-                        if screen_x >= 160 {
-                            continue;
-                        }
-
-                        let bit = if flip_x { x_pixel } else { 7 - x_pixel };
-                        let low_bit = (tile_data_low >> bit) & 1;
-                        let high_bit = (tile_data_high >> bit) & 1;
-                        let color = (high_bit << 1) | low_bit;
-
-                        // Skip transparent pixels (color 0)
-                        if color == 0 {
-                            continue;
-                        }
-
-                        // Apply sprite palette
-                        let palette_pixel = (palette >> (color * 2)) & 0x03;
-
-                        // Check sprite priority
-                        if !behind_bg || self.screen[current_line][screen_x as usize] == 0 {
-                            self.screen[current_line][screen_x as usize] = palette_pixel;
-                        }
+    fn tick_fetcher(&mut self) {
+        match self.fetcher_step {
+            FetcherStep::Push => {
+                if self.bg_fifo.len() <= 8 {
+                    let bg_enabled = self.bg_enabled();
+                    for bit in (0..8).rev() {
+                        let color = if bg_enabled {
+                            (((self.fetcher_tile_data_high >> bit) & 1) << 1)
+                                | ((self.fetcher_tile_data_low >> bit) & 1)
+                        } else {
+                            0
+                        };
+                        self.bg_fifo.push_back(BgPixel { color });
                     }
+                    while self.sprite_fifo.len() < self.bg_fifo.len() {
+                        self.sprite_fifo.push_back(None);
+                    }
+                    self.fetcher_map_x = (self.fetcher_map_x + 1) & 0x1F;
+                    self.fetcher_step = FetcherStep::GetTile;
+                }
+            }
+            _ => {
+                self.fetcher_step_clock = self.fetcher_step_clock.wrapping_add(1);
+                if self.fetcher_step_clock < 2 {
+                    return;
+                }
+                self.fetcher_step_clock = 0;
+
+                match self.fetcher_step {
+                    FetcherStep::GetTile => {
+                        self.fetcher_tile_number = self.read_bg_tile_number();
+                        self.fetcher_step = FetcherStep::GetTileDataLow;
+                    }
+                    FetcherStep::GetTileDataLow => {
+                        let row_addr = self.read_bg_tile_row_addr(self.fetcher_tile_number);
+                        self.fetcher_tile_data_low = self.vram[row_addr];
+                        self.fetcher_step = FetcherStep::GetTileDataHigh;
+                    }
+                    FetcherStep::GetTileDataHigh => {
+                        let row_addr = self.read_bg_tile_row_addr(self.fetcher_tile_number);
+                        self.fetcher_tile_data_high = self.vram[(row_addr + 1) & 0x1FFF];
+                        self.fetcher_step = FetcherStep::Push;
+                    }
+                    FetcherStep::Push => {}
                 }
             }
         }
+    }
+
+    fn fetch_sprite(&mut self, sprite: LineSprite) {
+        let sprite_height = self.sprite_height() as usize;
+        let sprite_top = sprite.y.wrapping_sub(16);
+        let line = self.ly.wrapping_sub(sprite_top) as usize;
+        let flip_x = sprite.attributes & 0x20 != 0;
+        let flip_y = sprite.attributes & 0x40 != 0;
+        let behind_bg = sprite.attributes & 0x80 != 0;
+        let palette = if sprite.attributes & 0x10 != 0 {
+            self.obp1
+        } else {
+            self.obp0
+        };
+        let mut row = if flip_y {
+            sprite_height - 1 - line
+        } else {
+            line
+        };
+        let mut tile_number = sprite.tile_number;
+
+        if self.tall_sprites() {
+            tile_number &= !1;
+            if row >= 8 {
+                tile_number = tile_number.wrapping_add(1);
+            }
+            row &= 0x07;
+        }
+
+        let row_addr = ((tile_number as usize) * 16 + row * 2) & 0x1FFF;
+        let tile_data_low = self.vram[row_addr];
+        let tile_data_high = self.vram[(row_addr + 1) & 0x1FFF];
+        let left_edge = i16::from(sprite.x) - 8;
+
+        for x in 0..8 {
+            let screen_x = left_edge + x as i16;
+            if screen_x < self.fetch_x {
+                continue;
+            }
+
+            let bit = if flip_x { x } else { 7 - x };
+            let color = (((tile_data_high >> bit) & 1) << 1) | ((tile_data_low >> bit) & 1);
+            if color == 0 {
+                continue;
+            }
+
+            let queue_index = (screen_x - self.fetch_x) as usize;
+            if self.sprite_fifo.len() <= queue_index {
+                self.sprite_fifo.resize(queue_index + 1, None);
+            }
+            if self.sprite_fifo[queue_index].is_none() {
+                self.sprite_fifo[queue_index] = Some(SpritePixel {
+                    color,
+                    palette,
+                    behind_bg,
+                });
+            }
+        }
+    }
+
+    fn resolve_pixel(&self, bg_pixel: BgPixel, sprite_pixel: Option<SpritePixel>) -> u8 {
+        if let Some(sprite_pixel) = sprite_pixel {
+            if !self.bg_enabled() || !sprite_pixel.behind_bg || bg_pixel.color == 0 {
+                return (sprite_pixel.palette >> (sprite_pixel.color * 2)) & 0x03;
+            }
+        }
+
+        (self.bgp >> (bg_pixel.color * 2)) & 0x03
+    }
+
+    fn tick_transfer(&mut self) -> bool {
+        if !self.window_triggered
+            && self.window_enabled_for_line()
+            && self.fetch_x >= self.window_start_x()
+        {
+            self.window_triggered = true;
+            self.window_rendering_this_line = true;
+            self.bg_fifo.clear();
+            self.reset_fetcher(true);
+        }
+
+        if self.sprite_fetch_delay > 0 {
+            self.sprite_fetch_delay -= 1;
+            return false;
+        }
+
+        if self.sprites_enabled() && self.next_sprite_index < self.line_sprites.len() {
+            let sprite = self.line_sprites[self.next_sprite_index];
+            if i16::from(sprite.x) - 8 <= self.fetch_x {
+                self.fetch_sprite(sprite);
+                self.next_sprite_index += 1;
+                self.sprite_fetch_delay = 5;
+                return false;
+            }
+        }
+
+        self.tick_fetcher();
+
+        if self.bg_fifo.len() > 8 {
+            let bg_pixel = self.bg_fifo.pop_front().unwrap();
+            let sprite_pixel = if self.sprite_fifo.is_empty() {
+                None
+            } else {
+                self.sprite_fifo.pop_front().unwrap()
+            };
+
+            if self.fetch_x >= 0 && self.visible_x < 160 {
+                let current_line = self.ly as usize;
+                let screen_x = self.visible_x as usize;
+                self.screen[current_line][screen_x] = self.resolve_pixel(bg_pixel, sprite_pixel);
+                self.visible_x = self.visible_x.wrapping_add(1);
+            }
+
+            self.fetch_x += 1;
+        }
+
+        self.visible_x >= 160
     }
 
     pub fn get_screen(&mut self) -> &[[u8; 160]; 144] {
@@ -315,14 +548,21 @@ impl Memory for Ppu {
     fn read_byte(&self, address: u16) -> u8 {
         match address {
             0x8000..=0x9FFF => {
-                if self.vram.len() == 0x4000 {
+                if self.get_ppu_mode() == PpuMode::Transferring {
+                    0xFF
+                } else if self.vram.len() == 0x4000 {
                     self.vram[((self.vbk as usize & 1) * 0x2000) | ((address & 0x1FFF) as usize)]
                 } else {
                     self.vram[(address & 0x1FFF) as usize]
                 }
             }
             0xFE00..=0xFE9F => {
-                if self.dma.active {
+                if self.dma.active
+                    || matches!(
+                        self.get_ppu_mode(),
+                        PpuMode::SearchingOAM | PpuMode::Transferring
+                    )
+                {
                     0xFF
                 } else {
                     self.oam[address as usize - 0xFE00]
@@ -367,13 +607,27 @@ impl Memory for Ppu {
                 _ => {}
             },
             0xFE00..=0xFE9F => {
-                if self.dma.active {
+                if self.dma.active
+                    || matches!(
+                        self.get_ppu_mode(),
+                        PpuMode::SearchingOAM | PpuMode::Transferring
+                    )
+                {
                     return;
                 }
 
                 self.oam[address as usize - 0xFE00] = value;
             }
-            0xFF40 => self.lcdc = value,
+            0xFF40 => {
+                let was_enabled = self.lcdc & 0x80 != 0;
+                self.lcdc = value;
+                let is_enabled = self.lcdc & 0x80 != 0;
+                if was_enabled && !is_enabled {
+                    self.reset_lcd_state();
+                } else if !was_enabled && is_enabled {
+                    self.enable_lcd();
+                }
+            }
             0xFF41 => {
                 // Bit 7 is always set
                 let v = value & 0b0111_1000;
@@ -384,7 +638,10 @@ impl Memory for Ppu {
             0xFF42 => self.scy = value,
             0xFF43 => self.scx = value,
             0xFF44 => {} // LY is read-only,
-            0xFF45 => self.lyc = value,
+            0xFF45 => {
+                self.lyc = value;
+                let _ = self.check_lyc();
+            }
             0xFF46 => self.dma.start_transfer(value),
             0xFF47 => self.bgp = value,
             0xFF48 => self.obp0 = value,
@@ -407,66 +664,75 @@ impl Memory for Ppu {
 impl Gb {
     pub fn ppu_tick(&mut self, ticks: u32) {
         if self.ppu.lcdc & 0x80 == 0 {
-            // LCD is off
-            self.ppu.ly = 0;
-            self.ppu.mode_clock = 0;
-            self.ppu.set_mode(PpuMode::HBlank);
             return;
         }
 
-        self.ppu.mode_clock = self.ppu.mode_clock.wrapping_add(ticks);
+        for _ in 0..ticks {
+            self.ppu.line_clock = self.ppu.line_clock.wrapping_add(1);
+            self.ppu.mode_clock = self.ppu.mode_clock.wrapping_add(1);
 
-        match self.ppu.get_ppu_mode() {
-            PpuMode::HBlank => {
-                if self.ppu.mode_clock >= 204 {
-                    self.ppu.mode_clock = 0;
-                    self.ppu.ly = self.ppu.ly.wrapping_add(1);
-                    self.ppu.check_lyc();
-
-                    if self.ppu.ly == 144 {
-                        self.ppu.set_mode(PpuMode::VBlank);
-                        self.request_interrupt(Interrupt::Vblank);
-                        if self.ppu.stat & 0x10 != 0 {
+            match self.ppu.get_ppu_mode() {
+                PpuMode::HBlank => {
+                    if self.ppu.line_clock >= 456 {
+                        self.ppu.line_clock = 0;
+                        self.ppu.mode_clock = 0;
+                        if self.ppu.window_rendering_this_line {
+                            self.ppu.window_line_counter =
+                                self.ppu.window_line_counter.wrapping_add(1);
+                        }
+                        self.ppu.ly = self.ppu.ly.wrapping_add(1);
+                        if self.ppu.check_lyc() {
                             self.request_interrupt(Interrupt::LcdStat);
                         }
-                    } else {
-                        self.ppu.set_mode(PpuMode::SearchingOAM);
-                        if self.ppu.stat & 0x20 != 0 {
+
+                        if self.ppu.ly == 144 {
+                            self.ppu.set_mode(PpuMode::VBlank);
+                            self.request_interrupt(Interrupt::Vblank);
+                            if self.ppu.stat & 0x10 != 0 {
+                                self.request_interrupt(Interrupt::LcdStat);
+                            }
+                        } else {
+                            self.ppu.start_oam_search();
+                            if self.ppu.stat & 0x20 != 0 {
+                                self.request_interrupt(Interrupt::LcdStat);
+                            }
+                        }
+                    }
+                }
+                PpuMode::VBlank => {
+                    if self.ppu.line_clock >= 456 {
+                        self.ppu.line_clock = 0;
+                        self.ppu.mode_clock = 0;
+                        self.ppu.ly = self.ppu.ly.wrapping_add(1);
+
+                        if self.ppu.ly > 153 {
+                            self.ppu.ly = 0;
+                            self.ppu.frame_ready = true;
+                            self.ppu.window_line_counter = 0;
+                            self.ppu.start_oam_search();
+                            if self.ppu.stat & 0x20 != 0 {
+                                self.request_interrupt(Interrupt::LcdStat);
+                            }
+                        }
+                        if self.ppu.check_lyc() {
                             self.request_interrupt(Interrupt::LcdStat);
                         }
                     }
                 }
-            }
-            PpuMode::VBlank => {
-                if self.ppu.mode_clock >= 456 {
-                    self.ppu.mode_clock = 0;
-                    self.ppu.ly = self.ppu.ly.wrapping_add(1);
-
-                    if self.ppu.ly > 153 {
-                        self.ppu.ly = 0;
-                        self.ppu.frame_ready = true;
-                        self.ppu.set_mode(PpuMode::SearchingOAM);
-                        if self.ppu.stat & 0x20 != 0 {
+                PpuMode::SearchingOAM => {
+                    self.ppu.tick_oam_search();
+                    if self.ppu.mode_clock >= 80 {
+                        self.ppu.start_transfer();
+                    }
+                }
+                PpuMode::Transferring => {
+                    if self.ppu.tick_transfer() {
+                        self.ppu.mode_clock = 0;
+                        self.ppu.set_mode(PpuMode::HBlank);
+                        if self.ppu.stat & 0x08 != 0 {
                             self.request_interrupt(Interrupt::LcdStat);
                         }
                     }
-                    self.ppu.check_lyc();
-                }
-            }
-            PpuMode::SearchingOAM => {
-                if self.ppu.mode_clock >= 80 {
-                    self.ppu.mode_clock = 0;
-                    self.ppu.set_mode(PpuMode::Transferring);
-                }
-            }
-            PpuMode::Transferring => {
-                if self.ppu.mode_clock >= 172 {
-                    self.ppu.mode_clock = 0;
-                    self.ppu.set_mode(PpuMode::HBlank);
-                    if self.ppu.stat & 0x08 != 0 {
-                        self.request_interrupt(Interrupt::LcdStat);
-                    }
-                    self.ppu.render_scanline();
                 }
             }
         }
