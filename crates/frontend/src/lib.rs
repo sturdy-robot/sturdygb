@@ -1,6 +1,8 @@
 #![warn(clippy::all, rust_2018_idioms)]
+#![allow(rustdoc::missing_crate_level_docs)]
 
 mod app;
+pub mod debug_views;
 pub use app::EmuApp;
 
 #[cfg(target_arch = "wasm32")]

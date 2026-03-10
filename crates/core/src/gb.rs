@@ -5,9 +5,9 @@
 use rand::prelude::*;
 
 use crate::cartridge::{GbMode, Mbc};
-use crate::cpu::Cpu;
+use crate::cpu::{opcode_size, Cpu};
 use crate::joypad::{Joypad, JoypadButton};
-use crate::ppu::{Ppu, PpuMode};
+use crate::ppu::Ppu;
 use crate::serial::Serial;
 use crate::sound::Sound;
 use crate::timer::Timer;
@@ -25,6 +25,51 @@ pub enum GbTypes {
 pub enum SpeedMode {
     Normal,
     Double,
+}
+
+#[derive(Clone)]
+pub struct DebugSnapshot {
+    pub af: u16,
+    pub bc: u16,
+    pub de: u16,
+    pub hl: u16,
+    pub sp: u16,
+    pub pc: u16,
+    pub opcode: u8,
+    pub disassembly: String,
+    pub pc_bytes: [u8; 4],
+    pub stack_bytes: [u8; 8],
+    pub interrupt_master: bool,
+    pub is_halted: bool,
+    pub is_stopped: bool,
+    pub pending_cycles: usize,
+    pub ticks: u32,
+    pub ly: u8,
+    pub stat: u8,
+    pub if_flag: u8,
+    pub ie_flag: u8,
+}
+
+#[derive(Clone)]
+pub struct MemoryWriteEvent {
+    pub address: u16,
+    pub value: u8,
+}
+
+#[derive(Clone)]
+pub struct DisassemblyLine {
+    pub address: u16,
+    pub bytes: Vec<u8>,
+    pub text: String,
+}
+
+#[derive(Clone)]
+pub struct OamSprite {
+    pub index: usize,
+    pub y: u8,
+    pub x: u8,
+    pub tile_number: u8,
+    pub attributes: u8,
 }
 
 pub struct Gb {
@@ -46,6 +91,7 @@ pub struct Gb {
     pub boot_rom_enabled: u8,
     pub prepare_speed_switch: bool,
     pub speed_mode: SpeedMode,
+    pub(crate) debug_write_log: Vec<MemoryWriteEvent>,
 }
 
 fn get_register_values(gb_mode: &GbMode, gb_type: &GbTypes) -> [u8; 8] {
@@ -61,8 +107,6 @@ fn get_register_values(gb_mode: &GbMode, gb_type: &GbTypes) -> [u8; 8] {
     }
 }
 
-// Values from the Cycle-Accurate Game Boy documentation
-// Pan Docs is not that detailed
 fn get_div_values(gb_type: &GbTypes, gb_mode: &GbMode) -> u8 {
     let div_value = if gb_mode == &GbMode::CgbMode {
         0x1EA0
@@ -109,6 +153,7 @@ impl Gb {
             boot_rom_enabled: 0,
             prepare_speed_switch: false,
             speed_mode: SpeedMode::Normal,
+            debug_write_log: Vec::with_capacity(16),
         }
     }
 
@@ -120,6 +165,7 @@ impl Gb {
 
     pub fn run(&mut self) {
         //self.debug_message();
+        self.debug_write_log.clear();
         self.handle_interrupt();
         self.cpu_tick();
         self.components_tick();
@@ -132,8 +178,141 @@ impl Gb {
         }
     }
 
+    pub fn step_instruction(&mut self) {
+        self.run();
+    }
+
+    pub fn current_pc(&self) -> u16 {
+        self.cpu.pc
+    }
+
+    pub fn frame_ready(&self) -> bool {
+        self.ppu.frame_ready
+    }
+
     pub fn get_screen_data(&mut self) -> &[[u8; 160]; 144] {
         self.ppu.get_screen()
+    }
+
+    pub fn debug_snapshot(&mut self) -> DebugSnapshot {
+        let opcode = self.read_byte(self.cpu.pc);
+        self.cpu.current_instruction = opcode;
+
+        let mut pc_bytes = [0; 4];
+        for (offset, byte) in pc_bytes.iter_mut().enumerate() {
+            *byte = self.read_byte(self.cpu.pc.wrapping_add(offset as u16));
+        }
+
+        let mut stack_bytes = [0; 8];
+        for (offset, byte) in stack_bytes.iter_mut().enumerate() {
+            *byte = self.read_byte(self.cpu.sp.wrapping_add(offset as u16));
+        }
+
+        DebugSnapshot {
+            af: self.cpu.af(),
+            bc: self.cpu.bc(),
+            de: self.cpu.de(),
+            hl: self.cpu.hl(),
+            sp: self.cpu.sp,
+            pc: self.cpu.pc,
+            opcode,
+            disassembly: self.disassemble(),
+            pc_bytes,
+            stack_bytes,
+            interrupt_master: self.cpu.interrupt_master,
+            is_halted: self.cpu.is_halted,
+            is_stopped: self.cpu.is_stopped,
+            pending_cycles: self.cpu.pending_cycles,
+            ticks: self.cpu.ticks,
+            ly: self.ppu.get_ly(),
+            stat: self.ppu.stat,
+            if_flag: self.if_flag,
+            ie_flag: self.ie_flag,
+        }
+    }
+
+    pub fn read_memory_range(&self, start: u16, len: usize) -> Vec<u8> {
+        (0..len)
+            .map(|offset| self.read_byte(start.wrapping_add(offset as u16)))
+            .collect()
+    }
+
+    pub fn disassemble_range(&mut self, start: u16, count: usize) -> Vec<DisassemblyLine> {
+        let original_pc = self.cpu.pc;
+        let original_instruction = self.cpu.current_instruction;
+        let mut address = start;
+        let mut lines = Vec::with_capacity(count);
+
+        for _ in 0..count {
+            let opcode = self.read_byte(address);
+            self.cpu.pc = address;
+            self.cpu.current_instruction = opcode;
+
+            let size = opcode_size(opcode).max(1) as usize;
+            let bytes = (0..size)
+                .map(|offset| self.read_byte(address.wrapping_add(offset as u16)))
+                .collect();
+
+            lines.push(DisassemblyLine {
+                address,
+                bytes,
+                text: self.disassemble(),
+            });
+
+            address = address.wrapping_add(size as u16);
+        }
+
+        self.cpu.pc = original_pc;
+        self.cpu.current_instruction = original_instruction;
+        lines
+    }
+
+    pub fn vram_bank_count(&self) -> usize {
+        self.ppu.vram.len() / 0x2000
+    }
+
+    pub fn vram_tile_data(&self, bank: usize) -> &[u8] {
+        let bank_count = self.vram_bank_count().max(1);
+        let bank = bank.min(bank_count - 1);
+        let start = bank * 0x2000;
+        let end = start + 0x1800;
+        &self.ppu.vram[start..end]
+    }
+
+    pub fn vram_map_data(&self, bank: usize, map_index: usize) -> &[u8] {
+        let bank_count = self.vram_bank_count().max(1);
+        let bank = bank.min(bank_count - 1);
+        let map_offset = if map_index & 1 == 0 { 0x1800 } else { 0x1C00 };
+        let start = bank * 0x2000 + map_offset;
+        let end = start + 0x400;
+        &self.ppu.vram[start..end]
+    }
+
+    pub fn sprite_height(&self) -> u8 {
+        if self.read_byte(0xFF40) & 0x04 != 0 {
+            16
+        } else {
+            8
+        }
+    }
+
+    pub fn oam_sprites(&self) -> Vec<OamSprite> {
+        self.ppu
+            .oam
+            .chunks_exact(4)
+            .enumerate()
+            .map(|(index, bytes)| OamSprite {
+                index,
+                y: bytes[0],
+                x: bytes[1],
+                tile_number: bytes[2],
+                attributes: bytes[3],
+            })
+            .collect()
+    }
+
+    pub fn last_memory_writes(&self) -> &[MemoryWriteEvent] {
+        &self.debug_write_log
     }
 
     pub fn components_tick(&mut self) {

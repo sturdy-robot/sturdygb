@@ -43,6 +43,10 @@ const OPCODES_SIZE: [u16; 256] = [
     2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 3, 1, 1, 1, 2, 1,
 ];
 
+pub fn opcode_size(opcode: u8) -> u16 {
+    OPCODES_SIZE[opcode as usize]
+}
+
 fn get_initial_flag_states(value: u8) -> (bool, bool, bool, bool) {
     let carry = value & 0x10 == 0x10;
     let half_carry = value & 0x20 == 0x20;

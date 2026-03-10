@@ -2,6 +2,7 @@
 #![allow(rustdoc::missing_crate_level_docs)] // it's an app
 
 mod app;
+mod debug_views;
 
 use crate::app::APP_NAME;
 

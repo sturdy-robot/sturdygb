@@ -1,12 +1,18 @@
+mod audio;
+mod catalog;
+mod config;
+mod debugger;
+mod options;
+mod rom;
+
 use eframe::egui;
 
+use self::audio::AUDIO_PRODUCER;
+#[cfg(not(target_arch = "wasm32"))]
+use self::config::{GameEntry, SortMethod};
+use self::config::{Palette, ScaleMode, SturdyConfig};
+use self::debugger::DebuggerUiState;
 use sturdygb_core::joypad::JoypadButton;
-use sturdygb_core::prelude::GbInstance;
-
-use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use std::collections::HashMap;
-use std::sync::mpsc::{sync_channel, SyncSender};
-use std::sync::Mutex;
 
 pub const APP_NAME: &str = concat!("SturdyGB v", env!("CARGO_PKG_VERSION"));
 
@@ -18,9 +24,6 @@ use rfd::AsyncFileDialog;
 
 const GB_W: usize = 160;
 const GB_H: usize = 144;
-
-static AUDIO_PRODUCER: Mutex<Option<SyncSender<[f32; 2]>>> = Mutex::new(None);
-static AUDIO_STREAM: Mutex<Option<cpal::Stream>> = Mutex::new(None);
 
 struct State {
     gb: sturdygb_core::gb::Gb,
@@ -35,6 +38,7 @@ pub struct EmuApp {
     state: Option<State>,
     texture: Option<egui::TextureHandle>,
     error_msg: Option<String>,
+    debugger: DebuggerUiState,
     rom_load_channel: (
         std::sync::mpsc::Sender<Result<Vec<u8>, String>>,
         std::sync::mpsc::Receiver<Result<Vec<u8>, String>>,
@@ -62,94 +66,6 @@ pub struct EmuApp {
     current_fps: usize,
 }
 
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(default)] // automatically implement Default fallback
-pub struct SturdyConfig {
-    pub scale: ScaleMode,
-    pub palette: Palette,
-    #[cfg(not(target_arch = "wasm32"))]
-    pub rom_directories: Vec<std::path::PathBuf>,
-    pub keybinds: HashMap<JoypadButton, egui::Key>,
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fullscreen: bool,
-}
-
-impl SturdyConfig {
-    fn default_key(btn: &JoypadButton) -> egui::Key {
-        match btn {
-            JoypadButton::Up => egui::Key::ArrowUp,
-            JoypadButton::Down => egui::Key::ArrowDown,
-            JoypadButton::Left => egui::Key::ArrowLeft,
-            JoypadButton::Right => egui::Key::ArrowRight,
-            JoypadButton::A => egui::Key::Z,
-            JoypadButton::B => egui::Key::X,
-            JoypadButton::Start => egui::Key::Enter,
-            JoypadButton::Select => egui::Key::Space,
-        }
-    }
-
-    fn keybind(&self, btn: &JoypadButton) -> egui::Key {
-        self.keybinds
-            .get(btn)
-            .copied()
-            .unwrap_or_else(|| Self::default_key(btn))
-    }
-}
-
-impl Default for SturdyConfig {
-    fn default() -> Self {
-        let mut keybinds = HashMap::new();
-        keybinds.insert(JoypadButton::Up, egui::Key::ArrowUp);
-        keybinds.insert(JoypadButton::Down, egui::Key::ArrowDown);
-        keybinds.insert(JoypadButton::Left, egui::Key::ArrowLeft);
-        keybinds.insert(JoypadButton::Right, egui::Key::ArrowRight);
-        keybinds.insert(JoypadButton::A, egui::Key::Z);
-        keybinds.insert(JoypadButton::B, egui::Key::X);
-        keybinds.insert(JoypadButton::Start, egui::Key::Enter);
-        keybinds.insert(JoypadButton::Select, egui::Key::Space);
-
-        Self {
-            #[cfg(not(target_arch = "wasm32"))]
-            rom_directories: Vec::new(),
-            scale: ScaleMode::Integer(4.0),
-            palette: Palette::Greyscale,
-            keybinds,
-            #[cfg(not(target_arch = "wasm32"))]
-            fullscreen: false,
-        }
-    }
-}
-
-#[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Copy, Debug)]
-pub enum ScaleMode {
-    Integer(f32),
-    Stretch,
-}
-
-#[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Copy, Debug)]
-pub enum Palette {
-    Greyscale,
-    ClassicGreen,
-    Pocket,
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-#[derive(PartialEq, Clone, Copy, Debug)]
-pub enum SortMethod {
-    Filename,
-    Title,
-    Company,
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-#[derive(Clone)]
-struct GameEntry {
-    path: std::path::PathBuf,
-    filename: String,
-    title: String,
-    company: String,
-}
-
 impl EmuApp {
     pub fn new(cc: &eframe::CreationContext<'_>, initial_rom: Option<String>) -> Self {
         let mut config: SturdyConfig = Default::default();
@@ -163,6 +79,7 @@ impl EmuApp {
             state: None,
             texture: None,
             error_msg: None,
+            debugger: DebuggerUiState::new(),
             rom_load_channel: std::sync::mpsc::channel(),
             #[cfg(not(target_arch = "wasm32"))]
             game_list: Vec::new(),
@@ -196,170 +113,6 @@ impl EmuApp {
 
         app
     }
-
-    fn load_rom_file(&mut self, path: &str, storage: Option<&dyn eframe::Storage>) {
-        if let Ok(bytes) = std::fs::read(path) {
-            self.load_rom_bytes(
-                bytes,
-                Some(std::path::PathBuf::from(path).with_extension("sav")),
-                storage,
-            );
-        } else {
-            self.error_msg = Some(format!("Could not read file {path}"));
-        }
-    }
-
-    fn load_rom_bytes(
-        &mut self,
-        mut bytes: Vec<u8>,
-        save_path: Option<std::path::PathBuf>,
-        _storage: Option<&dyn eframe::Storage>,
-    ) {
-        if let Some(extracted) = extract_rom_from_bytes(&bytes) {
-            bytes = extracted;
-        }
-
-        let mut title = "Unknown Title".to_string();
-        if let Ok(header) = sturdygb_core::cartridge::CartridgeHeader::new(&bytes) {
-            title = header.title;
-        }
-
-        match GbInstance::build_from_bytes(bytes.clone(), save_path.clone()) {
-            Ok(mut gb) => {
-                #[cfg(target_arch = "wasm32")]
-                if let Some(storage) = _storage {
-                    if let Some(saved) =
-                        eframe::get_value::<Vec<u8>>(storage, &format!("sturdygb_sram_{title}"))
-                    {
-                        gb.set_battery_ram(&saved);
-                    }
-                }
-
-                setup_audio(&mut gb);
-                self.state = Some(State {
-                    gb,
-                    rgba: vec![0; GB_W * GB_H * 4],
-                    leftover_audio: Vec::new(),
-                    title,
-                    rom_bytes: bytes,
-                    save_path,
-                });
-                self.paused = false;
-                self.error_msg = None;
-                self.frames_rendered = 0;
-                self.last_fps_update = instant::Instant::now();
-            }
-            Err(e) => {
-                self.error_msg = Some(format!("Failed to load ROM:\n{e}"));
-            }
-        }
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    fn load_directory(&mut self, path: std::path::PathBuf) {
-        if !self.config.rom_directories.contains(&path) {
-            self.config.rom_directories.push(path);
-        }
-        self.reload_all_directories();
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    fn reload_all_directories(&mut self) {
-        self.game_list.clear();
-        if self.config.rom_directories.is_empty() {
-            return;
-        }
-        self.loading_directory = true;
-
-        let (tx, rx) = std::sync::mpsc::channel();
-        self.dir_load_receiver = Some(rx);
-        let recursive = self.recursive_search;
-        let dirs = self.config.rom_directories.clone();
-
-        std::thread::spawn(move || {
-            for path in dirs {
-                let walker = walkdir::WalkDir::new(path);
-                let walker = if recursive {
-                    walker
-                } else {
-                    walker.max_depth(1)
-                };
-
-                for entry in walker.into_iter().filter_map(|e| e.ok()) {
-                    let path = entry.path();
-                    if path.is_file() {
-                        if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                            let ext = ext.to_lowercase();
-                            if ext == "gb" || ext == "gbc" || ext == "zip" {
-                                let filename = path
-                                    .file_name()
-                                    .unwrap_or_default()
-                                    .to_string_lossy()
-                                    .to_string();
-                                let mut title = "Unknown Title".to_string();
-                                let mut company = "Unknown Company".to_string();
-
-                                if ext == "gb" || ext == "gbc" {
-                                    if let Ok(mut f) = std::fs::File::open(&path) {
-                                        use std::io::Read;
-                                        let mut header_bytes = vec![0; 0x150];
-                                        if f.read_exact(&mut header_bytes).is_ok() {
-                                            if let Ok(header) =
-                                                sturdygb_core::cartridge::CartridgeHeader::new(
-                                                    &header_bytes,
-                                                )
-                                            {
-                                                title = header.title;
-                                                company = header.company;
-                                            }
-                                        }
-                                    }
-                                } else if ext == "zip" {
-                                    if let Ok(f) = std::fs::File::open(&path) {
-                                        if let Ok(mut archive) = zip::ZipArchive::new(f) {
-                                            for i in 0..archive.len() {
-                                                if let Ok(mut inner) = archive.by_index(i) {
-                                                    let inner_name = inner.name().to_lowercase();
-                                                    if inner_name.ends_with(".gb")
-                                                        || inner_name.ends_with(".gbc")
-                                                    {
-                                                        use std::io::Read;
-                                                        let mut header_bytes = vec![0; 0x150];
-                                                        if inner
-                                                            .read_exact(&mut header_bytes)
-                                                            .is_ok()
-                                                        {
-                                                            if let Ok(header) = sturdygb_core::cartridge::CartridgeHeader::new(&header_bytes) {
-                                                                title = header.title;
-                                                                company = header.company;
-                                                            }
-                                                        }
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if tx
-                                    .send(GameEntry {
-                                        path: path.to_path_buf(),
-                                        filename,
-                                        title,
-                                        company,
-                                    })
-                                    .is_err()
-                                {
-                                    return; // receiver dropped
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
 }
 
 impl eframe::App for EmuApp {
@@ -379,17 +132,14 @@ impl eframe::App for EmuApp {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Apply fullscreen state
         #[cfg(not(target_arch = "wasm32"))]
         ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(self.config.fullscreen));
 
-        // Toggle fullscreen with F11
         #[cfg(not(target_arch = "wasm32"))]
         if ctx.input(|i| i.key_pressed(egui::Key::F11)) {
             self.config.fullscreen = !self.config.fullscreen;
         }
 
-        // Check for async loaded roms
         if let Ok(result) = self.rom_load_channel.1.try_recv() {
             match result {
                 Ok(bytes) => self.load_rom_bytes(bytes, None, _frame.storage()),
@@ -397,7 +147,6 @@ impl eframe::App for EmuApp {
             }
         }
 
-        // Handle asynchronous directory loading updates
         #[cfg(not(target_arch = "wasm32"))]
         if self.loading_directory {
             if let Some(rx) = &self.dir_load_receiver {
@@ -419,7 +168,6 @@ impl eframe::App for EmuApp {
                     self.game_list.sort_by(|a, b| a.filename.cmp(&b.filename));
                 }
 
-                // Request a repaint so we show progress
                 if loaded_some || self.loading_directory {
                     ctx.request_repaint();
                 }
@@ -472,30 +220,27 @@ impl eframe::App for EmuApp {
                         }
                     }
                 });
+
                 ui.menu_button("Emulation", |ui| {
                     let has_state = self.state.is_some();
-                    if has_state {
-                        if ui.button("🟥 Stop").clicked() {
-                            self.state = None;
-                            self.texture = None;
-                            self.paused = false;
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Title(
-                                APP_NAME.to_string(),
-                            ));
-                            ui.close();
-                        }
+                    if has_state && ui.button("🟥 Stop").clicked() {
+                        self.state = None;
+                        self.texture = None;
+                        self.paused = false;
+                        self.debugger.reset_runtime();
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Title(APP_NAME.to_string()));
+                        ui.close();
                     }
                     if ui
                         .add_enabled(
                             has_state,
-                            egui::Button::new(if self.paused {
-                                "▶ Resume"
-                            } else {
-                                "⏸ Pause"
-                            }),
+                            egui::Button::new(if self.paused { "▶ Resume" } else { "⏸ Pause" }),
                         )
                         .clicked()
                     {
+                        if self.paused {
+                            self.debugger.prepare_resume(self.state.as_ref());
+                        }
                         self.paused = !self.paused;
                         ui.close();
                     }
@@ -511,6 +256,7 @@ impl eframe::App for EmuApp {
                         ui.close();
                     }
                 });
+
                 #[cfg(not(target_arch = "wasm32"))]
                 ui.menu_button("View", |ui| {
                     if ui
@@ -525,6 +271,46 @@ impl eframe::App for EmuApp {
                         ui.close();
                     }
                 });
+
+                ui.menu_button("Debug", |ui| {
+                    let has_state = self.state.is_some();
+                    if ui
+                        .add_enabled(has_state, egui::Button::new("Debugger"))
+                        .clicked()
+                    {
+                        self.debugger.show_debugger = true;
+                        self.paused = true;
+                        ui.close();
+                    }
+                    if ui
+                        .add_enabled(has_state, egui::Button::new("Step"))
+                        .clicked()
+                    {
+                        self.debugger.request_step(self.state.as_ref());
+                        self.debugger.show_debugger = true;
+                        self.paused = false;
+                        ui.close();
+                    }
+                    if ui
+                        .add_enabled(has_state, egui::Button::new("VRAM Viewer"))
+                        .clicked()
+                    {
+                        self.debugger.show_vram_viewer = true;
+                    }
+                    if ui
+                        .add_enabled(has_state, egui::Button::new("BG Map Viewer"))
+                        .clicked()
+                    {
+                        self.debugger.show_bg_map_viewer = true;
+                    }
+                    if ui
+                        .add_enabled(has_state, egui::Button::new("OAM Viewer"))
+                        .clicked()
+                    {
+                        self.debugger.show_oam_viewer = true;
+                    }
+                });
+
                 if ui.button("Options").clicked() {
                     self.show_options = true;
                 }
@@ -532,7 +318,6 @@ impl eframe::App for EmuApp {
         });
 
         let mut error_cleared = false;
-        // Handle error display
         if let Some(err) = &self.error_msg {
             let mut open = true;
             egui::Window::new("Error")
@@ -554,164 +339,8 @@ impl eframe::App for EmuApp {
             self.error_msg = None;
         }
 
-        let mut is_open = self.show_options;
-        if is_open {
-            egui::Window::new("Emulator Options")
-                .collapsible(false)
-                .resizable(false)
-                .open(&mut is_open)
-                .show(ctx, |ui| {
-                    egui::Grid::new("options_grid")
-                        .num_columns(2)
-                        .spacing([40.0, 4.0])
-                        .show(ui, |ui| {
-                            ui.label("Scale Mode:");
-                            egui::ComboBox::from_id_salt("scale_combo")
-                                .selected_text(format!("{:?}", self.config.scale))
-                                .show_ui(ui, |ui| {
-                                    ui.selectable_value(
-                                        &mut self.config.scale,
-                                        ScaleMode::Integer(1.0),
-                                        "1x",
-                                    );
-                                    ui.selectable_value(
-                                        &mut self.config.scale,
-                                        ScaleMode::Integer(2.0),
-                                        "2x",
-                                    );
-                                    ui.selectable_value(
-                                        &mut self.config.scale,
-                                        ScaleMode::Integer(3.0),
-                                        "3x",
-                                    );
-                                    ui.selectable_value(
-                                        &mut self.config.scale,
-                                        ScaleMode::Integer(4.0),
-                                        "4x",
-                                    );
-                                    ui.selectable_value(
-                                        &mut self.config.scale,
-                                        ScaleMode::Integer(5.0),
-                                        "5x",
-                                    );
-                                    ui.selectable_value(
-                                        &mut self.config.scale,
-                                        ScaleMode::Integer(6.0),
-                                        "6x",
-                                    );
-                                    ui.separator();
-                                    ui.selectable_value(
-                                        &mut self.config.scale,
-                                        ScaleMode::Stretch,
-                                        "Stretch (Fit window)",
-                                    );
-                                });
-                            ui.end_row();
-
-                            ui.label("Color Palette:");
-                            egui::ComboBox::from_id_salt("palette_combo")
-                                .selected_text(format!("{:?}", self.config.palette))
-                                .show_ui(ui, |ui| {
-                                    ui.selectable_value(
-                                        &mut self.config.palette,
-                                        Palette::Greyscale,
-                                        "Greyscale",
-                                    );
-                                    ui.selectable_value(
-                                        &mut self.config.palette,
-                                        Palette::ClassicGreen,
-                                        "Classic Green",
-                                    );
-                                    ui.selectable_value(
-                                        &mut self.config.palette,
-                                        Palette::Pocket,
-                                        "Pocket (Grey/Green)",
-                                    );
-                                });
-                            ui.end_row();
-                        });
-
-                    ui.separator();
-                    ui.label("Keybindings:");
-
-                    egui::Grid::new("keybinds_grid")
-                        .num_columns(2)
-                        .spacing([40.0, 4.0])
-                        .show(ui, |ui| {
-                            let buttons = [
-                                JoypadButton::Up,
-                                JoypadButton::Down,
-                                JoypadButton::Left,
-                                JoypadButton::Right,
-                                JoypadButton::A,
-                                JoypadButton::B,
-                                JoypadButton::Start,
-                                JoypadButton::Select,
-                            ];
-
-                            for btn in buttons {
-                                ui.label(format!("{:?}", btn));
-
-                                let current_key = self
-                                    .config
-                                    .keybinds
-                                    .get(&btn)
-                                    .copied()
-                                    .unwrap_or(egui::Key::Escape);
-
-                                let btn_text = if ctx.memory(|mem| {
-                                    mem.data
-                                        .get_temp::<JoypadButton>(egui::Id::new("listening_bind"))
-                                }) == Some(btn)
-                                {
-                                    "Press any key...".to_string()
-                                } else {
-                                    format!("{:?}", current_key)
-                                };
-
-                                let response = ui.button(btn_text);
-
-                                if response.clicked() {
-                                    ctx.memory_mut(|mem| {
-                                        mem.data.insert_temp(egui::Id::new("listening_bind"), btn)
-                                    });
-                                }
-
-                                ui.end_row();
-                            }
-                        });
-
-                    if let Some(btn) = ctx.memory(|mem| {
-                        mem.data
-                            .get_temp::<JoypadButton>(egui::Id::new("listening_bind"))
-                    }) {
-                        if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
-                            ctx.memory_mut(|mem| {
-                                mem.data
-                                    .remove::<JoypadButton>(egui::Id::new("listening_bind"))
-                            });
-                        } else if let Some(key) = ctx.input(|i| {
-                            i.events.iter().find_map(|e| {
-                                if let egui::Event::Key {
-                                    key, pressed: true, ..
-                                } = e
-                                {
-                                    Some(*key)
-                                } else {
-                                    None
-                                }
-                            })
-                        }) {
-                            self.config.keybinds.insert(btn, key);
-                            ctx.memory_mut(|mem| {
-                                mem.data
-                                    .remove::<JoypadButton>(egui::Id::new("listening_bind"))
-                            });
-                        }
-                    }
-                });
-        }
-        self.show_options = is_open;
+        self.show_options_window(ctx);
+        self.show_debugger_windows(ctx);
 
         egui::CentralPanel::default().show(ctx, |ui| {
             if let Some(state) = &mut self.state {
@@ -719,12 +348,12 @@ impl eframe::App for EmuApp {
                     self.state = None;
                     self.texture = None;
                     self.paused = false;
+                    self.debugger.reset_runtime();
                     ctx.send_viewport_cmd(egui::ViewportCommand::Title(APP_NAME.to_string()));
                     return;
                 }
 
                 if !self.paused {
-                    // Input handling
                     let buttons = [
                         JoypadButton::Up,
                         JoypadButton::Down,
@@ -739,11 +368,9 @@ impl eframe::App for EmuApp {
                         set_btn(ctx, state, self.config.keybind(&btn), btn);
                     }
 
-                    // Emulation Loop
                     let mut channel_full = false;
                     let mut frames_run = 0;
 
-                    // First try to drain leftover audio
                     let mut new_leftover = Vec::with_capacity(state.leftover_audio.len());
                     if let Ok(guard) = AUDIO_PRODUCER.lock() {
                         if let Some(prod) = guard.as_ref() {
@@ -764,7 +391,7 @@ impl eframe::App for EmuApp {
                     state.leftover_audio = new_leftover;
 
                     while !channel_full && frames_run < 5 {
-                        state.gb.run_one_frame();
+                        let hit_debug = self.debugger.run_until_debug_or_frame(state);
                         frames_run += 1;
 
                         let audio_data = state.gb.get_audio_buffer();
@@ -781,20 +408,21 @@ impl eframe::App for EmuApp {
                                                 state.leftover_audio.push(val);
                                             }
                                         }
-                                    } else {
-                                        if state.leftover_audio.len() < 8192 {
-                                            state.leftover_audio.push(sample);
-                                        }
+                                    } else if state.leftover_audio.len() < 8192 {
+                                        state.leftover_audio.push(sample);
                                     }
                                 }
                             }
                         }
+
+                        if hit_debug {
+                            self.paused = true;
+                            break;
+                        }
                     }
                 }
 
-                // Render video
                 let frame_data = state.gb.get_screen_data();
-
                 let palette_colors = match self.config.palette {
                     Palette::Greyscale => {
                         [(255, 255, 255), (192, 192, 192), (96, 96, 96), (0, 0, 0)]
@@ -837,9 +465,7 @@ impl eframe::App for EmuApp {
                     )));
                 }
 
-                // Show the texture centered and scaled
                 let available_size = ui.available_size();
-
                 let (width, height) = match self.config.scale {
                     ScaleMode::Integer(s) => ((GB_W as f32) * s, (GB_H as f32) * s),
                     ScaleMode::Stretch => {
@@ -852,18 +478,14 @@ impl eframe::App for EmuApp {
 
                 let x_offset = (available_size.x - width) / 2.0;
                 let y_offset = (available_size.y - height) / 2.0;
-
                 let rect = egui::Rect::from_min_size(
                     ui.min_rect().min + egui::vec2(x_offset.max(0.0), y_offset.max(0.0)),
                     egui::vec2(width, height),
                 );
-
                 ui.put(
                     rect,
                     egui::Image::new(&*texture).fit_to_exact_size(egui::vec2(width, height)),
                 );
-
-                // Request repaint if we are running the emulator
                 ctx.request_repaint();
             } else {
                 #[cfg(not(target_arch = "wasm32"))]
@@ -882,10 +504,7 @@ impl eframe::App for EmuApp {
                                         .add_filter("GameBoy ROMs", &["gb", "gbc", "zip"])
                                         .pick_file()
                                     {
-                                        self.load_rom_file(
-                                            path.to_str().unwrap(),
-                                            _frame.storage(),
-                                        );
+                                        self.load_rom_file(path.to_str().unwrap(), _frame.storage());
                                     }
                                 }
                                 if ui.button("📁 Add ROM directory...").clicked() {
@@ -896,13 +515,11 @@ impl eframe::App for EmuApp {
                             });
                         });
                     } else {
-                        // Show directory chips
                         ui.horizontal_wrapped(|ui| {
                             ui.label("Directories:");
                             let mut to_remove = None;
                             for (i, dir) in self.config.rom_directories.iter().enumerate() {
-                                let dir_name =
-                                    dir.file_name().unwrap_or_default().to_string_lossy();
+                                let dir_name = dir.file_name().unwrap_or_default().to_string_lossy();
                                 let response = ui.button(format!("{} ❌", dir_name));
                                 if response.clicked() {
                                     to_remove = Some(i);
@@ -924,10 +541,7 @@ impl eframe::App for EmuApp {
                             ui.centered_and_justified(|ui| {
                                 ui.add_space(ui.available_height() / 2.0 - 30.0);
                                 ui.vertical_centered(|ui| {
-                                    ui.heading(format!(
-                                        "Loading Games... ({})",
-                                        self.game_list.len()
-                                    ));
+                                    ui.heading(format!("Loading Games... ({})", self.game_list.len()));
                                     ui.add(egui::Spinner::new().size(32.0));
                                 });
                             });
@@ -1059,7 +673,7 @@ impl eframe::App for EmuApp {
                     ui.centered_and_justified(|ui| {
                         ui.vertical_centered(|ui| {
                             ui.add_space(ui.available_height() / 2.0 - 30.0);
-                            ui.heading(format!("{}", APP_NAME,));
+                            ui.heading(format!("{}", APP_NAME));
                             ui.heading("Select a ROM file");
                             ui.add_space(8.0);
                             if ui.button("📁 Open ROM...").clicked() {
@@ -1090,73 +704,4 @@ fn set_btn(ctx: &egui::Context, state: &mut State, key: egui::Key, btn: JoypadBu
     } else {
         state.gb.release_button(btn);
     }
-}
-
-fn setup_audio(gb: &mut sturdygb_core::gb::Gb) {
-    let host = cpal::default_host();
-    let device = host.default_output_device();
-    if let Some(device) = device {
-        let config = device.default_output_config().unwrap().config();
-
-        let sample_rate: u32 = config.sample_rate.into();
-        gb.set_sample_rate(sample_rate);
-
-        let (prod, cons) = sync_channel::<[f32; 2]>(4096);
-
-        let channels = config.channels as usize;
-        let mut last_sample = [0.0, 0.0];
-
-        let stream = device.build_output_stream(
-            &config,
-            move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                for frame in data.chunks_mut(channels) {
-                    let sample = match cons.try_recv() {
-                        Ok(v) => v,
-                        Err(_) => [last_sample[0] * 0.90, last_sample[1] * 0.90],
-                    };
-                    last_sample = sample;
-
-                    if channels >= 1 && frame.len() >= 1 {
-                        frame[0] = sample[0];
-                    }
-                    if channels >= 2 && frame.len() >= 2 {
-                        frame[1] = sample[1];
-                    }
-                }
-            },
-            |err| eprintln!("an error occurred on stream: {}", err),
-            None,
-        );
-
-        if let Ok(stream) = stream {
-            stream.play().unwrap();
-            if let Ok(mut guard) = AUDIO_PRODUCER.lock() {
-                *guard = Some(prod);
-            }
-            if let Ok(mut guard) = AUDIO_STREAM.lock() {
-                *guard = Some(stream);
-            }
-        }
-    }
-}
-
-fn extract_rom_from_bytes(bytes: &[u8]) -> Option<Vec<u8>> {
-    if bytes.len() >= 4 && bytes[0..4] == [0x50, 0x4b, 0x03, 0x04] {
-        let cursor = std::io::Cursor::new(bytes);
-        if let Ok(mut archive) = zip::ZipArchive::new(cursor) {
-            for i in 0..archive.len() {
-                if let Ok(mut file) = archive.by_index(i) {
-                    let name = file.name().to_lowercase();
-                    if name.ends_with(".gb") || name.ends_with(".gbc") {
-                        use std::io::Read;
-                        let mut extracted = Vec::new();
-                        if file.read_to_end(&mut extracted).is_ok() {
-                            return Some(extracted);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    None
 }
