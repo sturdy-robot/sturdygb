@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = 
+rom = mooneye-test-suite/misc/ppu/vblank_stat_intr-C.gb
+model = CGB
+frames = 34
+steps = 415949
+pc = 0x4B2E
+serial = "BBBBBB"

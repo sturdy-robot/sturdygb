@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = 
+rom = mooneye-test-suite/acceptance/bits/unused_hwio-GS.gb
+model = Auto
+frames = 25
+steps = 301091
+pc = 0x486E
+serial = "BBBBBB"

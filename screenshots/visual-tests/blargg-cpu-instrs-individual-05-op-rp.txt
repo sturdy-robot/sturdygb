@@ -1,0 +1,7 @@
+status = stop-condition-met
+rom = gb-test-roms/cpu_instrs/individual/05-op rp.gb
+model = Auto
+frames = 66
+steps = 555720
+pc = 0xC5A3
+serial = "05-op rp\\n\\n"

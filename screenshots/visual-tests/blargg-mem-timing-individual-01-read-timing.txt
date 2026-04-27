@@ -1,0 +1,7 @@
+status = stop-condition-met
+rom = gb-test-roms/mem_timing/individual/01-read_timing.gb
+model = Auto
+frames = 125
+steps = 829314
+pc = 0xC861
+serial = "01-read_timing\\n\\nF0:2-3 FA:2-4 CB 46:2-3 CB 4E:2-3 CB 56:2-3 CB 5E:2-3 CB 66:2-3 CB 6E:2-3 CB 76:2-3 CB 7E:2-3 \\nFailed\\n"

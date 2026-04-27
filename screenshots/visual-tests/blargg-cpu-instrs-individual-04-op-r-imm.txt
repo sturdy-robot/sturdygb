@@ -1,0 +1,7 @@
+status = stop-condition-met
+rom = gb-test-roms/cpu_instrs/individual/04-op r,imm.gb
+model = Auto
+frames = 67
+steps = 554931
+pc = 0xC5DF
+serial = "04-op r,imm\\n\\n"

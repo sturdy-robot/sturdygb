@@ -1,0 +1,230 @@
+# General-purpose manifest for batch test ROM capture.
+#
+# Each case or suite produces grouped screenshot and metadata artifacts beneath one
+# output root, plus a single TSV summary and HTML report at the top level.
+# The HTML report shows serial output inline, which is often more useful than the
+# framebuffer for serial-driven ROMs.
+#
+# `cases` are explicit one-off ROMs.
+# `suites` expand a directory into multiple cases that share the same capture config.
+
+[[cases]]
+name = "blargg-cpu-instrs"
+palette = "classic-green"
+output_subdir = "blargg"
+rom = "cpu_instrs.gb"
+model_selection = "Auto"
+step_limit = 32000000
+
+[cases.stop_condition]
+type = "serial-contains"
+needle = "Passed all tests"
+
+[[cases]]
+name = "blargg-instr-timing"
+palette = "classic-green"
+output_subdir = "blargg"
+rom = "gb-test-roms/instr_timing/instr_timing.gb"
+model_selection = "Auto"
+step_limit = 12000000
+
+[cases.stop_condition]
+type = "serial-contains"
+needle = "Passed"
+
+[[cases]]
+name = "blargg-mem-timing"
+palette = "classic-green"
+output_subdir = "blargg"
+rom = "gb-test-roms/mem_timing/mem_timing.gb"
+model_selection = "Auto"
+step_limit = 12000000
+
+[cases.stop_condition]
+type = "serial-quiet-steps"
+quiet_steps = 500000
+min_steps = 250000
+min_serial_bytes = 1
+
+[[cases]]
+name = "blargg-mem-timing-2"
+palette = "classic-green"
+output_subdir = "blargg"
+rom = "gb-test-roms/mem_timing-2/mem_timing.gb"
+model_selection = "Auto"
+step_limit = 12000000
+
+[cases.stop_condition]
+type = "serial-quiet-steps"
+quiet_steps = 500000
+min_steps = 250000
+min_serial_bytes = 1
+
+[[cases]]
+name = "blargg-halt-bug"
+palette = "classic-green"
+output_subdir = "blargg"
+rom = "gb-test-roms/halt_bug.gb"
+model_selection = "Auto"
+step_limit = 12000000
+
+[cases.stop_condition]
+type = "serial-quiet-steps"
+quiet_steps = 500000
+min_steps = 250000
+min_serial_bytes = 1
+
+[[cases]]
+name = "blargg-interrupt-time"
+palette = "classic-green"
+output_subdir = "blargg"
+rom = "gb-test-roms/interrupt_time/interrupt_time.gb"
+model_selection = "Auto"
+step_limit = 12000000
+
+[cases.stop_condition]
+type = "serial-quiet-steps"
+quiet_steps = 500000
+min_steps = 250000
+min_serial_bytes = 1
+
+[[cases]]
+name = "blargg-oam-bug"
+palette = "classic-green"
+output_subdir = "blargg"
+rom = "gb-test-roms/oam_bug/oam_bug.gb"
+model_selection = "Auto"
+step_limit = 12000000
+
+[cases.stop_condition]
+type = "serial-quiet-steps"
+quiet_steps = 500000
+min_steps = 250000
+min_serial_bytes = 1
+
+[[suites]]
+name = "blargg-cpu-instrs-individual"
+directory = "gb-test-roms/cpu_instrs/individual"
+palette = "classic-green"
+output_subdir = "blargg/cpu_instrs"
+model_selection = "Auto"
+step_limit = 10000000
+
+[suites.stop_condition]
+type = "serial-quiet-steps"
+quiet_steps = 500000
+min_steps = 250000
+min_serial_bytes = 1
+
+[[suites]]
+name = "blargg-mem-timing-individual"
+directory = "gb-test-roms/mem_timing/individual"
+palette = "classic-green"
+output_subdir = "blargg/mem_timing"
+model_selection = "Auto"
+step_limit = 12000000
+
+[suites.stop_condition]
+type = "serial-quiet-steps"
+quiet_steps = 500000
+min_steps = 250000
+min_serial_bytes = 1
+
+[[suites]]
+name = "blargg-mem-timing-2-individual"
+directory = "gb-test-roms/mem_timing-2/rom_singles"
+palette = "classic-green"
+output_subdir = "blargg/mem_timing_2"
+model_selection = "Auto"
+step_limit = 12000000
+
+[suites.stop_condition]
+type = "serial-quiet-steps"
+quiet_steps = 500000
+min_steps = 250000
+min_serial_bytes = 1
+
+[[suites]]
+name = "blargg-oam-bug-individual"
+directory = "gb-test-roms/oam_bug/rom_singles"
+palette = "classic-green"
+output_subdir = "blargg/oam_bug"
+model_selection = "Auto"
+step_limit = 12000000
+
+[suites.stop_condition]
+type = "serial-quiet-steps"
+quiet_steps = 500000
+min_steps = 250000
+min_serial_bytes = 1
+
+[[cases]]
+name = "cgb-acid2"
+output_subdir = "acid2"
+rom = "cgb-acid2.gbc"
+model_selection = "Cgb"
+step_limit = 12000000
+
+[cases.stop_condition]
+type = "opcode-breakpoint"
+opcode = 64
+min_frames = 9
+register_b = 0
+
+[[cases]]
+name = "dmg-acid2"
+palette = "classic-green"
+output_subdir = "acid2"
+rom = "dmg-acid2.gb"
+model_selection = "Dmg"
+step_limit = 12000000
+
+[cases.stop_condition]
+type = "opcode-breakpoint"
+opcode = 64
+min_frames = 9
+register_b = 0
+
+[[suites]]
+name = "mooneye-acceptance"
+directory = "mooneye-test-suite/acceptance"
+recursive = true
+palette = "classic-green"
+output_subdir = "mooneye/acceptance"
+infer_model_from_name = true
+model_selection = "Auto"
+step_limit = 4000000
+
+[suites.stop_condition]
+type = "any"
+
+[[suites.stop_condition.conditions]]
+type = "mooneye-result"
+
+[[suites.stop_condition.conditions]]
+type = "serial-quiet-steps"
+quiet_steps = 200000
+min_steps = 100000
+min_serial_bytes = 1
+
+[[suites]]
+name = "mooneye-misc"
+directory = "mooneye-test-suite/misc"
+recursive = true
+palette = "classic-green"
+output_subdir = "mooneye/misc"
+infer_model_from_name = true
+model_selection = "Auto"
+step_limit = 4000000
+
+[suites.stop_condition]
+type = "any"
+
+[[suites.stop_condition.conditions]]
+type = "mooneye-result"
+
+[[suites.stop_condition.conditions]]
+type = "serial-quiet-steps"
+quiet_steps = 200000
+min_steps = 100000
+min_serial_bytes = 1

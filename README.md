@@ -141,6 +141,26 @@ cargo run --release --bin sturdygb_bin
 cargo run --release --bin sturdygb_bin <rom-name.gb>
 ```
 
+### Automated Test ROM Capture
+
+You can batch-run test ROMs, save their final framebuffers, and generate a report with:
+
+```bash
+cargo run -p sturdygb --example capture_visual_tests -- --manifest roms/visual-tests.toml
+```
+
+The manifest supports both explicit `cases` and directory-based `suites`, so you can run one ROM at a time or expand an entire folder of related tests with shared stop conditions.
+
+The default manifest includes blargg, acid2, and curated mooneye suites in one aggregate run. Individual suites can write their PNG and metadata files into subfolders under the same output root while still contributing to one top-level summary and HTML report.
+
+By default this writes screenshots and reports into `screenshots/visual-tests/`:
+
+- `blargg/`, `acid2/`, `mooneye/...`: grouped per-case PNG and metadata artifacts
+- `summary.tsv`: machine-readable batch summary
+- `report.html`: browsable report with embedded screenshots and inline serial or result previews
+
+If a ROM does not reach its configured stop condition within `step_limit`, the run is still recorded as `step-limit-reached` so you can inspect the captured state instead of losing the result. For serial-driven ROMs, prefer a serial-based stop condition such as `serial-contains` or `serial-quiet-steps`.
+
 ### WebAssembly (WASM) Build
 
 SturdyGB can also be compiled to run in a web browser using WebAssembly.

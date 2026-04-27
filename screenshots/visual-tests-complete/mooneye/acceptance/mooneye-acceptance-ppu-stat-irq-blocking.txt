@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = 
+rom = mooneye-test-suite/acceptance/ppu/stat_irq_blocking.gb
+model = Auto
+frames = 25
+steps = 300403
+pc = 0x48F3
+serial = "BBBBBB"

@@ -1,0 +1,7 @@
+status = stop-condition-met
+rom = gb-test-roms/cpu_instrs/individual/06-ld r,r.gb
+model = Auto
+frames = 115
+steps = 769282
+pc = 0xCC5F
+serial = "06-ld r,r\\n\\n\\nPassed\\n"

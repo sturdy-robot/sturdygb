@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = 
+rom = gb-test-roms/mem_timing/mem_timing.gb
+model = Auto
+frames = 169
+steps = 1240015
+pc = 0x0213
+serial = "mem_timing\\n\\n01:01  02:01  03:01  \\n\\nFailed 3 tests.\\n"

@@ -1,0 +1,7 @@
+status = stop-condition-met
+rom = gb-test-roms/cpu_instrs/individual/10-bit ops.gb
+model = Auto
+frames = 65
+steps = 555188
+pc = 0xC5A2
+serial = "10-bit ops\\n\\n"

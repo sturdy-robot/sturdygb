@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SturdyGB Test ROM Report</title>
+<style>
+body { font-family: Segoe UI, sans-serif; margin: 24px; background: #f6f7f9; color: #1d2430; }
+h1 { margin-bottom: 8px; }
+.summary { margin-bottom: 24px; }
+.summary strong { display: inline-block; min-width: 180px; }
+table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08); }
+th, td { padding: 12px; border-bottom: 1px solid #dde3ea; text-align: left; vertical-align: top; }
+.status-stop-condition-met { color: #0a6c39; font-weight: 700; }
+.status-step-limit-reached { color: #8a5a00; font-weight: 700; }
+img { width: 240px; height: auto; image-rendering: pixelated; border: 1px solid #ccd3db; background: #fff; }
+pre { margin: 0; max-width: 340px; white-space: pre-wrap; font-family: Consolas, monospace; font-size: 12px; }
+.no-frame { display: inline-block; min-width: 220px; padding: 16px; border: 1px dashed #ccd3db; background: #f8fafc; color: #516071; font-size: 13px; }
+a { color: #005fb8; text-decoration: none; }
+a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<h1>SturdyGB Test ROM Report</h1>
+<div class="summary">
+<div><strong>Total cases</strong> 4</div>
+<div><strong>Stop condition met</strong> 4</div>
+<div><strong>Step limit reached</strong> 0</div>
+</div>
+<table>
+<thead><tr><th>Case</th><th>Status</th><th>Result</th><th>ROM</th><th>Model</th><th>Frames</th><th>Steps</th><th>PC</th><th>Output</th><th>Screenshot</th><th>Metadata</th></tr></thead>
+<tbody>
+<tr><td>blargg-instr-timing</td><td class="status-stop-condition-met">stop-condition-met</td><td></td><td>gb-test-roms/instr_timing/instr_timing.gb</td><td>Auto</td><td>34</td><td>272320</td><td>0xC896</td><td><pre>instr_timing\n\n\nPassed</pre></td><td><a href="blargg/blargg-instr-timing.png"><img src="blargg/blargg-instr-timing.png" alt="Screenshot for blargg-instr-timing"></a></td><td><a href="blargg/blargg-instr-timing.txt">metadata</a></td></tr>
+<tr><td>cgb-acid2</td><td class="status-stop-condition-met">stop-condition-met</td><td></td><td>cgb-acid2.gbc</td><td>CGB</td><td>9</td><td>308877</td><td>0x02BE</td><td><pre>(no serial output)</pre></td><td><a href="acid2/cgb-acid2.png"><img src="acid2/cgb-acid2.png" alt="Screenshot for cgb-acid2"></a></td><td><a href="acid2/cgb-acid2.txt">metadata</a></td></tr>
+<tr><td>dmg-acid2</td><td class="status-stop-condition-met">stop-condition-met</td><td></td><td>dmg-acid2.gb</td><td>DMG</td><td>9</td><td>254920</td><td>0x02D7</td><td><pre>(no serial output)</pre></td><td><a href="acid2/dmg-acid2.png"><img src="acid2/dmg-acid2.png" alt="Screenshot for dmg-acid2"></a></td><td><a href="acid2/dmg-acid2.txt">metadata</a></td></tr>
+<tr><td>mooneye-acceptance :: ei_sequence</td><td class="status-stop-condition-met">stop-condition-met</td><td></td><td>mooneye-test-suite/acceptance/ei_sequence.gb</td><td>Auto</td><td>25</td><td>300369</td><td>0x4B2E</td><td><pre>BBBBBB</pre></td><td><a href="mooneye/acceptance/mooneye-acceptance-ei-sequence.png"><img src="mooneye/acceptance/mooneye-acceptance-ei-sequence.png" alt="Screenshot for mooneye-acceptance :: ei_sequence"></a></td><td><a href="mooneye/acceptance/mooneye-acceptance-ei-sequence.txt">metadata</a></td></tr>
+</tbody>
+</table>
+</body>
+</html>

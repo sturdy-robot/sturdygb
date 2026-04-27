@@ -13,7 +13,7 @@ use crate::sound::Sound;
 use crate::timer::Timer;
 
 #[allow(dead_code)]
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum GbTypes {
     Dmg,
     Mgb,
@@ -21,7 +21,26 @@ pub enum GbTypes {
     Sgb,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+pub enum ModelSelection {
+    #[default]
+    Auto,
+    Dmg,
+    Cgb,
+}
+
+impl ModelSelection {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Auto => "Auto",
+            Self::Dmg => "DMG",
+            Self::Cgb => "CGB",
+        }
+    }
+}
+
 #[allow(dead_code)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SpeedMode {
     Normal,
     Double,
@@ -72,6 +91,11 @@ pub struct OamSprite {
     pub attributes: u8,
 }
 
+pub enum ScreenData<'a> {
+    Dmg(&'a [[u8; 160]; 144]),
+    Cgb(&'a [[[u8; 3]; 160]; 144]),
+}
+
 pub struct Gb {
     pub cpu: Cpu,
     pub ppu: Ppu,
@@ -83,14 +107,17 @@ pub struct Gb {
     pub gb_speed: u8,
     pub gb_type: GbTypes,
     pub gb_mode: GbMode,
+    pub rp: u8,
     pub wram: Vec<u8>,
     pub hram: Vec<u8>,
     pub ram_bank: usize,
+    pub svbk: u8,
     pub ie_flag: u8,
     pub if_flag: u8,
     pub boot_rom_enabled: u8,
     pub prepare_speed_switch: bool,
     pub speed_mode: SpeedMode,
+    pub serial_stdout_enabled: bool,
     pub(crate) debug_write_log: Vec<MemoryWriteEvent>,
 }
 
@@ -103,7 +130,7 @@ fn get_register_values(gb_mode: &GbMode, gb_type: &GbTypes) -> [u8; 8] {
             GbTypes::Sgb => [0x01, 0x00, 0x00, 0x14, 0x00, 0x00, 0xC0, 0x60],
         }
     } else {
-        [0x11, 0x80, 0x00, 0x00, 0xFF, 0x56, 0x00, 0x0D]
+        [0x11, 0x80, 0x00, 0x00, 0x00, 0x08, 0x00, 0x7C]
     }
 }
 
@@ -124,7 +151,8 @@ impl Gb {
     pub fn new(mbc: Box<dyn Mbc>, gb_mode: GbMode, gb_type: GbTypes) -> Self {
         let registers: [u8; 8] = get_register_values(&gb_mode, &gb_type);
         let div: u8 = get_div_values(&gb_type, &gb_mode);
-        let mut wram: Vec<u8> = if gb_mode == GbMode::CgbMode {
+        let cgb_hardware = gb_type == GbTypes::Cgb;
+        let mut wram: Vec<u8> = if cgb_hardware {
             vec![0; 0x8000]
         } else {
             vec![0; 0x2000]
@@ -136,7 +164,7 @@ impl Gb {
 
         Self {
             cpu: Cpu::new(registers),
-            ppu: Ppu::new(&gb_mode),
+            ppu: Ppu::new(cgb_hardware, gb_mode == GbMode::CgbMode),
             serial: Serial::new(),
             joypad: Joypad::new(),
             sound: Sound::new(),
@@ -145,14 +173,17 @@ impl Gb {
             gb_speed: 0,
             gb_type,
             gb_mode,
+            rp: if cgb_hardware { 0x3E } else { 0xFF },
             wram,
             hram,
             ram_bank: 1,
+            svbk: 0,
             ie_flag: 0,
             if_flag: 0xE1,
             boot_rom_enabled: 0,
             prepare_speed_switch: false,
             speed_mode: SpeedMode::Normal,
+            serial_stdout_enabled: true,
             debug_write_log: Vec::with_capacity(16),
         }
     }
@@ -190,8 +221,12 @@ impl Gb {
         self.ppu.frame_ready
     }
 
-    pub fn get_screen_data(&mut self) -> &[[u8; 160]; 144] {
-        self.ppu.get_screen()
+    pub fn get_screen_data(&mut self) -> ScreenData<'_> {
+        if self.gb_mode == GbMode::CgbMode {
+            ScreenData::Cgb(self.ppu.get_color_screen())
+        } else {
+            ScreenData::Dmg(self.ppu.get_screen())
+        }
     }
 
     pub fn debug_snapshot(&mut self) -> DebugSnapshot {
@@ -316,11 +351,16 @@ impl Gb {
     }
 
     pub fn components_tick(&mut self) {
-        let cycles = self.cpu.pending_cycles as u32 * 4;
-        self.dma_tick(cycles);
-        self.ppu_tick(cycles);
-        self.timer_tick(cycles);
-        self.sound.tick(cycles);
+        let cpu_cycles = self.cpu.pending_cycles as u32 * 4;
+        let ppu_cycles = match self.speed_mode {
+            SpeedMode::Normal => cpu_cycles,
+            SpeedMode::Double => cpu_cycles / 2,
+        };
+
+        self.dma_tick(cpu_cycles);
+        self.ppu_tick(ppu_cycles);
+        self.timer_tick(cpu_cycles);
+        self.sound.tick(ppu_cycles);
         self.cpu.pending_cycles = 0;
     }
 
@@ -328,12 +368,20 @@ impl Gb {
         self.sound.get_audio_buffer()
     }
 
+    pub fn take_serial_output(&mut self) -> Option<String> {
+        self.serial.get_serial_message()
+    }
+
     pub fn set_sample_rate(&mut self, rate: u32) {
         self.sound.set_sample_rate(rate);
     }
 
+    pub fn set_serial_stdout_enabled(&mut self, enabled: bool) {
+        self.serial_stdout_enabled = enabled;
+    }
+
     fn cpu_tick(&mut self) {
-        if self.cpu.is_halted {
+        if self.cpu.is_halted || self.cpu.is_stopped {
             self.cpu.pending_cycles += 1;
             return;
         }
@@ -345,9 +393,11 @@ impl Gb {
     }
 
     fn print_serial_message(&mut self) {
-        if let Some(message) = self.serial.get_serial_message() {
-            println!("{}", message)
-        };
+        if self.serial_stdout_enabled {
+            if let Some(message) = self.take_serial_output() {
+                println!("{}", message)
+            };
+        }
     }
 
     fn debug_message(&self) {

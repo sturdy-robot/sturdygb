@@ -1,0 +1,7 @@
+status = stop-condition-met
+rom = gb-test-roms/cpu_instrs/individual/08-misc instrs.gb
+model = Auto
+frames = 113
+steps = 751406
+pc = 0xCB91
+serial = "08-misc instrs\\n\\n\\nPassed\\n"

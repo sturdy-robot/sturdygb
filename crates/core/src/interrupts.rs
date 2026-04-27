@@ -33,26 +33,30 @@ impl Gb {
 
         let pending = self.ie_flag & self.if_flag & 0x1F;
 
-        if pending != 0 && self.cpu.is_halted {
-            self.cpu.is_halted = false;
+        if pending != 0 {
+            if self.cpu.is_halted {
+                self.cpu.is_halted = false;
+            }
+            if self.cpu.is_stopped {
+                self.cpu.is_stopped = false;
+            }
         }
 
         if !self.cpu.interrupt_master || pending == 0 {
             return;
         }
 
+        let interrupt_source = Self::get_interrupt_source(pending);
         self.cpu.interrupt_master = false;
         self.cpu.sp = self.cpu.sp.wrapping_sub(2);
         self.write_word(self.cpu.sp, self.cpu.pc);
         self.cpu.pending_cycles += 5;
-        let interrupt_source = self.get_interrupt_source();
         let address = self.go_interrupt(&interrupt_source);
         self.cpu.pc = address;
         self.if_flag &= !(interrupt_source as u8);
     }
 
-    fn get_interrupt_source(&mut self) -> Interrupt {
-        let pending = self.ie_flag & self.if_flag & 0x1F;
+    fn get_interrupt_source(pending: u8) -> Interrupt {
         if pending & (Interrupt::Vblank as u8) != 0 {
             Interrupt::Vblank
         } else if pending & (Interrupt::LcdStat as u8) != 0 {
@@ -77,5 +81,28 @@ impl Gb {
             Interrupt::Joypad => 0x60,
             Interrupt::Invalid => panic!("Invalid interrupt called!"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Interrupt;
+    use crate::{gb::ModelSelection, test_roms::load_test_gb};
+
+    #[test]
+    fn handle_interrupt_uses_latched_source_when_stack_write_touches_ie() {
+        let mut gb = load_test_gb("cpu_instrs.gb", ModelSelection::Auto);
+        gb.cpu.interrupt_master = true;
+        gb.cpu.pc = 0x0034;
+        gb.cpu.sp = 0x0000;
+        gb.ie_flag = Interrupt::Joypad as u8;
+        gb.if_flag = Interrupt::Joypad as u8;
+
+        gb.handle_interrupt();
+
+        assert_eq!(gb.cpu.pc, 0x60);
+        assert_eq!(gb.cpu.sp, 0xFFFE);
+        assert_eq!(gb.ie_flag, 0x00);
+        assert_eq!(gb.if_flag, 0x00);
     }
 }

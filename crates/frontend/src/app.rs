@@ -2,6 +2,7 @@ mod audio;
 mod catalog;
 mod config;
 mod debugger;
+mod help;
 mod options;
 mod rom;
 
@@ -12,6 +13,8 @@ use self::audio::AUDIO_PRODUCER;
 use self::config::{GameEntry, SortMethod};
 use self::config::{Palette, ScaleMode, SturdyConfig};
 use self::debugger::DebuggerUiState;
+use self::help::HelpUiState;
+use sturdygb_core::gb::{ModelSelection, ScreenData};
 use sturdygb_core::joypad::JoypadButton;
 
 pub const APP_NAME: &str = concat!("SturdyGB v", env!("CARGO_PKG_VERSION"));
@@ -56,6 +59,7 @@ pub struct EmuApp {
     paused: bool,
     config: SturdyConfig,
     show_options: bool,
+    help: HelpUiState,
     #[cfg(not(target_arch = "wasm32"))]
     loading_directory: bool,
     #[cfg(not(target_arch = "wasm32"))]
@@ -67,12 +71,20 @@ pub struct EmuApp {
 }
 
 impl EmuApp {
-    pub fn new(cc: &eframe::CreationContext<'_>, initial_rom: Option<String>) -> Self {
+    pub fn new(
+        cc: &eframe::CreationContext<'_>,
+        initial_rom: Option<String>,
+        initial_model_selection: Option<ModelSelection>,
+    ) -> Self {
         let mut config: SturdyConfig = Default::default();
         if let Some(storage) = cc.storage {
             if let Some(saved) = eframe::get_value::<SturdyConfig>(storage, "sturdygb_config") {
                 config = saved;
             }
+        }
+
+        if let Some(model_selection) = initial_model_selection {
+            config.model_selection = model_selection;
         }
 
         let mut app = Self {
@@ -94,6 +106,7 @@ impl EmuApp {
             paused: false,
             config,
             show_options: false,
+            help: HelpUiState::default(),
             #[cfg(not(target_arch = "wasm32"))]
             loading_directory: false,
             #[cfg(not(target_arch = "wasm32"))]
@@ -234,7 +247,11 @@ impl eframe::App for EmuApp {
                     if ui
                         .add_enabled(
                             has_state,
-                            egui::Button::new(if self.paused { "▶ Resume" } else { "⏸ Pause" }),
+                            egui::Button::new(if self.paused {
+                                "▶ Resume"
+                            } else {
+                                "⏸ Pause"
+                            }),
                         )
                         .clicked()
                     {
@@ -314,6 +331,8 @@ impl eframe::App for EmuApp {
                 if ui.button("Options").clicked() {
                     self.show_options = true;
                 }
+
+                self.show_help_menu(ui);
             });
         });
 
@@ -339,7 +358,18 @@ impl eframe::App for EmuApp {
             self.error_msg = None;
         }
 
-        self.show_options_window(ctx);
+        let reload_requested = self.show_options_window(ctx);
+        if reload_requested {
+            if let Some((rom_bytes, save_path)) = self
+                .state
+                .as_ref()
+                .map(|state| (state.rom_bytes.clone(), state.save_path.clone()))
+            {
+                self.load_rom_bytes(rom_bytes, save_path, _frame.storage());
+            }
+        }
+
+        self.show_help_windows(ctx);
         self.show_debugger_windows(ctx);
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -422,28 +452,43 @@ impl eframe::App for EmuApp {
                     }
                 }
 
-                let frame_data = state.gb.get_screen_data();
-                let palette_colors = match self.config.palette {
-                    Palette::Greyscale => {
-                        [(255, 255, 255), (192, 192, 192), (96, 96, 96), (0, 0, 0)]
-                    }
-                    Palette::ClassicGreen => {
-                        [(224, 248, 208), (136, 192, 112), (52, 104, 86), (8, 24, 32)]
-                    }
-                    Palette::Pocket => {
-                        [(232, 232, 232), (160, 160, 160), (88, 88, 88), (16, 16, 16)]
-                    }
-                };
+                match state.gb.get_screen_data() {
+                    ScreenData::Dmg(frame_data) => {
+                        let palette_colors = match self.config.palette {
+                            Palette::Greyscale => {
+                                [(255, 255, 255), (192, 192, 192), (96, 96, 96), (0, 0, 0)]
+                            }
+                            Palette::ClassicGreen => {
+                                [(224, 248, 208), (136, 192, 112), (52, 104, 86), (8, 24, 32)]
+                            }
+                            Palette::Pocket => {
+                                [(232, 232, 232), (160, 160, 160), (88, 88, 88), (16, 16, 16)]
+                            }
+                        };
 
-                for y in 0..GB_H {
-                    for x in 0..GB_W {
-                        let shade = frame_data[y][x] as usize;
-                        let (r, g, b) = palette_colors[shade];
-                        let i = (y * GB_W + x) * 4;
-                        state.rgba[i + 0] = r;
-                        state.rgba[i + 1] = g;
-                        state.rgba[i + 2] = b;
-                        state.rgba[i + 3] = 255;
+                        for y in 0..GB_H {
+                            for x in 0..GB_W {
+                                let shade = frame_data[y][x] as usize;
+                                let (r, g, b) = palette_colors[shade];
+                                let i = (y * GB_W + x) * 4;
+                                state.rgba[i + 0] = r;
+                                state.rgba[i + 1] = g;
+                                state.rgba[i + 2] = b;
+                                state.rgba[i + 3] = 255;
+                            }
+                        }
+                    }
+                    ScreenData::Cgb(frame_data) => {
+                        for y in 0..GB_H {
+                            for x in 0..GB_W {
+                                let [r, g, b] = frame_data[y][x];
+                                let i = (y * GB_W + x) * 4;
+                                state.rgba[i + 0] = r;
+                                state.rgba[i + 1] = g;
+                                state.rgba[i + 2] = b;
+                                state.rgba[i + 3] = 255;
+                            }
+                        }
                     }
                 }
 
@@ -504,7 +549,10 @@ impl eframe::App for EmuApp {
                                         .add_filter("GameBoy ROMs", &["gb", "gbc", "zip"])
                                         .pick_file()
                                     {
-                                        self.load_rom_file(path.to_str().unwrap(), _frame.storage());
+                                        self.load_rom_file(
+                                            path.to_str().unwrap(),
+                                            _frame.storage(),
+                                        );
                                     }
                                 }
                                 if ui.button("📁 Add ROM directory...").clicked() {
@@ -519,7 +567,8 @@ impl eframe::App for EmuApp {
                             ui.label("Directories:");
                             let mut to_remove = None;
                             for (i, dir) in self.config.rom_directories.iter().enumerate() {
-                                let dir_name = dir.file_name().unwrap_or_default().to_string_lossy();
+                                let dir_name =
+                                    dir.file_name().unwrap_or_default().to_string_lossy();
                                 let response = ui.button(format!("{} ❌", dir_name));
                                 if response.clicked() {
                                     to_remove = Some(i);
@@ -541,7 +590,10 @@ impl eframe::App for EmuApp {
                             ui.centered_and_justified(|ui| {
                                 ui.add_space(ui.available_height() / 2.0 - 30.0);
                                 ui.vertical_centered(|ui| {
-                                    ui.heading(format!("Loading Games... ({})", self.game_list.len()));
+                                    ui.heading(format!(
+                                        "Loading Games... ({})",
+                                        self.game_list.len()
+                                    ));
                                     ui.add(egui::Spinner::new().size(32.0));
                                 });
                             });

@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = 
+rom = gb-test-roms/cpu_instrs/individual/11-op a,(hl).gb
+model = Auto
+frames = 73
+steps = 563467
+pc = 0xC6B3
+serial = "11-op a,(hl)\\n\\n"

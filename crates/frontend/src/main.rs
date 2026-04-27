@@ -1,10 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-#![allow(rustdoc::missing_crate_level_docs)] // it's an app
-
+#![allow(rustdoc::missing_crate_level_docs)]
 mod app;
 mod debug_views;
 
 use crate::app::APP_NAME;
+use sturdygb_core::gb::ModelSelection;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result<()> {
@@ -15,9 +15,16 @@ fn main() -> eframe::Result<()> {
     struct Cli {
         #[arg(value_name = "ROM")]
         rom: Option<String>,
+        #[arg(long, value_name = "MODEL", value_parser = ["auto", "dmg", "cgb"])]
+        model: Option<String>,
     }
 
     let cli = Cli::parse();
+    let initial_model_selection = cli.model.as_deref().map(|model| match model {
+        "dmg" => ModelSelection::Dmg,
+        "cgb" => ModelSelection::Cgb,
+        _ => ModelSelection::Auto,
+    });
 
     let icon_data = match image::load_from_memory(include_bytes!(
         "../../../images/sturdygb_symbol_64x64.png"
@@ -59,7 +66,13 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "sturdygb",
         options,
-        Box::new(|cc| Ok(Box::new(app::EmuApp::new(cc, cli.rom)))),
+        Box::new(|cc| {
+            Ok(Box::new(app::EmuApp::new(
+                cc,
+                cli.rom.clone(),
+                initial_model_selection,
+            )))
+        }),
     )
 }
 
@@ -88,7 +101,7 @@ fn main() {
             .start(
                 canvas,
                 web_options,
-                Box::new(|cc| Ok(Box::new(app::EmuApp::new(cc, None)))),
+                Box::new(|cc| Ok(Box::new(app::EmuApp::new(cc, None, None)))),
             )
             .await
             .expect("Failed to start eframe");

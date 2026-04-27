@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = 
+rom = mooneye-test-suite/acceptance/ppu/intr_2_mode3_timing.gb
+model = Auto
+frames = 27
+steps = 314916
+pc = 0x4B2E
+serial = "BBBBBB"

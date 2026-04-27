@@ -1,0 +1,7 @@
+status = stop-condition-met
+rom = gb-test-roms/mem_timing/individual/03-modify_timing.gb
+model = Auto
+frames = 184
+steps = 1267735
+pc = 0xC887
+serial = "03-modify_timing\\n\\n35:0/0-2/3\\n34:0/0-2/3\\nCB 06:0/0-3/4\\nCB 0E:0/0-3/4\\nCB 16:0/0-3/4\\nCB 1E:0/0-3/4\\nCB 26:0/0-3/4\\nCB 2E:0/0-3/4\\nCB 36:0/0-3/4\\nCB 3E:0/0-3/4\\nCB 86:0/0-3/4\\nCB 8E:0/0-3/4\\nCB 96:0/0-3/4\\nCB 9E:0/0-3/4\\nCB A6:0/0-3/4\\nCB AE:0/0-3/4\\nCB B6:0/0-3/4\\nCB BE:0/0-3/4\\nCB C6:0/0-3/4\\nCB CE:0/0-3/4\\nCB D6:0/0-3/4\\nCB DE:0/0-3/4\\nCB E6:0/0-3/4\\nCB EE:0/0-3/4\\nCB F6:0/0-3/4\\nCB FE:0/0-3/4\\n\\nFailed\\n"

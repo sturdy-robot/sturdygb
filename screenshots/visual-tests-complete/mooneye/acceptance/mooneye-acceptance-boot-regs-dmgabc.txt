@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = mooneye: pass
+rom = mooneye-test-suite/acceptance/boot_regs-dmgABC.gb
+model = Auto
+frames = 1
+steps = 93980
+pc = 0x4AF2
+serial = ""

@@ -86,11 +86,19 @@ pub enum MBCTypes {
     Unknown,
 }
 
-#[derive(PartialEq, Eq, Copy, Clone)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum GbMode {
     DmgMode,
     NonCgbMode,
     CgbMode,
+}
+
+pub fn gb_mode_from_cgb_flag(cgb_flag: u8) -> GbMode {
+    match cgb_flag {
+        0x80 => GbMode::NonCgbMode,
+        0xC0 => GbMode::CgbMode,
+        _ => GbMode::DmgMode,
+    }
 }
 
 fn checksum(rom_data: &Vec<u8>) -> bool {

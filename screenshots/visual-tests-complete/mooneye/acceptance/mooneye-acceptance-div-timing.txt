@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = 
+rom = mooneye-test-suite/acceptance/div_timing.gb
+model = Auto
+frames = 25
+steps = 301812
+pc = 0x4B2E
+serial = "BBBBBB"

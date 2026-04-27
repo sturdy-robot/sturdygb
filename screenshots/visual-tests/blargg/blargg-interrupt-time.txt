@@ -1,0 +1,8 @@
+status = step-limit-reached
+result = 
+rom = gb-test-roms/interrupt_time/interrupt_time.gb
+model = Auto
+frames = 1029
+steps = 12000000
+pc = 0xC9C9
+serial = ""

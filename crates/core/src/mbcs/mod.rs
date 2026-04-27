@@ -17,18 +17,14 @@ use mbc6::Mbc6;
 use mbc7::Mbc7;
 use romonly::RomOnly;
 
-use super::cartridge::{CartridgeHeader, GbMode, MBCTypes, Mbc};
+use super::cartridge::{gb_mode_from_cgb_flag, CartridgeHeader, GbMode, MBCTypes, Mbc};
 
 pub fn get_mbc(
     rom_data: Vec<u8>,
     header: CartridgeHeader,
     save_path: std::path::PathBuf,
 ) -> (Box<dyn Mbc>, GbMode) {
-    let gb_mode = match header.cgb_flag {
-        0x80 => GbMode::NonCgbMode,
-        0xC0 => GbMode::CgbMode,
-        _ => GbMode::DmgMode,
-    };
+    let gb_mode = gb_mode_from_cgb_flag(header.cgb_flag);
 
     match header.mbc_type {
         MBCTypes::RomOnly => (Box::new(RomOnly::new(rom_data, header)), gb_mode),
@@ -53,19 +49,11 @@ pub fn get_mbc(
             battery,
             rumble,
         } => (
-            Box::new(Mbc5::new(
-                rom_data, header, ram, battery, rumble, save_path,
-            )),
+            Box::new(Mbc5::new(rom_data, header, ram, battery, rumble, save_path)),
             gb_mode,
         ),
-        MBCTypes::Mbc6 => (
-            Box::new(Mbc6::new(rom_data, header, save_path)),
-            gb_mode,
-        ),
-        MBCTypes::Mbc7 => (
-            Box::new(Mbc7::new(rom_data, header, save_path)),
-            gb_mode,
-        ),
+        MBCTypes::Mbc6 => (Box::new(Mbc6::new(rom_data, header, save_path)), gb_mode),
+        MBCTypes::Mbc7 => (Box::new(Mbc7::new(rom_data, header, save_path)), gb_mode),
         _ => unimplemented!(),
     }
 }

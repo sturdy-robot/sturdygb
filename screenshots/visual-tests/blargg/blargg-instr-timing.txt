@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = 
+rom = gb-test-roms/instr_timing/instr_timing.gb
+model = Auto
+frames = 34
+steps = 272320
+pc = 0xC896
+serial = "instr_timing\\n\\n\\nPassed"

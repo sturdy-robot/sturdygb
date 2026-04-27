@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = mooneye: pass
+rom = mooneye-test-suite/acceptance/instr/daa.gb
+model = Auto
+frames = 13
+steps = 189525
+pc = 0x6832
+serial = ""

@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = 
+rom = dmg-acid2.gb
+model = DMG
+frames = 9
+steps = 254920
+pc = 0x02D7
+serial = ""

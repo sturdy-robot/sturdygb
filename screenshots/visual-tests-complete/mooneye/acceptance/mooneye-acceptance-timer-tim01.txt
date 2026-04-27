@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = mooneye: pass
+rom = mooneye-test-suite/acceptance/timer/tim01.gb
+model = Auto
+frames = 1
+steps = 93860
+pc = 0x4AF2
+serial = ""

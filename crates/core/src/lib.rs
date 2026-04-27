@@ -19,4 +19,5 @@ mod ppu;
 pub mod prelude;
 mod serial;
 mod sound;
+pub mod test_roms;
 mod timer;

@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = 
+rom = mooneye-test-suite/misc/boot_hwio-C.gb
+model = CGB
+frames = 25
+steps = 300583
+pc = 0x486E
+serial = "BBBBBB"

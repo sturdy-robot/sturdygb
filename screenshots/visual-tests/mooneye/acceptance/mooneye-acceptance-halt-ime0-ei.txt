@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = mooneye: pass
+rom = mooneye-test-suite/acceptance/halt_ime0_ei.gb
+model = Auto
+frames = 2
+steps = 120423
+pc = 0x4832
+serial = ""

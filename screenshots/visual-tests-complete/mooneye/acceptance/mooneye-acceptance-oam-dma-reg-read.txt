@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = 
+rom = mooneye-test-suite/acceptance/oam_dma/reg_read.gb
+model = Auto
+frames = 25
+steps = 300498
+pc = 0x486E
+serial = "BBBBBB"

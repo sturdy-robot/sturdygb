@@ -1,0 +1,7 @@
+status = stop-condition-met
+rom = gb-test-roms/mem_timing/individual/02-write_timing.gb
+model = Auto
+frames = 110
+steps = 717973
+pc = 0xC81F
+serial = "02-write_timing\\n\\n36:2-3 E0:2-3 EA:2-4 \\nFailed\\n"

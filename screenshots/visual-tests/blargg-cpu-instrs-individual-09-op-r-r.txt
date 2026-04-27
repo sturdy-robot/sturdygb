@@ -1,0 +1,7 @@
+status = stop-condition-met
+rom = gb-test-roms/cpu_instrs/individual/09-op r,r.gb
+model = Auto
+frames = 65
+steps = 555440
+pc = 0xC570
+serial = "09-op r,r\\n\\n"

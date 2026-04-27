@@ -1,0 +1,8 @@
+status = step-limit-reached
+result = 
+rom = gb-test-roms/oam_bug/rom_singles/6-timing_no_bug.gb
+model = Auto
+frames = 1963
+steps = 12000000
+pc = 0xC85D
+serial = ""

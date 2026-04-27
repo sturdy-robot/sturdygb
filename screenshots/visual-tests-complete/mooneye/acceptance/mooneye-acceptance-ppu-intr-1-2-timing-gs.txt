@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = mooneye: pass
+rom = mooneye-test-suite/acceptance/ppu/intr_1_2_timing-GS.gb
+model = Auto
+frames = 4
+steps = 124960
+pc = 0x4AF2
+serial = ""

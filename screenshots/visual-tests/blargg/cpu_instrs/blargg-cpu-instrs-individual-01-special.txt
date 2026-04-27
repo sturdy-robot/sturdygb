@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = 
+rom = gb-test-roms/cpu_instrs/individual/01-special.gb
+model = Auto
+frames = 59
+steps = 555218
+pc = 0xC070
+serial = "01-special\\n\\n"

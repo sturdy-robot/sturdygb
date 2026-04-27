@@ -2,14 +2,27 @@
 //
 // SPDX-License-Identifier: MIT
 
-use super::cartridge::GbMode;
-use super::gb::{Gb, GbTypes, MemoryWriteEvent};
+use super::gb::{Gb, GbTypes, MemoryWriteEvent, SpeedMode};
 use super::memory::Memory;
 
 impl Gb {
+    fn key1_value(&self) -> u8 {
+        if self.gb_type != GbTypes::Cgb {
+            return 0xFF;
+        }
+
+        let current_speed = match self.speed_mode {
+            SpeedMode::Normal => 0,
+            SpeedMode::Double => 1,
+        };
+
+        0x7E | (current_speed << 7) | u8::from(self.prepare_speed_switch)
+    }
+
     fn record_debug_write(&mut self, address: u16, value: u8) {
         if self.debug_write_log.len() < 64 {
-            self.debug_write_log.push(MemoryWriteEvent { address, value });
+            self.debug_write_log
+                .push(MemoryWriteEvent { address, value });
         }
     }
 
@@ -31,13 +44,25 @@ impl Gb {
             0xFF10..=0xFF26 => self.sound.read_byte(address),
             0xFF30..=0xFF3F => self.sound.read_byte(address),
             0xFF40..=0xFF4B => self.ppu.read_byte(address),
-            0xFF4D => self.gb_speed,
+            0xFF4D => self.key1_value(),
             0xFF4F => self.ppu.read_byte(address),
             0xFF50 => self.boot_rom_enabled,
             0xFF51..=0xFF55 => self.ppu.read_byte(address),
-            0xFF56 => 0xFF, // INFRARED COMMS, NOT IMPLEMENTED HERE
+            0xFF56 => {
+                if self.gb_type == GbTypes::Cgb {
+                    self.rp
+                } else {
+                    0xFF
+                }
+            }
             0xFF68..=0xFF6B => self.ppu.read_byte(address),
-            0xFF70 => self.ram_bank as u8,
+            0xFF70 => {
+                if self.gb_type == GbTypes::Cgb {
+                    0xF8 | (self.svbk & 0x07)
+                } else {
+                    0xFF
+                }
+            }
             0xFF80..=0xFFFE => self.hram[address as usize & 0x007F],
             0xFFFF => self.ie_flag & 0x1F,
             _ => 0xFF,
@@ -100,8 +125,8 @@ impl Gb {
                 self.record_debug_write(address, value);
             }
             0xFF4D => {
-                self.gb_speed = value;
                 if self.gb_type == GbTypes::Cgb {
+                    self.gb_speed = value & 1;
                     self.prepare_speed_switch = value & 1 == 1;
                 }
                 self.record_debug_write(address, value);
@@ -115,16 +140,23 @@ impl Gb {
                 self.record_debug_write(address, value);
             }
             0xFF51..=0xFF55 => {
-                self.ppu.write_byte(address, value);
+                self.write_hdma_register(address, value);
                 self.record_debug_write(address, value);
             }
-            0xFF68..=0xFF69 => {
+            0xFF56 => {
+                if self.gb_type == GbTypes::Cgb {
+                    self.rp = 0x3C | (value & 0x03);
+                }
+                self.record_debug_write(address, value);
+            }
+            0xFF68..=0xFF6B => {
                 self.ppu.write_byte(address, value);
                 self.record_debug_write(address, value);
             }
             0xFF70 => {
-                if self.gb_mode == GbMode::CgbMode {
-                    self.ram_bank = match value & 0x7 {
+                if self.gb_type == GbTypes::Cgb {
+                    self.svbk = value & 0x07;
+                    self.ram_bank = match self.svbk {
                         0 => 1,
                         n => n as usize,
                     };
@@ -140,9 +172,6 @@ impl Gb {
                 self.record_debug_write(address, value & 0x1F);
             }
             0xFF00..=0xFF7F => {} // Unused I/O ports
-            _ => {
-                println!("Write to not implemented memory region 0x{:04x}", address);
-            }
         };
     }
 

@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = 
+rom = cgb-acid2.gbc
+model = CGB
+frames = 9
+steps = 308877
+pc = 0x02BE
+serial = ""

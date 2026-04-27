@@ -1,0 +1,2 @@
+name	status	result	rom	model	frames	steps	pc	image	metadata
+mooneye-acceptance :: interrupts :: ie_push	stop-condition-met		mooneye-test-suite/acceptance/interrupts/ie_push.gb	Auto	25	300405	0x486E	mooneye/acceptance/mooneye-acceptance-interrupts-ie-push.png	mooneye/acceptance/mooneye-acceptance-interrupts-ie-push.txt

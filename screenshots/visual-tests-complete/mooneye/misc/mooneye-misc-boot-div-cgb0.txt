@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = 
+rom = mooneye-test-suite/misc/boot_div-cgb0.gb
+model = CGB
+frames = 25
+steps = 301972
+pc = 0x4B2E
+serial = "BBBBBB"

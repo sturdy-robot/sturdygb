@@ -28,7 +28,7 @@ pub async fn start(canvas_id: &str) -> Result<(), eframe::wasm_bindgen::JsValue>
         .start(
             canvas,
             web_options,
-            Box::new(|cc| Ok(Box::new(app::EmuApp::new(cc, None)))),
+            Box::new(|cc| Ok(Box::new(app::EmuApp::new(cc, None, None)))),
         )
         .await
 }

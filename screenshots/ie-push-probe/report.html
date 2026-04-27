@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SturdyGB Test ROM Report</title>
+<style>
+body { font-family: Segoe UI, sans-serif; margin: 24px; background: #f6f7f9; color: #1d2430; }
+h1 { margin-bottom: 8px; }
+.summary { margin-bottom: 24px; }
+.summary strong { display: inline-block; min-width: 180px; }
+table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08); }
+th, td { padding: 12px; border-bottom: 1px solid #dde3ea; text-align: left; vertical-align: top; }
+.status-stop-condition-met { color: #0a6c39; font-weight: 700; }
+.status-step-limit-reached { color: #8a5a00; font-weight: 700; }
+img { width: 240px; height: auto; image-rendering: pixelated; border: 1px solid #ccd3db; background: #fff; }
+pre { margin: 0; max-width: 340px; white-space: pre-wrap; font-family: Consolas, monospace; font-size: 12px; }
+.no-frame { display: inline-block; min-width: 220px; padding: 16px; border: 1px dashed #ccd3db; background: #f8fafc; color: #516071; font-size: 13px; }
+a { color: #005fb8; text-decoration: none; }
+a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<h1>SturdyGB Test ROM Report</h1>
+<div class="summary">
+<div><strong>Total cases</strong> 1</div>
+<div><strong>Stop condition met</strong> 1</div>
+<div><strong>Step limit reached</strong> 0</div>
+</div>
+<table>
+<thead><tr><th>Case</th><th>Status</th><th>Result</th><th>ROM</th><th>Model</th><th>Frames</th><th>Steps</th><th>PC</th><th>Output</th><th>Screenshot</th><th>Metadata</th></tr></thead>
+<tbody>
+<tr><td>mooneye-acceptance :: interrupts :: ie_push</td><td class="status-stop-condition-met">stop-condition-met</td><td></td><td>mooneye-test-suite/acceptance/interrupts/ie_push.gb</td><td>Auto</td><td>25</td><td>300405</td><td>0x486E</td><td><pre>BBBBBB</pre></td><td><a href="mooneye/acceptance/mooneye-acceptance-interrupts-ie-push.png"><img src="mooneye/acceptance/mooneye-acceptance-interrupts-ie-push.png" alt="Screenshot for mooneye-acceptance :: interrupts :: ie_push"></a></td><td><a href="mooneye/acceptance/mooneye-acceptance-interrupts-ie-push.txt">metadata</a></td></tr>
+</tbody>
+</table>
+</body>
+</html>

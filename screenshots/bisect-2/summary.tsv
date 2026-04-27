@@ -1,0 +1,7 @@
+name	status	result	rom	model	frames	steps	pc	image	metadata
+mooneye-acceptance :: halt_ime0_nointr_timing	stop-condition-met		mooneye-test-suite/acceptance/halt_ime0_nointr_timing.gb	Auto	30	387967	0x4B2E	mooneye/acceptance/mooneye-acceptance-halt-ime0-nointr-timing.png	mooneye/acceptance/mooneye-acceptance-halt-ime0-nointr-timing.txt
+mooneye-acceptance :: interrupts :: ie_push	stop-condition-met		mooneye-test-suite/acceptance/interrupts/ie_push.gb	Auto	25	300405	0x486E	mooneye/acceptance/mooneye-acceptance-interrupts-ie-push.png	mooneye/acceptance/mooneye-acceptance-interrupts-ie-push.txt
+mooneye-acceptance :: intr_timing	stop-condition-met		mooneye-test-suite/acceptance/intr_timing.gb	Auto	25	301712	0x4B2E	mooneye/acceptance/mooneye-acceptance-intr-timing.png	mooneye/acceptance/mooneye-acceptance-intr-timing.txt
+mooneye-acceptance :: jp_cc_timing	stop-condition-met		mooneye-test-suite/acceptance/jp_cc_timing.gb	Auto	27	313847	0x486E	mooneye/acceptance/mooneye-acceptance-jp-cc-timing.png	mooneye/acceptance/mooneye-acceptance-jp-cc-timing.txt
+mooneye-acceptance :: jp_timing	stop-condition-met		mooneye-test-suite/acceptance/jp_timing.gb	Auto	27	313847	0x486E	mooneye/acceptance/mooneye-acceptance-jp-timing.png	mooneye/acceptance/mooneye-acceptance-jp-timing.txt
+mooneye-acceptance :: reti_intr_timing	stop-condition-met	mooneye: pass	mooneye-test-suite/acceptance/reti_intr_timing.gb	Auto	1	93863	0x4AF2	mooneye/acceptance/mooneye-acceptance-reti-intr-timing.png	mooneye/acceptance/mooneye-acceptance-reti-intr-timing.txt

@@ -30,7 +30,11 @@ impl EmuApp {
             title = header.title;
         }
 
-        match GbInstance::build_from_bytes(bytes.clone(), save_path.clone()) {
+        match GbInstance::build_from_bytes_with_model(
+            bytes.clone(),
+            save_path.clone(),
+            self.config.model_selection,
+        ) {
             Ok(mut gb) => {
                 #[cfg(target_arch = "wasm32")]
                 if let Some(storage) = _storage {

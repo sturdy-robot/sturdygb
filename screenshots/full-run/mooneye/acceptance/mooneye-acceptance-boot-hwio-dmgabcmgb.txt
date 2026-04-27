@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = 
+rom = mooneye-test-suite/acceptance/boot_hwio-dmgABCmgb.gb
+model = Auto
+frames = 25
+steps = 300592
+pc = 0x486E
+serial = "BBBBBB"

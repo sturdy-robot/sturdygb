@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = 
+rom = cpu_instrs.gb
+model = Auto
+frames = 3192
+steps = 24824485
+pc = 0x0B96
+serial = "cpu_instrs\\n\\n01:ok  02:ok  03:ok  04:ok  05:ok  06:ok  07:ok  08:ok  09:ok  10:ok  11:ok  \\n\\nPassed all tests"

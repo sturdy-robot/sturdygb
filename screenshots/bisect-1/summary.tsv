@@ -1,0 +1,3 @@
+name	status	result	rom	model	frames	steps	pc	image	metadata
+mooneye-acceptance :: instr :: daa	stop-condition-met	mooneye: pass	mooneye-test-suite/acceptance/instr/daa.gb	Auto	13	189525	0x6832	mooneye/acceptance/mooneye-acceptance-instr-daa.png	mooneye/acceptance/mooneye-acceptance-instr-daa.txt
+mooneye-acceptance :: interrupts :: ie_push	stop-condition-met		mooneye-test-suite/acceptance/interrupts/ie_push.gb	Auto	25	300405	0x486E	mooneye/acceptance/mooneye-acceptance-interrupts-ie-push.png	mooneye/acceptance/mooneye-acceptance-interrupts-ie-push.txt

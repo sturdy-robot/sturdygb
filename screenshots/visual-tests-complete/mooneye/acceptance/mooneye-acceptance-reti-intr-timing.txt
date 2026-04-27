@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = mooneye: pass
+rom = mooneye-test-suite/acceptance/reti_intr_timing.gb
+model = Auto
+frames = 1
+steps = 93863
+pc = 0x4AF2
+serial = ""

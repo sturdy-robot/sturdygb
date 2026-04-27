@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = mooneye: pass
+rom = mooneye-test-suite/acceptance/bits/mem_oam.gb
+model = Auto
+frames = 1
+steps = 94700
+pc = 0x4832
+serial = ""

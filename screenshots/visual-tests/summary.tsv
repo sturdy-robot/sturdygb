@@ -1,0 +1,5 @@
+name	status	result	rom	model	frames	steps	pc	image	metadata
+blargg-instr-timing	stop-condition-met		gb-test-roms/instr_timing/instr_timing.gb	Auto	34	272320	0xC896	blargg/blargg-instr-timing.png	blargg/blargg-instr-timing.txt
+cgb-acid2	stop-condition-met		cgb-acid2.gbc	CGB	9	308877	0x02BE	acid2/cgb-acid2.png	acid2/cgb-acid2.txt
+dmg-acid2	stop-condition-met		dmg-acid2.gb	DMG	9	254920	0x02D7	acid2/dmg-acid2.png	acid2/dmg-acid2.txt
+mooneye-acceptance :: ei_sequence	stop-condition-met		mooneye-test-suite/acceptance/ei_sequence.gb	Auto	25	300369	0x4B2E	mooneye/acceptance/mooneye-acceptance-ei-sequence.png	mooneye/acceptance/mooneye-acceptance-ei-sequence.txt

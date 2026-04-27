@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = 
+rom = mooneye-test-suite/acceptance/ppu/vblank_stat_intr-GS.gb
+model = Auto
+frames = 34
+steps = 415949
+pc = 0x4B2E
+serial = "BBBBBB"

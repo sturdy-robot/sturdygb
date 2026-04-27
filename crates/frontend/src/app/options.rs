@@ -1,10 +1,12 @@
 use super::EmuApp;
 use eframe::egui;
 use sturdygb_core::joypad::JoypadButton;
+use sturdygb_core::gb::ModelSelection;
 
 impl EmuApp {
-    pub(super) fn show_options_window(&mut self, ctx: &egui::Context) {
+    pub(super) fn show_options_window(&mut self, ctx: &egui::Context) -> bool {
         let mut is_open = self.show_options;
+        let mut reload_requested = false;
         if is_open {
             egui::Window::new("Emulator Options")
                 .collapsible(false)
@@ -58,6 +60,30 @@ impl EmuApp {
                                 });
                             ui.end_row();
 
+                            ui.label("Game Boy Model:");
+                            let previous_model = self.config.model_selection;
+                            egui::ComboBox::from_id_salt("model_combo")
+                                .selected_text(self.config.model_selection.as_str())
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(
+                                        &mut self.config.model_selection,
+                                        ModelSelection::Auto,
+                                        "Auto",
+                                    );
+                                    ui.selectable_value(
+                                        &mut self.config.model_selection,
+                                        ModelSelection::Dmg,
+                                        "DMG",
+                                    );
+                                    ui.selectable_value(
+                                        &mut self.config.model_selection,
+                                        ModelSelection::Cgb,
+                                        "CGB",
+                                    );
+                                });
+                            reload_requested |= previous_model != self.config.model_selection;
+                            ui.end_row();
+
                             ui.label("Color Palette:");
                             egui::ComboBox::from_id_salt("palette_combo")
                                 .selected_text(format!("{:?}", self.config.palette))
@@ -80,6 +106,13 @@ impl EmuApp {
                                 });
                             ui.end_row();
                         });
+
+                    if let Some(state) = self.state.as_ref() {
+                        ui.label(format!(
+                            "Current session model: {:?} ({:?})",
+                            state.gb.gb_type, state.gb.gb_mode
+                        ));
+                    }
 
                     ui.separator();
                     ui.label("Keybindings:");
@@ -162,5 +195,6 @@ impl EmuApp {
                 });
         }
         self.show_options = is_open;
+            reload_requested
     }
 }

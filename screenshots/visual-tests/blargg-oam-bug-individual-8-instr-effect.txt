@@ -1,0 +1,7 @@
+status = step-limit-reached
+rom = gb-test-roms/oam_bug/rom_singles/8-instr_effect.gb
+model = Auto
+frames = 2024
+steps = 12000000
+pc = 0xC922
+serial = ""

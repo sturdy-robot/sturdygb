@@ -1,12 +1,14 @@
 use eframe::egui;
 use std::collections::HashMap;
 use sturdygb_core::joypad::JoypadButton;
+use sturdygb_core::gb::ModelSelection;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct SturdyConfig {
     pub scale: ScaleMode,
     pub palette: Palette,
+    pub model_selection: ModelSelection,
     #[cfg(not(target_arch = "wasm32"))]
     pub rom_directories: Vec<std::path::PathBuf>,
     pub keybinds: HashMap<JoypadButton, egui::Key>,
@@ -53,6 +55,7 @@ impl Default for SturdyConfig {
             rom_directories: Vec::new(),
             scale: ScaleMode::Integer(4.0),
             palette: Palette::Greyscale,
+            model_selection: ModelSelection::Auto,
             keybinds,
             #[cfg(not(target_arch = "wasm32"))]
             fullscreen: false,

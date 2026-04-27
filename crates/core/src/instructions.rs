@@ -313,8 +313,17 @@ impl Gb {
     }
 
     fn stop(&mut self) {
-        // TODO: implement this! (Or not)
-        //self.cpu.is_stopped = true;
+        if self.gb_type == crate::gb::GbTypes::Cgb && self.prepare_speed_switch {
+            self.prepare_speed_switch = false;
+            self.gb_speed = 0;
+            self.speed_mode = match self.speed_mode {
+                crate::gb::SpeedMode::Normal => crate::gb::SpeedMode::Double,
+                crate::gb::SpeedMode::Double => crate::gb::SpeedMode::Normal,
+            };
+            self.cpu.is_stopped = false;
+        } else {
+            self.cpu.is_stopped = true;
+        }
         self.cpu.advance_pc();
     }
 
@@ -1047,15 +1056,54 @@ create_alu_dhl_instructions!(or, xor, and, add, adc, sub, sbc, cp);
 
 #[cfg(test)]
 mod test {
-    use crate::cartridge::load_cartridge;
-    use crate::gb::{Gb, GbTypes};
+    use crate::gb::Gb;
+    use crate::test_roms::load_test_gb;
 
     use super::*;
 
     fn setup_gb() -> Gb {
-        let (mbc, gb_mode) = load_cartridge("../../roms/cpu_instrs.gb").unwrap();
-        let gb_type = GbTypes::Dmg;
-        Gb::new(mbc, gb_mode, gb_type)
+        load_test_gb("cpu_instrs.gb", crate::gb::ModelSelection::Auto)
+    }
+
+    fn setup_cgb() -> Gb {
+        load_test_gb("cgb-acid2.gbc", crate::gb::ModelSelection::Auto)
+    }
+
+    #[test]
+    fn stop_arms_speed_switch_on_cgb() {
+        let mut gb = setup_cgb();
+        gb.cpu.current_instruction = 0x10;
+        gb.write_byte(0xFF4D, 0x01);
+
+        gb.stop();
+
+        assert_eq!(gb.speed_mode, crate::gb::SpeedMode::Double);
+        assert!(!gb.prepare_speed_switch);
+        assert!(!gb.cpu.is_stopped);
+        assert_eq!(gb.cpu.pc, 0x0102);
+    }
+
+    #[test]
+    fn stop_enters_stopped_state_without_speed_switch() {
+        let mut gb = setup_gb();
+        gb.cpu.current_instruction = 0x10;
+
+        gb.stop();
+
+        assert!(gb.cpu.is_stopped);
+    }
+
+    #[test]
+    fn pending_interrupt_wakes_stopped_cpu() {
+        let mut gb = setup_gb();
+        gb.cpu.current_instruction = 0x10;
+        gb.stop();
+        gb.ie_flag = crate::interrupts::Interrupt::Joypad as u8;
+        gb.request_interrupt(crate::interrupts::Interrupt::Joypad);
+
+        gb.handle_interrupt();
+
+        assert!(!gb.cpu.is_stopped);
     }
 
     macro_rules! test_ld_instructions {

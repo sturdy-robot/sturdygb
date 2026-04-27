@@ -1,0 +1,8 @@
+status = step-limit-reached
+result = 
+rom = gb-test-roms/mem_timing-2/rom_singles/02-write_timing.gb
+model = Auto
+frames = 2038
+steps = 12000000
+pc = 0xC87C
+serial = ""

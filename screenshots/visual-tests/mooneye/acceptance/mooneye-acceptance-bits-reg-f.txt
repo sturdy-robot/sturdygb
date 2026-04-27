@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = mooneye: pass
+rom = mooneye-test-suite/acceptance/bits/reg_f.gb
+model = Auto
+frames = 1
+steps = 93839
+pc = 0x4AF2
+serial = ""

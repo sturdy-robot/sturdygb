@@ -1,0 +1,8 @@
+status = stop-condition-met
+result = 
+rom = mooneye-test-suite/acceptance/if_ie_registers.gb
+model = Auto
+frames = 25
+steps = 301785
+pc = 0x4B2E
+serial = "BBBBBB"
