@@ -78,7 +78,7 @@ impl Mbc6 {
 impl Mbc for Mbc6 {
     fn read_rom(&self, address: u16) -> u8 {
         match address {
-            0x0000..=0x3FFF => self.rom_data[address as usize],
+            0x0000..=0x3FFF => self.rom_data.get(address as usize).copied().unwrap_or(0xFF),
             0x4000..=0x5FFF => {
                 let bank = self.rom_bank_a;
                 let addr = bank * 0x2000 + (address as usize - 0x4000);

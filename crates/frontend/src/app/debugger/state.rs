@@ -8,6 +8,7 @@ use std::collections::BTreeSet;
 
 pub(crate) struct DebuggerUiState {
     pub(super) show_debugger: bool,
+    detached: bool,
     pub(super) breakpoints: BTreeSet<u16>,
     pub(super) watchpoints: BTreeSet<u16>,
     pub(super) breakpoint_input: String,
@@ -33,6 +34,7 @@ impl DebuggerUiState {
     pub(crate) fn new(layout: Option<PersistedDebuggerLayout>) -> Self {
         Self {
             show_debugger: false,
+            detached: false,
             breakpoints: BTreeSet::new(),
             watchpoints: BTreeSet::new(),
             breakpoint_input: "0100".to_string(),
@@ -59,6 +61,22 @@ impl DebuggerUiState {
 
     pub(crate) fn open(&mut self) {
         self.show_debugger = true;
+    }
+
+    pub(crate) fn close(&mut self) {
+        self.show_debugger = false;
+    }
+
+    pub(crate) fn is_detached(&self) -> bool {
+        self.detached
+    }
+
+    pub(crate) fn set_detached(&mut self, detached: bool) {
+        self.detached = detached;
+    }
+
+    pub(crate) fn toggle_detached(&mut self) {
+        self.detached = !self.detached;
     }
 
     pub(crate) fn open_tab(&mut self, tab: DebuggerTab) {

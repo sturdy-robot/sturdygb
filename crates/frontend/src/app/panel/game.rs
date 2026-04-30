@@ -61,11 +61,6 @@ impl EmuApp {
                 )));
             }
 
-            ui.horizontal_centered(|ui| {
-                reset_requested = Self::show_reset_game_button(ui, true);
-            });
-            ui.add_space(8.0);
-
             let available_size = ui.available_size();
             let (width, height) = match self.config.scale {
                 super::super::config::ScaleMode::Integer(scale) => {
