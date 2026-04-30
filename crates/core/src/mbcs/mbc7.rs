@@ -35,6 +35,7 @@ pub struct Mbc7 {
     accel_y: i16,
     accel_enabled: bool,
     save_path: std::path::PathBuf,
+    dirty: bool,
 }
 
 #[derive(PartialEq)]
@@ -76,6 +77,7 @@ impl Mbc7 {
             accel_y: 0x8000u16 as i16,
             accel_enabled: false,
             save_path,
+            dirty: false,
         }
     }
 
@@ -119,7 +121,12 @@ impl Mbc7 {
                     self.eeprom_bit_counter += 1;
                     if self.eeprom_bit_counter == 8 {
                         if self.eeprom_write_enabled {
-                            self.ram[self.eeprom_address as usize] = self.eeprom_data as u8;
+                            let addr = self.eeprom_address as usize;
+                            let value = self.eeprom_data as u8;
+                            if self.ram[addr] != value {
+                                self.ram[addr] = value;
+                                self.dirty = true;
+                            }
                         }
                         self.eeprom_state = EepromState::Ready;
                     }
@@ -129,16 +136,28 @@ impl Mbc7 {
                     if self.eeprom_write_enabled {
                         match self.eeprom_command & 0xF0 {
                             EEPROM_WRITE => {
-                                self.ram[self.eeprom_address as usize] = self.eeprom_data as u8;
+                                let addr = self.eeprom_address as usize;
+                                let value = self.eeprom_data as u8;
+                                if self.ram[addr] != value {
+                                    self.ram[addr] = value;
+                                    self.dirty = true;
+                                }
                             }
                             EEPROM_WRAL => {
+                                let value = self.eeprom_data as u8;
                                 for addr in 0..self.ram.len() {
-                                    self.ram[addr] = self.eeprom_data as u8;
+                                    if self.ram[addr] != value {
+                                        self.ram[addr] = value;
+                                        self.dirty = true;
+                                    }
                                 }
                             }
                             EEPROM_ERAL => {
                                 for addr in 0..self.ram.len() {
-                                    self.ram[addr] = 0xFF;
+                                    if self.ram[addr] != 0xFF {
+                                        self.ram[addr] = 0xFF;
+                                        self.dirty = true;
+                                    }
                                 }
                             }
                             _ => {}
@@ -202,11 +221,7 @@ impl Mbc for Mbc7 {
                 }
             }
             0x4000..=0x5FFF => {
-                let was_enabled = self.ram_enabled;
                 self.ram_enabled = (value & 0x0F) == 0x0A;
-                if was_enabled && !self.ram_enabled {
-                    let _ = std::fs::write(&self.save_path, &self.ram);
-                }
             }
             _ => {}
         }
@@ -281,6 +296,56 @@ impl Mbc for Mbc7 {
 
 impl Drop for Mbc7 {
     fn drop(&mut self) {
-        let _ = std::fs::write(&self.save_path, &self.ram);
+        if self.dirty {
+            let _ = std::fs::write(&self.save_path, &self.ram);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cartridge::MBCTypes;
+
+    fn header() -> CartridgeHeader {
+        CartridgeHeader {
+            entry: [0; 4],
+            title: String::new(),
+            logo: [0; 0x30],
+            cgb_flag: 0,
+            sgb_flag: false,
+            mbc_type: MBCTypes::Mbc7,
+            rom_size: 0x8000,
+            ram_size: 0,
+            company: String::new(),
+        }
+    }
+
+    #[test]
+    fn disabling_ram_does_not_flush_save_file() {
+        let save_path = unique_save_path("mbc7");
+        let _ = std::fs::remove_file(&save_path);
+
+        let mut mbc = Mbc7::new(vec![0; 0x8000], header(), save_path.clone());
+
+        mbc.write_rom(0x4000, 0x0A);
+        mbc.dirty = true;
+        mbc.write_rom(0x4000, 0x00);
+
+        assert!(!save_path.exists());
+
+        drop(mbc);
+
+        assert!(save_path.exists());
+
+        let _ = std::fs::remove_file(save_path);
+    }
+
+    fn unique_save_path(prefix: &str) -> std::path::PathBuf {
+        let suffix = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system clock should be after unix epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("sturdygb-{prefix}-{suffix}.sav"))
     }
 }

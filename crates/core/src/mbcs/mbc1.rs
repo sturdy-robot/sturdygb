@@ -16,6 +16,7 @@ pub struct Mbc1 {
     current_ram_bank: usize,
     save_path: std::path::PathBuf,
     has_battery: bool,
+    dirty: bool,
 }
 
 impl Mbc1 {
@@ -53,6 +54,7 @@ impl Mbc1 {
             current_ram_bank: 0,
             save_path,
             has_battery,
+            dirty: false,
         }
     }
 
@@ -113,15 +115,7 @@ impl Mbc for Mbc1 {
     fn write_rom(&mut self, address: u16, value: u8) {
         match address {
             0x0000..=0x1FFF => {
-                let was_enabled = self.ram_enabled;
                 self.ram_enabled = value == 0x0A;
-                if was_enabled
-                    && !self.ram_enabled
-                    && self.has_battery
-                    && !self.external_ram.is_empty()
-                {
-                    let _ = std::fs::write(&self.save_path, &self.external_ram);
-                }
             }
             0x2000..=0x3FFF => {
                 let r = match (value as usize) & 0x1F {
@@ -153,7 +147,10 @@ impl Mbc for Mbc1 {
         let bank = self.ram_bank();
         let addr = (bank * 0x2000) | ((address & 0x1FFF) as usize);
         if let Some(cell) = self.external_ram.get_mut(addr) {
-            *cell = value;
+            if *cell != value {
+                *cell = value;
+                self.dirty = true;
+            }
         }
     }
 
@@ -175,7 +172,7 @@ impl Mbc for Mbc1 {
 
 impl Drop for Mbc1 {
     fn drop(&mut self) {
-        if self.has_battery && !self.external_ram.is_empty() {
+        if self.has_battery && self.dirty && !self.external_ram.is_empty() {
             let _ = std::fs::write(&self.save_path, &self.external_ram);
         }
     }
@@ -240,5 +237,40 @@ mod tests {
         mbc.write_rom(0x4000, 0x00);
 
         assert_eq!(mbc.read_ram(0xA123), 0x5A);
+    }
+
+    #[test]
+    fn disabling_ram_does_not_flush_save_file() {
+        let save_path = unique_save_path("mbc1");
+        let _ = std::fs::remove_file(&save_path);
+
+        let mut mbc = Mbc1::new(
+            vec![0; 0x8000],
+            header(0x8000, 0x2000),
+            true,
+            true,
+            save_path.clone(),
+        );
+
+        mbc.write_rom(0x0000, 0x0A);
+        mbc.write_ram(0xA000, 0x5A);
+        mbc.write_rom(0x0000, 0x00);
+
+        assert!(!save_path.exists());
+
+        drop(mbc);
+
+        let persisted = std::fs::read(&save_path).expect("dirty RAM should flush on drop");
+        assert_eq!(persisted[0], 0x5A);
+
+        let _ = std::fs::remove_file(save_path);
+    }
+
+    fn unique_save_path(prefix: &str) -> std::path::PathBuf {
+        let suffix = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system clock should be after unix epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("sturdygb-{prefix}-{suffix}.sav"))
     }
 }
