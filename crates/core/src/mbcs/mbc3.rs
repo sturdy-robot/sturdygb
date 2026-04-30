@@ -18,6 +18,7 @@ pub struct Mbc3 {
     rtc_latch: u8,
     rtc_latched: bool,
     save_path: std::path::PathBuf,
+    dirty: bool,
 }
 
 impl Mbc3 {
@@ -53,6 +54,7 @@ impl Mbc3 {
             rtc_latch: 0xFF,
             rtc_latched: false,
             save_path,
+            dirty: false,
         }
     }
 }
@@ -77,11 +79,7 @@ impl Mbc for Mbc3 {
         match address {
             // RAM Enable
             0x0000..=0x1FFF => {
-                let was_enabled = self.ram_enabled;
                 self.ram_enabled = (value & 0x0F) == 0x0A;
-                if was_enabled && !self.ram_enabled && self.has_battery && !self.ram.is_empty() {
-                    let _ = std::fs::write(&self.save_path, &self.ram);
-                }
             }
             // ROM Bank Number
             0x2000..=0x3FFF => {
@@ -145,7 +143,10 @@ impl Mbc for Mbc3 {
                 // Fast path for RAM write
                 let addr = (self.ram_bank << 13) | (address as usize & 0x1FFF);
                 if let Some(ram_cell) = self.ram.get_mut(addr) {
-                    *ram_cell = value;
+                    if *ram_cell != value {
+                        *ram_cell = value;
+                        self.dirty = true;
+                    }
                 }
             }
         }
@@ -169,8 +170,68 @@ impl Mbc for Mbc3 {
 
 impl Drop for Mbc3 {
     fn drop(&mut self) {
-        if self.has_battery && !self.ram.is_empty() {
+        if self.has_battery && self.dirty && !self.ram.is_empty() {
             let _ = std::fs::write(&self.save_path, &self.ram);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cartridge::MBCTypes;
+
+    fn header(ram_size: u32) -> CartridgeHeader {
+        CartridgeHeader {
+            entry: [0; 4],
+            title: String::new(),
+            logo: [0; 0x30],
+            cgb_flag: 0,
+            sgb_flag: false,
+            mbc_type: MBCTypes::Mbc3 {
+                ram: ram_size > 0,
+                timer: false,
+                battery: true,
+            },
+            rom_size: 0x8000,
+            ram_size,
+            company: String::new(),
+        }
+    }
+
+    fn unique_save_path() -> std::path::PathBuf {
+        let suffix = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system clock should be after unix epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("sturdygb-mbc3-{suffix}.sav"))
+    }
+
+    #[test]
+    fn disabling_ram_does_not_flush_save_file() {
+        let save_path = unique_save_path();
+        let _ = std::fs::remove_file(&save_path);
+
+        let mut mbc = Mbc3::new(
+            vec![0; 0x8000],
+            header(0x2000),
+            true,
+            false,
+            true,
+            save_path.clone(),
+        );
+
+        mbc.write_rom(0x0000, 0x0A);
+        mbc.write_ram(0xA000, 0x5A);
+        mbc.write_rom(0x0000, 0x00);
+
+        assert!(!save_path.exists());
+
+        drop(mbc);
+
+        let persisted = std::fs::read(&save_path).expect("dirty RAM should flush on drop");
+        assert_eq!(persisted[0], 0x5A);
+
+        let _ = std::fs::remove_file(save_path);
     }
 }
