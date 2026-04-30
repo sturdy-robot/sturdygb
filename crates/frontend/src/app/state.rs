@@ -73,3 +73,21 @@ pub(super) struct UiState {
     pub(super) show_options: bool,
     pub(super) help: HelpUiState,
 }
+
+impl super::EmuApp {
+    pub(in crate::app) fn has_loaded_game(&self) -> bool {
+        self.runtime.loaded_game.is_some()
+    }
+
+    pub(in crate::app) fn loaded_game(&self) -> Option<&LoadedGameState> {
+        self.runtime.loaded_game.as_ref()
+    }
+
+    pub(in crate::app) fn is_paused(&self) -> bool {
+        self.runtime.paused
+    }
+
+    pub(in crate::app) fn set_paused(&mut self, paused: bool) {
+        self.runtime.paused = paused;
+    }
+}

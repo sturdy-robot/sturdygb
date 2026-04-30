@@ -63,7 +63,7 @@ impl EmuApp {
         frame: &mut eframe::Frame,
     ) {
         ui.menu_button("Emulation", |ui| {
-            let has_state = self.runtime.loaded_game.is_some();
+            let has_state = self.has_loaded_game();
             if has_state && ui.button("🟥 Stop").clicked() {
                 self.stop_emulation(ctx);
                 ui.close();
@@ -104,7 +104,7 @@ impl EmuApp {
 
     fn show_debug_menu(&mut self, ui: &mut egui::Ui) {
         ui.menu_button("Debug", |ui| {
-            let has_state = self.runtime.loaded_game.is_some();
+            let has_state = self.has_loaded_game();
             if ui
                 .add_enabled(has_state, egui::Button::new("Debugger"))
                 .clicked()

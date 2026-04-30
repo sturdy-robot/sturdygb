@@ -44,7 +44,7 @@ impl EmuApp {
             None
         };
 
-        let has_state = self.runtime.loaded_game.is_some();
+        let has_state = self.has_loaded_game();
         egui::Window::new("Debugger")
             .open(&mut open)
             .default_size(egui::vec2(1280.0, 840.0))
@@ -96,7 +96,7 @@ impl EmuApp {
                 });
 
                 let status = self.debugger.last_stop_reason.clone().unwrap_or_else(|| {
-                    if self.runtime.paused {
+                    if self.is_paused() {
                         "Paused"
                     } else {
                         "Running"

@@ -118,7 +118,7 @@ impl EmuApp {
                 .min(bank_count.saturating_sub(1));
         }
 
-        let image_data = self.runtime.loaded_game.as_ref().map(|state| {
+        let image_data = self.loaded_game().map(|state| {
             build_vram_image(state.gb.vram_tile_data(self.debugger.selected_vram_bank))
         });
 
@@ -159,7 +159,7 @@ impl EmuApp {
             .map(|state| state.gb.vram_bank_count())
             .unwrap_or(0);
 
-        let image_data = self.runtime.loaded_game.as_ref().map(|state| {
+        let image_data = self.loaded_game().map(|state| {
             let tile_bank0 = state.gb.vram_tile_data(0);
             let tile_bank1 = if bank_count > 1 {
                 Some(state.gb.vram_tile_data(1))
@@ -220,7 +220,7 @@ impl EmuApp {
             .map(|state| state.gb.vram_bank_count())
             .unwrap_or(0);
 
-        let image_data = self.runtime.loaded_game.as_ref().map(|state| {
+        let image_data = self.loaded_game().map(|state| {
             let tile_bank0 = state.gb.vram_tile_data(0);
             let tile_bank1 = if bank_count > 1 {
                 Some(state.gb.vram_tile_data(1))

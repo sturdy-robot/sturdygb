@@ -107,7 +107,7 @@ impl EmuApp {
                             ui.end_row();
                         });
 
-                    if let Some(state) = self.runtime.loaded_game.as_ref() {
+                    if let Some(state) = self.loaded_game() {
                         ui.label(format!(
                             "Current session model: {:?} ({:?})",
                             state.gb.gb_type, state.gb.gb_mode

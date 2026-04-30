@@ -78,7 +78,7 @@ impl eframe::App for EmuApp {
         self.debugger.save_layout(storage);
 
         #[cfg(target_arch = "wasm32")]
-        if let Some(state) = &mut self.runtime.state {
+        if let Some(state) = &mut self.runtime.loaded_game {
             if let Some(ram) = state.gb.get_battery_ram() {
                 eframe::set_value(
                     storage,
