@@ -41,21 +41,6 @@ pub fn format_byte_list(bytes: &[u8]) -> String {
         .join(" ")
 }
 
-pub fn format_hex_dump(start: u16, bytes: &[u8]) -> String {
-    let mut output = String::new();
-    for (row, chunk) in bytes.chunks(16).enumerate() {
-        if row > 0 {
-            output.push('\n');
-        }
-        output.push_str(&format!(
-            "{:04X}: {}",
-            start.wrapping_add((row * 16) as u16),
-            format_byte_list(chunk)
-        ));
-    }
-    output
-}
-
 fn decode_tile_pixel(
     tile_bank0: &[u8],
     tile_bank1: Option<&[u8]>,

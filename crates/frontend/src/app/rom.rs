@@ -1,5 +1,6 @@
 use super::audio::setup_audio;
-use super::{EmuApp, State, GB_H, GB_W};
+use super::state::LoadedGameState;
+use super::{EmuApp, GB_H, GB_W};
 use sturdygb_core::prelude::GbInstance;
 
 impl EmuApp {
@@ -11,7 +12,18 @@ impl EmuApp {
                 storage,
             );
         } else {
-            self.error_msg = Some(format!("Could not read file {path}"));
+            self.runtime.error_msg = Some(format!("Could not read file {path}"));
+        }
+    }
+
+    pub(in crate::app) fn reset_loaded_rom(&mut self, storage: Option<&dyn eframe::Storage>) {
+        if let Some((rom_bytes, save_path)) = self
+            .runtime
+            .loaded_game
+            .as_ref()
+            .map(|state| (state.rom_bytes.clone(), state.save_path.clone()))
+        {
+            self.load_rom_bytes(rom_bytes, save_path, storage);
         }
     }
 
@@ -46,7 +58,7 @@ impl EmuApp {
                 }
 
                 setup_audio(&mut gb);
-                self.state = Some(State {
+                self.runtime.loaded_game = Some(LoadedGameState {
                     gb,
                     rgba: vec![0; GB_W * GB_H * 4],
                     leftover_audio: Vec::new(),
@@ -54,15 +66,15 @@ impl EmuApp {
                     rom_bytes: bytes,
                     save_path,
                 });
-                self.texture = None;
-                self.paused = false;
+                self.runtime.texture = None;
+                self.runtime.paused = false;
                 self.debugger.reset_runtime();
-                self.error_msg = None;
-                self.frames_rendered = 0;
-                self.last_fps_update = instant::Instant::now();
+                self.runtime.error_msg = None;
+                self.runtime.frames_rendered = 0;
+                self.runtime.last_fps_update = instant::Instant::now();
             }
             Err(e) => {
-                self.error_msg = Some(format!("Failed to load ROM:\n{e}"));
+                self.runtime.error_msg = Some(format!("Failed to load ROM:\n{e}"));
             }
         }
     }

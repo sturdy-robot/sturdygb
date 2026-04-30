@@ -5,7 +5,7 @@ use sturdygb_core::gb::ModelSelection;
 
 impl EmuApp {
     pub(super) fn show_options_window(&mut self, ctx: &egui::Context) -> bool {
-        let mut is_open = self.show_options;
+        let mut is_open = self.ui.show_options;
         let mut reload_requested = false;
         if is_open {
             egui::Window::new("Emulator Options")
@@ -107,7 +107,7 @@ impl EmuApp {
                             ui.end_row();
                         });
 
-                    if let Some(state) = self.state.as_ref() {
+                    if let Some(state) = self.runtime.loaded_game.as_ref() {
                         ui.label(format!(
                             "Current session model: {:?} ({:?})",
                             state.gb.gb_type, state.gb.gb_mode
@@ -194,7 +194,7 @@ impl EmuApp {
                     }
                 });
         }
-        self.show_options = is_open;
+            self.ui.show_options = is_open;
             reload_requested
     }
 }

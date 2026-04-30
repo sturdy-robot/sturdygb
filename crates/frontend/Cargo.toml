@@ -23,6 +23,7 @@ cpal = "0.17"
 eframe = { version = "0.33.3", features = ["wgpu", "persistence"] }
 egui = { version = "0.33.3", features = ["color-hex", "serde"] }
 egui_extras = { version = "0.33.3", features = ["image"] }
+egui_dock = { version = "0.18", features = ["serde"] }
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 toml = "0.8"

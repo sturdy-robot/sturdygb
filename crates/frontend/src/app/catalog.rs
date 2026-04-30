@@ -12,15 +12,15 @@ impl EmuApp {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub(super) fn reload_all_directories(&mut self) {
-        self.game_list.clear();
+        self.catalog.game_list.clear();
         if self.config.rom_directories.is_empty() {
             return;
         }
-        self.loading_directory = true;
+        self.catalog.loading_directory = true;
 
         let (tx, rx) = std::sync::mpsc::channel();
-        self.dir_load_receiver = Some(rx);
-        let recursive = self.recursive_search;
+        self.catalog.dir_load_receiver = Some(rx);
+        let recursive = self.catalog.recursive_search;
         let dirs = self.config.rom_directories.clone();
 
         std::thread::spawn(move || {

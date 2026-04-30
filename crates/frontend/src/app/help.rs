@@ -16,7 +16,7 @@ impl EmuApp {
     pub(super) fn show_help_menu(&mut self, ui: &mut egui::Ui) {
         ui.menu_button("Help", |ui| {
             if ui.button("About").clicked() {
-                self.help.show_about = true;
+                self.ui.help.show_about = true;
                 ui.close();
             }
 
@@ -31,16 +31,16 @@ impl EmuApp {
             }
 
             if ui.button("License Information").clicked() {
-                self.help.show_license = true;
+                self.ui.help.show_license = true;
                 ui.close();
             }
         });
     }
 
     pub(super) fn show_help_windows(&mut self, ctx: &egui::Context) {
-        if self.help.show_about {
+        if self.ui.help.show_about {
             egui::Window::new("About SturdyGB")
-                .open(&mut self.help.show_about)
+                .open(&mut self.ui.help.show_about)
                 .collapsible(false)
                 .resizable(false)
                 .default_width(420.0)
@@ -67,9 +67,9 @@ impl EmuApp {
                 });
         }
 
-        if self.help.show_license {
+            if self.ui.help.show_license {
             egui::Window::new("License Information")
-                .open(&mut self.help.show_license)
+                .open(&mut self.ui.help.show_license)
                 .collapsible(false)
                 .default_width(640.0)
                 .default_height(520.0)

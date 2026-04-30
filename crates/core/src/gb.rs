@@ -12,6 +12,12 @@ use crate::serial::Serial;
 use crate::sound::Sound;
 use crate::timer::Timer;
 
+pub use crate::ppu::PpuDebugSnapshot;
+pub use crate::sound::{
+    ApuDebugSnapshot, NoiseChannelDebugSnapshot, SquareChannelDebugSnapshot,
+    WaveChannelDebugSnapshot,
+};
+
 #[allow(dead_code)]
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum GbTypes {
@@ -217,6 +223,10 @@ impl Gb {
         self.cpu.pc
     }
 
+    pub fn current_opcode_size(&self) -> u16 {
+        opcode_size(self.read_byte(self.cpu.pc)).max(1) as u16
+    }
+
     pub fn frame_ready(&self) -> bool {
         self.ppu.frame_ready
     }
@@ -300,6 +310,14 @@ impl Gb {
         self.cpu.pc = original_pc;
         self.cpu.current_instruction = original_instruction;
         lines
+    }
+
+    pub fn ppu_debug_snapshot(&self) -> PpuDebugSnapshot {
+        self.ppu.debug_snapshot()
+    }
+
+    pub fn apu_debug_snapshot(&self) -> ApuDebugSnapshot {
+        self.sound.debug_snapshot()
     }
 
     pub fn vram_bank_count(&self) -> usize {

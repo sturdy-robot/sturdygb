@@ -4,6 +4,71 @@
 
 use super::memory::Memory;
 
+#[derive(Clone, Debug)]
+pub struct SquareChannelDebugSnapshot {
+    pub enabled: bool,
+    pub dac_enabled: bool,
+    pub duty: usize,
+    pub duty_pos: usize,
+    pub length_timer: u16,
+    pub length_enabled: bool,
+    pub frequency: u16,
+    pub freq_timer: u16,
+    pub volume: u8,
+    pub envelope_period: u8,
+    pub envelope_direction: i8,
+    pub sweep_period: Option<u8>,
+    pub sweep_direction: Option<i8>,
+    pub sweep_shift: Option<u8>,
+}
+
+#[derive(Clone, Debug)]
+pub struct WaveChannelDebugSnapshot {
+    pub enabled: bool,
+    pub dac_enabled: bool,
+    pub length_timer: u16,
+    pub length_enabled: bool,
+    pub frequency: u16,
+    pub freq_timer: u16,
+    pub volume_shift: u8,
+    pub wave_pos: usize,
+    pub sample_buf: u8,
+}
+
+#[derive(Clone, Debug)]
+pub struct NoiseChannelDebugSnapshot {
+    pub enabled: bool,
+    pub dac_enabled: bool,
+    pub length_timer: u16,
+    pub length_enabled: bool,
+    pub freq_timer: u16,
+    pub lfsr: u16,
+    pub shift: u8,
+    pub width_mode: bool,
+    pub divisor_code: u8,
+    pub volume: u8,
+    pub envelope_period: u8,
+    pub envelope_direction: i8,
+}
+
+#[derive(Clone, Debug)]
+pub struct ApuDebugSnapshot {
+    pub enabled: bool,
+    pub vin_left: bool,
+    pub vin_right: bool,
+    pub vol_left: u8,
+    pub vol_right: u8,
+    pub pan_left: [bool; 4],
+    pub pan_right: [bool; 4],
+    pub frame_seq_timer: u16,
+    pub frame_seq_step: u8,
+    pub sample_rate: u32,
+    pub ch1: SquareChannelDebugSnapshot,
+    pub ch2: SquareChannelDebugSnapshot,
+    pub ch3: WaveChannelDebugSnapshot,
+    pub ch4: NoiseChannelDebugSnapshot,
+}
+
 const DUTY_CYCLES: [[u8; 8]; 4] = [
     [0, 0, 0, 0, 0, 0, 0, 1], // 12.5%
     [1, 0, 0, 0, 0, 0, 0, 1], // 25%
@@ -79,13 +144,13 @@ impl Sweep {
     fn read(&self) -> u8 {
         (self.period << 4) | (if self.direction == -1 { 0x08 } else { 0 }) | self.shift | 0x80
     }
-    
+
     fn trigger(&mut self, freq: u16) -> bool {
         self.frequency = freq;
         self.timer = if self.period == 0 { 8 } else { self.period };
         self.enabled = self.period > 0 || self.shift > 0;
         self.has_calculated = false;
-        
+
         let mut overflow = false;
         if self.shift > 0 {
             overflow = self.calculate_new_freq() > 2047;
@@ -152,7 +217,11 @@ struct SquareChannel {
 impl SquareChannel {
     fn new(has_sweep: bool) -> Self {
         Self {
-            sweep: if has_sweep { Some(Sweep::default()) } else { None },
+            sweep: if has_sweep {
+                Some(Sweep::default())
+            } else {
+                None
+            },
             ..Default::default()
         }
     }
@@ -319,7 +388,7 @@ impl NoiseChannel {
         }
         if self.freq_timer == 0 {
             self.freq_timer = self.divisor() << self.shift;
-            
+
             let xor_bit = (self.lfsr & 1) ^ ((self.lfsr >> 1) & 1);
             self.lfsr = (self.lfsr >> 1) | (xor_bit << 14);
             if self.width_mode {
@@ -360,7 +429,7 @@ pub struct Sound {
     sample_accumulator: u32,
     sample_rate: u32,
     audio_buffer: std::cell::RefCell<Vec<f32>>,
-    
+
     cap_left: std::cell::Cell<f32>,
     cap_right: std::cell::Cell<f32>,
 }
@@ -465,8 +534,12 @@ impl Sound {
         ];
 
         for i in 0..4 {
-            if self.pan_left[i] { left += samples[i]; }
-            if self.pan_right[i] { right += samples[i]; }
+            if self.pan_left[i] {
+                left += samples[i];
+            }
+            if self.pan_right[i] {
+                right += samples[i];
+            }
         }
 
         // Divide by 4 to prevent clipping (max 4 channels)
@@ -495,6 +568,78 @@ impl Sound {
         buf.clear();
         res
     }
+
+    pub fn debug_snapshot(&self) -> ApuDebugSnapshot {
+        ApuDebugSnapshot {
+            enabled: self.enabled,
+            vin_left: self.vin_left,
+            vin_right: self.vin_right,
+            vol_left: self.vol_left,
+            vol_right: self.vol_right,
+            pan_left: self.pan_left,
+            pan_right: self.pan_right,
+            frame_seq_timer: self.frame_seq_timer,
+            frame_seq_step: self.frame_seq_step,
+            sample_rate: self.sample_rate,
+            ch1: SquareChannelDebugSnapshot {
+                enabled: self.ch1.enabled,
+                dac_enabled: self.ch1.dac_enabled,
+                duty: self.ch1.duty,
+                duty_pos: self.ch1.duty_pos,
+                length_timer: self.ch1.length_timer,
+                length_enabled: self.ch1.length_enabled,
+                frequency: self.ch1.frequency,
+                freq_timer: self.ch1.freq_timer,
+                volume: self.ch1.envelope.volume,
+                envelope_period: self.ch1.envelope.period,
+                envelope_direction: self.ch1.envelope.direction,
+                sweep_period: self.ch1.sweep.as_ref().map(|sweep| sweep.period),
+                sweep_direction: self.ch1.sweep.as_ref().map(|sweep| sweep.direction),
+                sweep_shift: self.ch1.sweep.as_ref().map(|sweep| sweep.shift),
+            },
+            ch2: SquareChannelDebugSnapshot {
+                enabled: self.ch2.enabled,
+                dac_enabled: self.ch2.dac_enabled,
+                duty: self.ch2.duty,
+                duty_pos: self.ch2.duty_pos,
+                length_timer: self.ch2.length_timer,
+                length_enabled: self.ch2.length_enabled,
+                frequency: self.ch2.frequency,
+                freq_timer: self.ch2.freq_timer,
+                volume: self.ch2.envelope.volume,
+                envelope_period: self.ch2.envelope.period,
+                envelope_direction: self.ch2.envelope.direction,
+                sweep_period: None,
+                sweep_direction: None,
+                sweep_shift: None,
+            },
+            ch3: WaveChannelDebugSnapshot {
+                enabled: self.ch3.enabled,
+                dac_enabled: self.ch3.dac_enabled,
+                length_timer: self.ch3.length_timer,
+                length_enabled: self.ch3.length_enabled,
+                frequency: self.ch3.frequency,
+                freq_timer: self.ch3.freq_timer,
+                volume_shift: self.ch3.volume_shift,
+                wave_pos: self.ch3.wave_pos,
+                sample_buf: self.ch3.sample_buf,
+            },
+            ch4: NoiseChannelDebugSnapshot {
+                enabled: self.ch4.enabled,
+                dac_enabled: self.ch4.dac_enabled,
+                length_timer: self.ch4.length_timer,
+                length_enabled: self.ch4.length_enabled,
+                freq_timer: self.ch4.freq_timer,
+                lfsr: self.ch4.lfsr,
+                shift: self.ch4.shift,
+                width_mode: self.ch4.width_mode,
+                divisor_code: self.ch4.divisor_code,
+                volume: self.ch4.envelope.volume,
+                envelope_period: self.ch4.envelope.period,
+                envelope_direction: self.ch4.envelope.direction,
+            },
+        }
+    }
 }
 
 impl Memory for Sound {
@@ -505,50 +650,73 @@ impl Memory for Sound {
             0xFF12 => self.ch1.envelope.read(),
             0xFF13 => 0xFF,
             0xFF14 => (if self.ch1.length_enabled { 0x40 } else { 0 }) | 0xBF,
-            
+
             0xFF16 => (self.ch2.duty as u8) << 6 | 0x3F,
             0xFF17 => self.ch2.envelope.read(),
             0xFF18 => 0xFF,
             0xFF19 => (if self.ch2.length_enabled { 0x40 } else { 0 }) | 0xBF,
-            
+
             0xFF1A => (if self.ch3.dac_enabled { 0x80 } else { 0 }) | 0x7F,
             0xFF1B => 0xFF,
             0xFF1C => (self.ch3.volume_shift << 5) | 0x9F,
             0xFF1D => 0xFF,
             0xFF1E => (if self.ch3.length_enabled { 0x40 } else { 0 }) | 0xBF,
-            
+
             0xFF20 => 0xFF,
             0xFF21 => self.ch4.envelope.read(),
-            0xFF22 => (self.ch4.shift << 4) | (if self.ch4.width_mode { 0x08 } else { 0 }) | self.ch4.divisor_code,
+            0xFF22 => {
+                (self.ch4.shift << 4)
+                    | (if self.ch4.width_mode { 0x08 } else { 0 })
+                    | self.ch4.divisor_code
+            }
             0xFF23 => (if self.ch4.length_enabled { 0x40 } else { 0 }) | 0xBF,
-            
-            0xFF24 => (if self.vin_left { 0x80 } else { 0 }) | (self.vol_left << 4) | (if self.vin_right { 0x08 } else { 0 }) | self.vol_right,
+
+            0xFF24 => {
+                (if self.vin_left { 0x80 } else { 0 })
+                    | (self.vol_left << 4)
+                    | (if self.vin_right { 0x08 } else { 0 })
+                    | self.vol_right
+            }
             0xFF25 => {
                 let mut val = 0;
                 for i in 0..4 {
-                    if self.pan_right[i] { val |= 1 << i; }
-                    if self.pan_left[i] { val |= 1 << (i + 4); }
+                    if self.pan_right[i] {
+                        val |= 1 << i;
+                    }
+                    if self.pan_left[i] {
+                        val |= 1 << (i + 4);
+                    }
                 }
                 val
-            },
+            }
             0xFF26 => {
                 let mut val = 0;
-                if self.enabled { val |= 0x80; }
-                if self.ch4.enabled { val |= 0x08; }
-                if self.ch3.enabled { val |= 0x04; }
-                if self.ch2.enabled { val |= 0x02; }
-                if self.ch1.enabled { val |= 0x01; }
+                if self.enabled {
+                    val |= 0x80;
+                }
+                if self.ch4.enabled {
+                    val |= 0x08;
+                }
+                if self.ch3.enabled {
+                    val |= 0x04;
+                }
+                if self.ch2.enabled {
+                    val |= 0x02;
+                }
+                if self.ch1.enabled {
+                    val |= 0x01;
+                }
                 val | 0x70
-            },
-            
+            }
+
             0xFF30..=0xFF3F => {
                 if self.ch3.enabled {
                     0xFF
                 } else {
                     self.ch3.wave_ram[(address - 0xFF30) as usize]
                 }
-            },
-            
+            }
+
             _ => 0xFF,
         }
     }
@@ -563,54 +731,60 @@ impl Memory for Sound {
                 if let Some(sweep) = &mut self.ch1.sweep {
                     sweep.write(value);
                 }
-            },
+            }
             0xFF11 => {
                 self.ch1.duty = (value >> 6) as usize;
                 self.ch1.length_timer = 64 - (value & 0x3F) as u16;
-            },
+            }
             0xFF12 => {
                 self.ch1.envelope.write(value);
                 self.ch1.dac_enabled = (value & 0xF8) != 0;
-                if !self.ch1.dac_enabled { self.ch1.enabled = false; }
-            },
+                if !self.ch1.dac_enabled {
+                    self.ch1.enabled = false;
+                }
+            }
             0xFF13 => {
                 self.ch1.frequency = (self.ch1.frequency & 0xFF00) | value as u16;
-            },
+            }
             0xFF14 => {
                 self.ch1.frequency = (self.ch1.frequency & 0x00FF) | (((value & 0x07) as u16) << 8);
                 self.ch1.length_enabled = (value & 0x40) != 0;
                 if value & 0x80 != 0 {
                     self.ch1.trigger();
                 }
-            },
-            
+            }
+
             0xFF16 => {
                 self.ch2.duty = (value >> 6) as usize;
                 self.ch2.length_timer = 64 - (value & 0x3F) as u16;
-            },
+            }
             0xFF17 => {
                 self.ch2.envelope.write(value);
                 self.ch2.dac_enabled = (value & 0xF8) != 0;
-                if !self.ch2.dac_enabled { self.ch2.enabled = false; }
-            },
+                if !self.ch2.dac_enabled {
+                    self.ch2.enabled = false;
+                }
+            }
             0xFF18 => {
                 self.ch2.frequency = (self.ch2.frequency & 0xFF00) | value as u16;
-            },
+            }
             0xFF19 => {
                 self.ch2.frequency = (self.ch2.frequency & 0x00FF) | (((value & 0x07) as u16) << 8);
                 self.ch2.length_enabled = (value & 0x40) != 0;
                 if value & 0x80 != 0 {
                     self.ch2.trigger();
                 }
-            },
-            
+            }
+
             0xFF1A => {
                 self.ch3.dac_enabled = (value & 0x80) != 0;
-                if !self.ch3.dac_enabled { self.ch3.enabled = false; }
-            },
+                if !self.ch3.dac_enabled {
+                    self.ch3.enabled = false;
+                }
+            }
             0xFF1B => {
                 self.ch3.length_timer = 256 - value as u16;
-            },
+            }
             0xFF1C => {
                 self.ch3.volume_shift = match (value >> 5) & 0x03 {
                     0 => 0, // Mute
@@ -619,50 +793,52 @@ impl Memory for Sound {
                     3 => 3, // 25%
                     _ => 0,
                 };
-            },
+            }
             0xFF1D => {
                 self.ch3.frequency = (self.ch3.frequency & 0xFF00) | value as u16;
-            },
+            }
             0xFF1E => {
                 self.ch3.frequency = (self.ch3.frequency & 0x00FF) | (((value & 0x07) as u16) << 8);
                 self.ch3.length_enabled = (value & 0x40) != 0;
                 if value & 0x80 != 0 {
                     self.ch3.trigger();
                 }
-            },
-            
+            }
+
             0xFF20 => {
                 self.ch4.length_timer = 64 - (value & 0x3F) as u16;
-            },
+            }
             0xFF21 => {
                 self.ch4.envelope.write(value);
                 self.ch4.dac_enabled = (value & 0xF8) != 0;
-                if !self.ch4.dac_enabled { self.ch4.enabled = false; }
-            },
+                if !self.ch4.dac_enabled {
+                    self.ch4.enabled = false;
+                }
+            }
             0xFF22 => {
                 self.ch4.shift = value >> 4;
                 self.ch4.width_mode = (value & 0x08) != 0;
                 self.ch4.divisor_code = value & 0x07;
-            },
+            }
             0xFF23 => {
                 self.ch4.length_enabled = (value & 0x40) != 0;
                 if value & 0x80 != 0 {
                     self.ch4.trigger();
                 }
-            },
-            
+            }
+
             0xFF24 => {
                 self.vin_left = (value & 0x80) != 0;
                 self.vol_left = (value >> 4) & 0x07;
                 self.vin_right = (value & 0x08) != 0;
                 self.vol_right = value & 0x07;
-            },
+            }
             0xFF25 => {
                 for i in 0..4 {
                     self.pan_right[i] = (value & (1 << i)) != 0;
                     self.pan_left[i] = (value & (1 << (i + 4))) != 0;
                 }
-            },
+            }
             0xFF26 => {
                 let was_enabled = self.enabled;
                 self.enabled = (value & 0x80) != 0;
@@ -678,15 +854,15 @@ impl Memory for Sound {
                 } else if !was_enabled {
                     self.frame_seq_step = 0;
                 }
-            },
-            
+            }
+
             0xFF30..=0xFF3F => {
                 if !self.ch3.enabled {
                     self.ch3.wave_ram[(address - 0xFF30) as usize] = value;
                 }
-            },
-            
-            _ => {},
+            }
+
+            _ => {}
         }
     }
 }

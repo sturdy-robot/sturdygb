@@ -17,6 +17,43 @@ pub enum PpuMode {
     Transferring = 3,
 }
 
+#[derive(Clone, Debug)]
+pub struct PpuDebugSnapshot {
+    pub mode: PpuMode,
+    pub lcdc: u8,
+    pub stat: u8,
+    pub ly: u8,
+    pub lyc: u8,
+    pub scy: u8,
+    pub scx: u8,
+    pub bgp: u8,
+    pub obp0: u8,
+    pub obp1: u8,
+    pub wy: u8,
+    pub wx: u8,
+    pub vbk: u8,
+    pub bcps: u8,
+    pub ocps: u8,
+    pub svbk: u8,
+    pub mode_clock: u32,
+    pub line_clock: u32,
+    pub frame_ready: bool,
+    pub dma_active: bool,
+    pub dma_source_high: u8,
+    pub dma_byte: u8,
+    pub hdma_active: bool,
+    pub hdma_hblank_mode: bool,
+    pub hdma_source: u16,
+    pub hdma_destination: u16,
+    pub fetch_x: i16,
+    pub visible_x: u8,
+    pub window_line_counter: u8,
+    pub window_triggered: bool,
+    pub window_rendering_this_line: bool,
+    pub oam_scan_index: usize,
+    pub sprites_on_line: usize,
+}
+
 #[derive(Copy, Clone)]
 struct LineSprite {
     y: u8,
@@ -184,6 +221,44 @@ impl Ppu {
             2 => PpuMode::SearchingOAM,
             3 => PpuMode::Transferring,
             _ => PpuMode::HBlank,
+        }
+    }
+
+    pub fn debug_snapshot(&self) -> PpuDebugSnapshot {
+        PpuDebugSnapshot {
+            mode: self.get_ppu_mode(),
+            lcdc: self.lcdc,
+            stat: self.stat,
+            ly: self.ly,
+            lyc: self.lyc,
+            scy: self.scy,
+            scx: self.scx,
+            bgp: self.bgp,
+            obp0: self.obp0,
+            obp1: self.obp1,
+            wy: self.wy,
+            wx: self.wx,
+            vbk: self.vbk,
+            bcps: self.bcps,
+            ocps: self.ocps,
+            svbk: self.svbk,
+            mode_clock: self.mode_clock,
+            line_clock: self.line_clock,
+            frame_ready: self.frame_ready,
+            dma_active: self.dma.active,
+            dma_source_high: self.dma.value,
+            dma_byte: self.dma.byte,
+            hdma_active: self.hdma.is_active(),
+            hdma_hblank_mode: self.hdma.is_hblank_mode(),
+            hdma_source: self.hdma.get_hdma_source(),
+            hdma_destination: self.hdma.get_hdma_destination(),
+            fetch_x: self.fetch_x,
+            visible_x: self.visible_x,
+            window_line_counter: self.window_line_counter,
+            window_triggered: self.window_triggered,
+            window_rendering_this_line: self.window_rendering_this_line,
+            oam_scan_index: self.oam_scan_index,
+            sprites_on_line: self.line_sprites.len(),
         }
     }
 
