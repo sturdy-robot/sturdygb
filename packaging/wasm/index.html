@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="utf-8" />
     <title>SturdyGB - WASM</title>
@@ -14,6 +15,7 @@
             height: 100vh;
             margin: 0;
         }
+
         canvas {
             border: 2px solid #555;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
@@ -21,15 +23,16 @@
         }
     </style>
 </head>
+
 <body>
     <canvas id="the_canvas_id"></canvas>
 
     <script type="module">
-        import init from './pkg/sturdygb_bin.js';
-        
-        // This initializes the WebAssembly module.
-        // `fn main()` inside sturdygb_bin starts eframe automatically.
-        init().catch(console.error);
+        import init, { start } from './pkg/sturdygb.js';
+
+        await init();
+        await start('the_canvas_id');
     </script>
 </body>
+
 </html>

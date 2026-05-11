@@ -1,8 +1,24 @@
+#[cfg(target_arch = "wasm32")]
+use std::time::Duration;
+
 use super::help::HelpUiState;
 use eframe::egui;
 
 #[cfg(not(target_arch = "wasm32"))]
 use super::config::{GameEntry, SortMethod};
+
+#[cfg(target_arch = "wasm32")]
+pub(super) struct PendingRomLoad {
+    pub(super) rom_bytes: Vec<u8>,
+    pub(super) imported_save: Option<Vec<u8>>,
+    pub(super) status_update: Option<StatusUpdate>,
+}
+
+#[cfg(target_arch = "wasm32")]
+pub(super) enum WasmUiEvent {
+    RomLoad(Result<PendingRomLoad, String>),
+    SaveImport(Result<Vec<u8>, String>),
+}
 
 pub(in crate::app) struct LoadedGameState {
     pub(super) gb: sturdygb_core::gb::Gb,
@@ -13,14 +29,68 @@ pub(in crate::app) struct LoadedGameState {
     pub(super) save_path: Option<std::path::PathBuf>,
 }
 
+#[cfg(target_arch = "wasm32")]
+#[derive(Clone, Copy)]
+pub(super) enum StatusLevel {
+    Success,
+    Error,
+}
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Clone)]
+pub(super) struct StatusUpdate {
+    pub(super) level: StatusLevel,
+    pub(super) text: String,
+}
+
+#[cfg(target_arch = "wasm32")]
+pub(super) struct ActiveStatusMessage {
+    pub(super) level: StatusLevel,
+    pub(super) text: String,
+    pub(super) shown_at: instant::Instant,
+}
+
+#[cfg(target_arch = "wasm32")]
+impl StatusUpdate {
+    pub(super) fn success(text: impl Into<String>) -> Self {
+        Self {
+            level: StatusLevel::Success,
+            text: text.into(),
+        }
+    }
+
+    pub(super) fn error(text: impl Into<String>) -> Self {
+        Self {
+            level: StatusLevel::Error,
+            text: text.into(),
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl ActiveStatusMessage {
+    pub(super) const DISPLAY_FOR: Duration = Duration::from_secs(4);
+
+    fn new(update: StatusUpdate) -> Self {
+        Self {
+            level: update.level,
+            text: update.text,
+            shown_at: instant::Instant::now(),
+        }
+    }
+}
+
 pub(super) struct RuntimeState {
     pub(super) loaded_game: Option<LoadedGameState>,
     pub(super) texture: Option<egui::TextureHandle>,
     pub(super) error_msg: Option<String>,
+    #[cfg(target_arch = "wasm32")]
+    pub(super) status_msg: Option<ActiveStatusMessage>,
     pub(super) paused: bool,
-    pub(super) rom_load_channel: (
-        std::sync::mpsc::Sender<Result<Vec<u8>, String>>,
-        std::sync::mpsc::Receiver<Result<Vec<u8>, String>>,
+    #[cfg(target_arch = "wasm32")]
+    pub(super) async_event_channel: (
+        std::sync::mpsc::Sender<WasmUiEvent>,
+        std::sync::mpsc::Receiver<WasmUiEvent>,
     ),
     pub(super) frames_rendered: usize,
     pub(super) last_fps_update: instant::Instant,
@@ -33,8 +103,11 @@ impl Default for RuntimeState {
             loaded_game: None,
             texture: None,
             error_msg: None,
+            #[cfg(target_arch = "wasm32")]
+            status_msg: None,
             paused: false,
-            rom_load_channel: std::sync::mpsc::channel(),
+            #[cfg(target_arch = "wasm32")]
+            async_event_channel: std::sync::mpsc::channel(),
             frames_rendered: 0,
             last_fps_update: instant::Instant::now(),
             current_fps: 0,
@@ -77,6 +150,11 @@ pub(super) struct UiState {
 impl super::EmuApp {
     pub(in crate::app) fn has_loaded_game(&self) -> bool {
         self.runtime.loaded_game.is_some()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(in crate::app) fn set_status(&mut self, status: StatusUpdate) {
+        self.runtime.status_msg = Some(ActiveStatusMessage::new(status));
     }
 
     pub(in crate::app) fn loaded_game(&self) -> Option<&LoadedGameState> {

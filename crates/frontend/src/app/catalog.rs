@@ -1,3 +1,4 @@
+#[cfg(not(target_arch = "wasm32"))]
 use super::config::GameEntry;
 use super::EmuApp;
 
@@ -72,7 +73,10 @@ impl EmuApp {
                                                     {
                                                         use std::io::Read;
                                                         let mut header_bytes = vec![0; 0x150];
-                                                        if inner.read_exact(&mut header_bytes).is_ok() {
+                                                        if inner
+                                                            .read_exact(&mut header_bytes)
+                                                            .is_ok()
+                                                        {
                                                             if let Ok(header) = sturdygb_core::cartridge::CartridgeHeader::new(&header_bytes) {
                                                                 title = header.title;
                                                                 company = header.company;

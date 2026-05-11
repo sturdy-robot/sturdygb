@@ -25,3 +25,4 @@ crates/core/Cargo.lock
 .vs/
 *.sav
 .DS_Store
+/packaging/wasm/pkg/

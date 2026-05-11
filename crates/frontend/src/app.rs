@@ -6,6 +6,7 @@ mod help;
 mod menu;
 mod options;
 mod panel;
+mod persistence;
 mod rom;
 mod runtime;
 mod state;
@@ -78,14 +79,8 @@ impl eframe::App for EmuApp {
         self.debugger.save_layout(storage);
 
         #[cfg(target_arch = "wasm32")]
-        if let Some(state) = &mut self.runtime.loaded_game {
-            if let Some(ram) = state.gb.get_battery_ram() {
-                eframe::set_value(
-                    storage,
-                    &format!("sturdygb_sram_{}", state.title),
-                    &ram.to_vec(),
-                );
-            }
+        if let Some(state) = &self.runtime.loaded_game {
+            persistence::persist_loaded_game(state);
         }
     }
 

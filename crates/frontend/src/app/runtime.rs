@@ -1,8 +1,13 @@
+#[cfg(target_arch = "wasm32")]
+use super::state::{ActiveStatusMessage, StatusLevel, StatusUpdate, WasmUiEvent};
 use super::EmuApp;
 use eframe::egui;
 
 impl EmuApp {
     pub(super) fn sync_viewport_state(&mut self, ctx: &egui::Context) {
+        #[cfg(target_arch = "wasm32")]
+        let _ = ctx;
+
         #[cfg(not(target_arch = "wasm32"))]
         ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(self.config.fullscreen));
 
@@ -17,12 +22,41 @@ impl EmuApp {
         ctx: &egui::Context,
         storage: Option<&dyn eframe::Storage>,
     ) {
-        if let Ok(result) = self.runtime.rom_load_channel.1.try_recv() {
-            match result {
-                Ok(bytes) => self.load_rom_bytes(bytes, None, storage),
-                Err(error) => {
-                    self.runtime.error_msg = Some(format!("Failed to load ROM via async: {error}"))
-                }
+        #[cfg(target_arch = "wasm32")]
+        let _ = ctx;
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let _ = storage;
+
+        #[cfg(target_arch = "wasm32")]
+        while let Ok(event) = self.runtime.async_event_channel.1.try_recv() {
+            match event {
+                WasmUiEvent::RomLoad(result) => match result {
+                    Ok(load) => {
+                        let status_update = load.status_update;
+                        self.load_rom_bytes(load.rom_bytes, None, load.imported_save, storage);
+                        if self.runtime.loaded_game.is_some() {
+                            if let Some(status) = status_update {
+                                self.set_status(status);
+                            }
+                        }
+                    }
+                    Err(error) => {
+                        self.runtime.error_msg =
+                            Some(format!("Failed to load ROM via async: {error}"));
+                    }
+                },
+                WasmUiEvent::SaveImport(result) => match result {
+                    Ok(bytes) => match self.import_save_bytes(bytes) {
+                        Ok(status) => self.set_status(status),
+                        Err(error) => self.set_status(StatusUpdate::error(error)),
+                    },
+                    Err(error) => {
+                        self.set_status(StatusUpdate::error(format!(
+                            "Failed to load save via async: {error}"
+                        )));
+                    }
+                },
             }
         }
 
@@ -36,6 +70,9 @@ impl EmuApp {
         storage: Option<&dyn eframe::Storage>,
     ) {
         self.show_error_window(ctx);
+
+        #[cfg(target_arch = "wasm32")]
+        self.show_status_banner(ctx);
 
         if self.show_options_window(ctx) {
             self.reset_loaded_rom(storage);
@@ -67,6 +104,37 @@ impl EmuApp {
         if error_cleared {
             self.runtime.error_msg = None;
         }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn show_status_banner(&mut self, ctx: &egui::Context) {
+        let Some(status) = self.runtime.status_msg.as_ref() else {
+            return;
+        };
+
+        let elapsed = status.shown_at.elapsed();
+        if elapsed >= ActiveStatusMessage::DISPLAY_FOR {
+            self.runtime.status_msg = None;
+            return;
+        }
+
+        let remaining = ActiveStatusMessage::DISPLAY_FOR - elapsed;
+        let fill = match status.level {
+            StatusLevel::Success => egui::Color32::from_rgb(28, 78, 52),
+            StatusLevel::Error => egui::Color32::from_rgb(120, 34, 34),
+        };
+        let text = status.text.clone();
+
+        ctx.request_repaint_after(remaining);
+        egui::Area::new(egui::Id::new("status_banner"))
+            .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-12.0, 40.0))
+            .order(egui::Order::Foreground)
+            .show(ctx, |ui| {
+                egui::Frame::popup(ui.style()).fill(fill).show(ui, |ui| {
+                    ui.set_max_width(320.0);
+                    ui.label(egui::RichText::new(text).color(egui::Color32::WHITE));
+                });
+            });
     }
 
     #[cfg(not(target_arch = "wasm32"))]

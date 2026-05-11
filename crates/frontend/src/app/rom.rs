@@ -1,4 +1,6 @@
 use super::audio::setup_audio;
+#[cfg(target_arch = "wasm32")]
+use super::persistence;
 use super::state::LoadedGameState;
 use super::{EmuApp, GB_H, GB_W};
 use sturdygb_core::prelude::GbInstance;
@@ -9,6 +11,7 @@ impl EmuApp {
             self.load_rom_bytes(
                 bytes,
                 Some(std::path::PathBuf::from(path).with_extension("sav")),
+                None,
                 storage,
             );
         } else {
@@ -23,7 +26,7 @@ impl EmuApp {
             .as_ref()
             .map(|state| (state.rom_bytes.clone(), state.save_path.clone()))
         {
-            self.load_rom_bytes(rom_bytes, save_path, storage);
+            self.load_rom_bytes(rom_bytes, save_path, None, storage);
         }
     }
 
@@ -31,8 +34,14 @@ impl EmuApp {
         &mut self,
         mut bytes: Vec<u8>,
         save_path: Option<std::path::PathBuf>,
+        _imported_save: Option<Vec<u8>>,
         _storage: Option<&dyn eframe::Storage>,
     ) {
+        #[cfg(target_arch = "wasm32")]
+        if let Some(state) = self.runtime.loaded_game.as_ref() {
+            persistence::persist_loaded_game(state);
+        }
+
         if let Some(extracted) = extract_rom_from_bytes(&bytes) {
             bytes = extracted;
         }
@@ -49,12 +58,8 @@ impl EmuApp {
         ) {
             Ok(mut gb) => {
                 #[cfg(target_arch = "wasm32")]
-                if let Some(storage) = _storage {
-                    if let Some(saved) =
-                        eframe::get_value::<Vec<u8>>(storage, &format!("sturdygb_sram_{title}"))
-                    {
-                        gb.set_battery_ram(&saved);
-                    }
+                if let Some(saved) = _imported_save {
+                    gb.set_battery_ram(&saved);
                 }
 
                 setup_audio(&mut gb);

@@ -12,7 +12,7 @@ impl EmuApp {
         ctx: &egui::Context,
         frame: &mut eframe::Frame,
     ) {
-        let mut reset_requested = false;
+        let reset_requested = false;
         let keybinds = [
             JoypadButton::Up,
             JoypadButton::Down,
@@ -53,6 +53,10 @@ impl EmuApp {
                 self.runtime.frames_rendered = 0;
                 self.runtime.last_fps_update = instant::Instant::now();
 
+                #[cfg(target_arch = "wasm32")]
+                super::super::persistence::persist_loaded_game(state);
+
+                #[cfg(not(target_arch = "wasm32"))]
                 ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
                     "{} - {} (FPS: {})",
                     super::super::APP_NAME,
