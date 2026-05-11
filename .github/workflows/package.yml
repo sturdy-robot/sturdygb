@@ -11,6 +11,12 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+  APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+  APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+  APPLE_ID: ${{ secrets.APPLE_ID }}
+  APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+  APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
 jobs:
   macos-app:
@@ -77,11 +83,60 @@ jobs:
           sed "s/VERSION_PLACEHOLDER/${{ steps.version.outputs.version }}/g" \
             packaging/macos/Info.plist > "${APP_NAME}/Contents/Info.plist"
 
+      - name: Import Developer ID certificate
+        if: startsWith(github.ref, 'refs/tags/') && env.APPLE_CERTIFICATE_P12_BASE64 != '' && env.APPLE_CERTIFICATE_PASSWORD != '' && env.APPLE_SIGNING_IDENTITY != ''
+        run: |
+          CERTIFICATE_PATH="$RUNNER_TEMP/macos-certificate.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 32)"
+
+          echo "$APPLE_CERTIFICATE_P12_BASE64" | base64 -D > "$CERTIFICATE_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s \
+            -k "$KEYCHAIN_PASSWORD" \
+            "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+
+      - name: Sign macOS app bundle
+        if: startsWith(github.ref, 'refs/tags/') && env.APPLE_CERTIFICATE_P12_BASE64 != '' && env.APPLE_CERTIFICATE_PASSWORD != '' && env.APPLE_SIGNING_IDENTITY != ''
+        run: |
+          codesign --force --options runtime --timestamp --sign "$APPLE_SIGNING_IDENTITY" SturdyGB.app/Contents/MacOS/sturdygb_bin
+          codesign --force --options runtime --timestamp --sign "$APPLE_SIGNING_IDENTITY" SturdyGB.app
+          codesign --verify --deep --strict --verbose=2 SturdyGB.app
+          spctl --assess --type execute --verbose=2 SturdyGB.app
+
       - name: Create zip
         run: |
           ZIP_NAME="SturdyGB-${{ steps.version.outputs.version }}-macOS-universal.zip"
           ditto -c -k --sequesterRsrc --keepParent SturdyGB.app "$ZIP_NAME"
           echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
+
+      - name: Notarize macOS app bundle
+        if: startsWith(github.ref, 'refs/tags/') && env.APPLE_CERTIFICATE_P12_BASE64 != '' && env.APPLE_CERTIFICATE_PASSWORD != '' && env.APPLE_SIGNING_IDENTITY != '' && env.APPLE_ID != '' && env.APPLE_PASSWORD != '' && env.APPLE_TEAM_ID != ''
+        run: |
+          xcrun notarytool submit "$ZIP_NAME" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+          xcrun stapler staple SturdyGB.app
+
+      - name: Recreate zip after stapling
+        if: startsWith(github.ref, 'refs/tags/') && env.APPLE_CERTIFICATE_P12_BASE64 != '' && env.APPLE_CERTIFICATE_PASSWORD != '' && env.APPLE_SIGNING_IDENTITY != '' && env.APPLE_ID != '' && env.APPLE_PASSWORD != '' && env.APPLE_TEAM_ID != ''
+        run: |
+          rm -f "$ZIP_NAME"
+          ditto -c -k --sequesterRsrc --keepParent SturdyGB.app "$ZIP_NAME"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
