@@ -50,18 +50,11 @@ fn main() -> eframe::Result<()> {
         viewport = viewport.with_icon(icon);
     }
 
-    let mut options = eframe::NativeOptions {
+    let options = eframe::NativeOptions {
         viewport,
+        renderer: eframe::Renderer::Glow,
         ..Default::default()
     };
-
-    if let eframe::egui_wgpu::WgpuSetup::CreateNew(setup) = &mut options.wgpu_options.wgpu_setup {
-        setup.power_preference = eframe::wgpu::PowerPreference::LowPower;
-        setup.instance_descriptor = eframe::wgpu::InstanceDescriptor {
-            backends: eframe::wgpu::Backends::GL | eframe::wgpu::Backends::METAL,
-            ..Default::default()
-        };
-    }
 
     eframe::run_native(
         "sturdygb",

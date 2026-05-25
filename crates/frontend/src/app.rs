@@ -84,12 +84,16 @@ impl eframe::App for EmuApp {
         }
     }
 
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn logic(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         self.sync_viewport_state(ctx);
-        self.process_background_tasks(ctx, _frame.storage());
+        self.process_background_tasks(ctx, frame.storage());
+    }
 
-        self.show_top_menu(ctx, _frame);
-        self.show_overlay_windows(ctx, _frame.storage());
-        self.show_main_panel(ctx, _frame);
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        let ctx = ui.ctx();
+
+        self.show_top_menu(ctx, frame);
+        self.show_overlay_windows(ctx, frame.storage());
+        self.show_main_panel(ctx, frame);
     }
 }

@@ -17,35 +17,42 @@ path = "src/main.rs"
 
 [dependencies]
 sturdygb_core = { path = "../core" }
-clap = { version = "4.5", features = ["derive"] }
+clap = { version = "4.6.1", features = ["derive"] }
 rfd = "0.17.2"
-cpal = "0.17"
-eframe = { version = "0.33.3", features = ["wgpu", "persistence"] }
-egui = { version = "0.33.3", features = ["color-hex", "serde"] }
-egui_extras = { version = "0.33.3", features = ["image"] }
-egui_dock = { version = "0.18", features = ["serde"] }
-zip = { version = "0.6", default-features = false, features = ["deflate"] }
-image = { version = "0.25", default-features = false, features = ["png"] }
-toml = "0.8"
+cpal = "0.17.3"
+eframe = { version = "0.34.2", default-features = false, features = [
+    "accesskit",
+    "default_fonts",
+    "glow",
+    "persistence",
+    "wayland",
+    "x11",
+] }
+egui = { version = "0.34.2", features = ["color-hex", "serde"] }
+egui_extras = { version = "0.34.2", features = ["image"] }
+egui_dock = { version = "0.19.1", features = ["serde"] }
+zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
+image = { version = "0.25.10", default-features = false, features = ["png"] }
+toml = "1.1.2"
 
 instant = { version = "0.1", features = ["wasm-bindgen", "inaccurate"] }
 serde = { version = "1.0", features = ["derive"] }
 
 [target.'cfg(target_os = "windows")'.build-dependencies]
-winresource = "0.1"
+winresource = "0.1.31"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 walkdir = "2"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen = "0.2"
-wasm-bindgen-futures = "0.4.50"
+wasm-bindgen = "0.2.121"
+wasm-bindgen-futures = "0.4.71"
 console_error_panic_hook = "0.1"
-cpal = { version = "0.17", features = ["wasm-bindgen"] }
-js-sys = "0.3"
+cpal = { version = "0.17.3", features = ["wasm-bindgen"] }
+js-sys = "0.3.98"
 log = "0.4"
 rexie = "0.6"
-web-sys = { version = "0.3.83", features = [
+web-sys = { version = "0.3.98", features = [
     "Blob",
     "Document",
     "Element",
@@ -57,6 +64,6 @@ web-sys = { version = "0.3.83", features = [
 getrandom_03 = { package = "getrandom", version = "0.3", features = [
     "wasm_js",
 ] }
-getrandom_04 = { package = "getrandom", version = "0.4", features = [
+getrandom_04 = { package = "getrandom", version = "0.4.2", features = [
     "wasm_js",
 ] }

@@ -85,9 +85,9 @@ impl DebuggerUiState {
             self.dock_state.push_to_focused_leaf(tab);
         }
         if let Some(location) = self.dock_state.find_tab(&tab) {
-            self.dock_state.set_active_tab(location);
+            let _ = self.dock_state.set_active_tab(location);
             self.dock_state
-                .set_focused_node_and_surface((location.0, location.1));
+                .set_focused_node_and_surface(location.node_path());
         }
     }
 

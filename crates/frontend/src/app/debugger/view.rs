@@ -61,7 +61,7 @@ impl EmuApp {
         let mut close_requested = false;
 
         ctx.show_viewport_immediate(viewport_id, viewport_builder, |viewport_ctx, class| {
-            if matches!(class, egui::ViewportClass::Embedded) {
+            if matches!(class, egui::ViewportClass::EmbeddedWindow) {
                 let mut open = true;
                 egui::Window::new("Debugger")
                     .open(&mut open)
