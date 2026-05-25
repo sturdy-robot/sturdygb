@@ -41,7 +41,7 @@ SPDX-License-Identifier: MIT
 
 **SturdyGB** is an experimental **Game Boy emulator written in Rust**, focused on correctness, clean architecture, and long-term accuracy.
 
-This project is still in **early development**. It can already run many commercial **DMG (original Game Boy)** titles.
+This project is still in **early development**. It can already run many commercial **DMG (original Game Boy)** and **CGB (Game Boy Color)** titles.
 
 ## Current Features
 
@@ -59,10 +59,7 @@ This project is still in **early development**. It can already run many commerci
 - Functional DMG PPU
 - Background, window, and sprite rendering
 - OAM DMA
-- Scanline-based renderer (not cycle-accurate yet)
-
-> [!WARNING]
-> Some games may show graphical issues due to the inaccurate PPU.
+- Pixel FIFO
 
 ### Input
 
@@ -97,11 +94,8 @@ This project is still in **early development**. It can already run many commerci
 
 ## Missing / Incomplete Features
 
-- Inaccurate PPU
-- Game Boy Color (CGB) support
 - Super Game Boy (SGB) features
 - Save states
-- Debugger UI
 - Cheats/GameShark
 - Rewind
 - Customizable keys
